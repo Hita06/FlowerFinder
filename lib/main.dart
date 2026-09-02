@@ -28,8 +28,23 @@ class FlowerFinderApp extends StatelessWidget {
         useMaterial3: true,
       ),
 
-      // Opens Hita's G5 Flower Information page.
-      home: const FlowerInformationPage(),
+     // Opens the Flower Information page with identified flower data.
+home: const FlowerInformationPage(
+  flowerName: 'Rose',
+  scientificName: 'Rosa',
+  description:
+      'Roses are flowering plants known for their colourful petals and '
+      'pleasant fragrance. They are commonly grown in gardens and are '
+      'available in many colours.',
+
+  flowerType: 'Garden flower',
+  flowerColour: 'Red',
+  season: 'Spring and summer',
+  careTips:
+      '• Place in an area with plenty of sunlight.\n'
+      '• Water regularly without flooding the soil.\n'
+      '• Remove damaged or dried leaves.',
+),
     ); 
   }
 }

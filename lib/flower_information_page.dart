@@ -13,7 +13,26 @@ const Color pinkAccent = Color(0xFFF7A8C4);
 
 // Creates the Flower Information page.
 class FlowerInformationPage extends StatelessWidget {
-  const FlowerInformationPage({super.key});
+  // Stores the information received for the identified flower.
+  final String flowerName;
+  final String scientificName;
+  final String description;
+  final String flowerType;
+  final String flowerColour;
+  final String season;
+  final String careTips;
+
+  // Requires flower information when this page is opened.
+  const FlowerInformationPage({
+    super.key,
+    required this.flowerName,
+    required this.scientificName,
+    required this.description,
+    required this.flowerType,
+    required this.flowerColour,
+    required this.season,
+    required this.careTips,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -59,9 +78,9 @@ class FlowerInformationPage extends StatelessWidget {
             const SizedBox(height: 24),
 
             // Displays the identified flower name.
-            const Text(
-              'Rose',
-              style: TextStyle(
+            Text(
+              flowerName,
+              style: const TextStyle(
                 fontSize: 30,
                 fontWeight: FontWeight.bold,
                 color: darkGreen,
@@ -71,9 +90,9 @@ class FlowerInformationPage extends StatelessWidget {
             const SizedBox(height: 6),
 
             // Displays the scientific flower name.
-            const Text(
-              'Rosa',
-              style: TextStyle(
+            Text(
+              scientificName,
+              style: const TextStyle(
                 fontSize: 17,
                 fontStyle: FontStyle.italic,
                 color: Colors.grey,
@@ -97,10 +116,10 @@ class FlowerInformationPage extends StatelessWidget {
                   ),
                 ],
               ),
-              child: const Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  const Row(
                     children: [
                       Icon(
                         Icons.info_outline,
@@ -117,12 +136,10 @@ class FlowerInformationPage extends StatelessWidget {
                       ),
                     ],
                   ),
-                  SizedBox(height: 14),
+                  const SizedBox(height: 14),
                   Text(
-                    'Roses are flowering plants known for their colourful '
-                    'petals and pleasant fragrance. They are commonly grown '
-                    'in gardens and are available in many colours.',
-                    style: TextStyle(
+                    description,
+                    style: const TextStyle(
                       fontSize: 17,
                       height: 1.5,
                       color: Color(0xFF555555),
@@ -149,10 +166,10 @@ class FlowerInformationPage extends StatelessWidget {
                   ),
                 ],
               ),
-              child: const Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  const Row(
                     children: [
                       Icon(
                         Icons.local_florist_outlined,
@@ -169,26 +186,26 @@ class FlowerInformationPage extends StatelessWidget {
                       ),
                     ],
                   ),
-                  SizedBox(height: 14),
+                  const SizedBox(height: 14),
                   Text(
-                    'Type: Garden flower',
-                    style: TextStyle(
+                    'Type: $flowerType',
+                    style: const TextStyle(
                       fontSize: 17,
                       height: 1.7,
                       color: Color(0xFF555555),
                     ),
                   ),
                   Text(
-                    'Colour: Red',
-                    style: TextStyle(
+                    'Colour: $flowerColour',
+                    style: const TextStyle(
                       fontSize: 17,
                       height: 1.7,
                       color: Color(0xFF555555),
                     ),
                   ),
                   Text(
-                    'Season: Spring and summer',
-                    style: TextStyle(
+                    'Season: $season',
+                    style: const TextStyle(
                       fontSize: 17,
                       height: 1.7,
                       color: Color(0xFF555555),
@@ -219,10 +236,10 @@ class FlowerInformationPage extends StatelessWidget {
                   ),
                 ],
               ),
-              child: const Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  const Row(
                     children: [
                       Icon(
                         Icons.favorite_outline,
@@ -239,12 +256,10 @@ class FlowerInformationPage extends StatelessWidget {
                       ),
                     ],
                   ),
-                  SizedBox(height: 14),
+                  const SizedBox(height: 14),
                   Text(
-                    '• Place in an area with plenty of sunlight.\n'
-                    '• Water regularly without flooding the soil.\n'
-                    '• Remove damaged or dried leaves.',
-                    style: TextStyle(
+                    careTips,
+                    style: const TextStyle(
                       fontSize: 17,
                       height: 1.7,
                       color: Color(0xFF555555),
