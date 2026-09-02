@@ -30,6 +30,6 @@ class FlowerFinderApp extends StatelessWidget {
 
       // Opens Hita's G5 Flower Information page.
       home: const FlowerInformationPage(),
-    );
+    ); 
   }
 }
