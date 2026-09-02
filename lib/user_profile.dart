@@ -1,0 +1,201 @@
+import 'package:flutter/material.dart';
+
+class UserAccount {
+  UserAccount({required this.name, required this.username, required this.email});
+
+  String name;
+  String username;
+  String email;
+}
+
+class UserProfilePage extends StatefulWidget {
+  const UserProfilePage({super.key});
+
+  @override
+  State<UserProfilePage> createState() => _UserProfilePageState();
+}
+
+class _UserProfilePageState extends State<UserProfilePage> {
+  final UserAccount _account = UserAccount(
+    name: 'Linda Xiaoxi',
+    username: 'linda_xiaoxi',
+    email: 'linda@example.com',
+  );
+
+  Future<void> _editAccount() async {
+    final updatedAccount = await showModalBottomSheet<UserAccount>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => _EditAccountSheet(account: _account),
+    );
+    if (updatedAccount == null) return;
+    setState(() {
+      _account
+        ..name = updatedAccount.name
+        ..username = updatedAccount.username
+        ..email = updatedAccount.email;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('My account'),
+        actions: [
+          IconButton(
+            onPressed: _editAccount,
+            tooltip: 'Edit account',
+            icon: const Icon(Icons.edit_outlined),
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+        children: [
+          Center(
+            child: CircleAvatar(
+              radius: 48,
+              backgroundColor: const Color(0xffdce9d8),
+              child: Text(
+                _account.name.substring(0, 1),
+                style: const TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xff2f6b4f),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Center(
+            child: Text(
+              _account.name,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Center(
+            child: Text('@${_account.username}', style: TextStyle(color: Colors.grey.shade600)),
+          ),
+          const SizedBox(height: 28),
+          Card(
+            child: Column(
+              children: [
+                _AccountRow(icon: Icons.person_outline, label: 'Name', value: _account.name),
+                _AccountRow(icon: Icons.alternate_email, label: 'Username', value: _account.username),
+                _AccountRow(icon: Icons.email_outlined, label: 'Email', value: _account.email),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text('Your activity', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          const _ActivityTile(icon: Icons.bookmark_outline, title: 'Saved flowers', value: '12'),
+          const _ActivityTile(icon: Icons.camera_alt_outlined, title: 'Flowers identified', value: '27'),
+          const _ActivityTile(icon: Icons.collections_bookmark_outlined, title: 'Collections', value: '4'),
+          const SizedBox(height: 20),
+          OutlinedButton.icon(
+            onPressed: () {},
+            icon: const Icon(Icons.logout),
+            label: const Text('Sign out'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AccountRow extends StatelessWidget {
+  const _AccountRow({required this.icon, required this.label, required this.value});
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+        leading: Icon(icon, color: const Color(0xff2f6b4f)),
+        title: Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+        subtitle: Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
+      );
+}
+
+class _ActivityTile extends StatelessWidget {
+  const _ActivityTile({required this.icon, required this.title, required this.value});
+
+  final IconData icon;
+  final String title;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: CircleAvatar(
+          backgroundColor: const Color(0xffe7eee3),
+          child: Icon(icon, color: const Color(0xff2f6b4f)),
+        ),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+        trailing: Text(value, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+      );
+}
+
+class _EditAccountSheet extends StatefulWidget {
+  const _EditAccountSheet({required this.account});
+
+  final UserAccount account;
+
+  @override
+  State<_EditAccountSheet> createState() => _EditAccountSheetState();
+}
+
+class _EditAccountSheetState extends State<_EditAccountSheet> {
+  late final _nameController = TextEditingController(text: widget.account.name);
+  late final _usernameController = TextEditingController(text: widget.account.username);
+  late final _emailController = TextEditingController(text: widget.account.email);
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _usernameController.dispose();
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+        child: Material(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Edit account', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 18),
+                TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'Name', prefixIcon: Icon(Icons.person_outline))),
+                const SizedBox(height: 12),
+                TextField(controller: _usernameController, decoration: const InputDecoration(labelText: 'Username', prefixIcon: Icon(Icons.alternate_email))),
+                const SizedBox(height: 12),
+                TextField(controller: _emailController, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.email_outlined))),
+                const SizedBox(height: 20),
+                SizedBox(width: double.infinity, child: FilledButton(onPressed: _save, child: const Text('Save changes'))),
+              ],
+            ),
+          ),
+        ),
+      );
+
+  void _save() {
+    if (_nameController.text.trim().isEmpty || _usernameController.text.trim().isEmpty || _emailController.text.trim().isEmpty) return;
+    Navigator.pop(
+      context,
+      UserAccount(
+        name: _nameController.text.trim(),
+        username: _usernameController.text.trim(),
+        email: _emailController.text.trim(),
+      ),
+    );
+  }
+}

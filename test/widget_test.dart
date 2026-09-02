@@ -11,20 +11,23 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flower_finder/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
+  testWidgets('user account page displays account details', (WidgetTester tester) async {
     await tester.pumpWidget(const MyApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(find.text('My account'), findsOneWidget);
+    expect(find.text('Linda Xiaoxi'), findsNWidgets(2));
+    expect(find.text('@linda_xiaoxi'), findsOneWidget);
+    expect(find.text('Saved flowers'), findsOneWidget);
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  testWidgets('user can edit and save account details', (WidgetTester tester) async {
+    await tester.pumpWidget(const MyApp());
+    await tester.tap(find.byTooltip('Edit account'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, 'Linda Chen');
+    await tester.tap(find.text('Save changes'));
+    await tester.pumpAndSettle();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('Linda Chen'), findsNWidgets(2));
   });
 }
