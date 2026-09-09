@@ -22,6 +22,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
     email: 'linda@example.com',
   );
 
+  final List<String> _savedFlowerPhotos = const [];
+  final List<String> _savedStickers = const [];
+
   Future<void> _editAccount() async {
     final updatedAccount = await showModalBottomSheet<UserAccount>(
       context: context,
@@ -89,11 +92,27 @@ class _UserProfilePageState extends State<UserProfilePage> {
             ),
           ),
           const SizedBox(height: 24),
-          Text('Your activity', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+          Text('Flower identification', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
           const _ActivityTile(icon: Icons.bookmark_outline, title: 'Saved flowers', value: '12'),
           const _ActivityTile(icon: Icons.camera_alt_outlined, title: 'Flowers identified', value: '27'),
           const _ActivityTile(icon: Icons.collections_bookmark_outlined, title: 'Collections', value: '4'),
+          const SizedBox(height: 24),
+          _SavedItemsSection(
+            title: 'Saved flower photos',
+            items: _savedFlowerPhotos,
+            emptyIcon: Icons.photo_library_outlined,
+            emptyTitle: 'No saved flower photos yet',
+            emptyMessage: 'Photos from future flower scans will appear here.',
+          ),
+          const SizedBox(height: 24),
+          _SavedItemsSection(
+            title: 'Saved stickers',
+            items: _savedStickers,
+            emptyIcon: Icons.emoji_emotions_outlined,
+            emptyTitle: 'No saved stickers yet',
+            emptyMessage: 'Stickers created from identified flowers will appear here.',
+          ),
           const SizedBox(height: 20),
           OutlinedButton.icon(
             onPressed: () {},
@@ -104,6 +123,64 @@ class _UserProfilePageState extends State<UserProfilePage> {
       ),
     );
   }
+}
+
+class _SavedItemsSection extends StatelessWidget {
+  const _SavedItemsSection({
+    required this.title,
+    required this.items,
+    required this.emptyIcon,
+    required this.emptyTitle,
+    required this.emptyMessage,
+  });
+
+  final String title;
+  final List<String> items;
+  final IconData emptyIcon;
+  final String emptyTitle;
+  final String emptyMessage;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          if (items.isEmpty)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: const Color(0xffe7eee3),
+                      child: Icon(emptyIcon, color: const Color(0xff2f6b4f)),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(emptyTitle, style: const TextStyle(fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 4),
+                          Text(emptyMessage, style: TextStyle(color: Colors.grey.shade600)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            Card(
+              child: Column(
+                children: [
+                  for (final item in items) ListTile(title: Text(item)),
+                ],
+              ),
+            ),
+        ],
+      );
 }
 
 class _AccountRow extends StatelessWidget {
