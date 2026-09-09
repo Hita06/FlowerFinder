@@ -26,9 +26,9 @@ class UserProfilePage extends StatefulWidget {
 
 class _UserProfilePageState extends State<UserProfilePage> {
   final UserAccount _account = UserAccount(
-    name: 'Linda Xiaoxi',
-    username: 'linda_xiaoxi',
-    email: 'linda@example.com',
+    name: 'New Flower Finder User',
+    username: 'flower_finder_user',
+    email: 'user@example.com',
   );
 
   final List<String> _savedStickers = const [];

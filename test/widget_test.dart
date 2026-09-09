@@ -15,8 +15,8 @@ void main() {
     await tester.pumpWidget(const MyApp());
 
     expect(find.text('My account'), findsOneWidget);
-    expect(find.text('Linda Xiaoxi'), findsNWidgets(2));
-    expect(find.text('@linda_xiaoxi'), findsOneWidget);
+    expect(find.text('New Flower Finder User'), findsNWidgets(2));
+    expect(find.text('@flower_finder_user'), findsOneWidget);
     expect(find.text('Saved flowers'), findsOneWidget);
   });
 
