@@ -57,23 +57,28 @@ class _UserProfilePageState extends State<UserProfilePage> {
           statusBarIconBrightness: Brightness.light,
           statusBarBrightness: Brightness.dark,
         ),
-        child: SafeArea(
-          top: false,
-          bottom: false,
-          child: CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(child: _ProfileHeader(onEdit: _editAccount)),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 28, 20, 32),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate([
-                    _ProfileSummary(account: _account, imageCount: widget.savedFlowerPhotos.length),
-                    const SizedBox(height: 30),
-                    _SavedFlowerPhotosSection(photos: widget.savedFlowerPhotos),
-                  ]),
-                ),
+        child: Container(
+          color: const Color(0xff2f6b4f),
+          child: SafeArea(
+            bottom: false,
+            child: Container(
+              color: const Color(0xfff8faf7),
+              child: CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(child: _ProfileHeader(onEdit: _editAccount)),
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(20, 28, 20, 32),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
+                        _ProfileSummary(account: _account, imageCount: widget.savedFlowerPhotos.length),
+                        const SizedBox(height: 30),
+                        _SavedFlowerPhotosSection(photos: widget.savedFlowerPhotos),
+                      ]),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
