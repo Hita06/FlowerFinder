@@ -30,12 +30,10 @@ class FlowerFinderApp extends StatelessWidget {
 
      // Opens the Flower Information page with identified flower data.
 home: const FlowerInformationPage(
-  flowerName: 'Rose',
-  scientificName: 'Rosa',
+  flowerName: 'Sunflower',
+  scientificName: 'Helianthus annuus',
   description:
-      'Roses are flowering plants known for their colourful petals and '
-      'pleasant fragrance. They are commonly grown in gardens and are '
-      'available in many colours.',
+      'Sunflowers are tall, robust plants known for their large, bright yellow flowers. They are commonly grown for their seeds and as ornamental plants.',
 
   flowerType: 'Garden flower',
   flowerColour: 'Red',
@@ -48,3 +46,4 @@ home: const FlowerInformationPage(
     ); 
   }
 }
+
