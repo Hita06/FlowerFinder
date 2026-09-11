@@ -25,6 +25,17 @@ class DiaryPage extends StatelessWidget {
             Text(
               'Keep track of the flowers you discover and record your observations.',
             ),
+            SizedBox(height: 30),
+            Card(
+              child: ListTile(
+                leading: CircleAvatar(
+                  child: Icon(Icons.local_florist),
+                ),
+                title: Text('Purple Orchid'),
+                subtitle: Text('Discovered near campus'),
+                trailing: Icon(Icons.chevron_right),
+              ),
+            ),
           ],
         ),
       ),
