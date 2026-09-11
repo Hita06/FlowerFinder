@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class UserAccount {
   UserAccount({required this.name, required this.username, required this.email});
@@ -31,8 +32,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
     email: 'user@example.com',
   );
 
-  final List<String> _savedStickers = const [];
-
   Future<void> _editAccount() async {
     final updatedAccount = await showModalBottomSheet<UserAccount>(
       context: context,
@@ -51,80 +50,147 @@ class _UserProfilePageState extends State<UserProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My account'),
-        actions: [
-          IconButton(
-            onPressed: _editAccount,
-            tooltip: 'Edit account',
-            icon: const Icon(Icons.edit_outlined),
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
-        children: [
-          Center(
-            child: CircleAvatar(
-              radius: 48,
-              backgroundColor: const Color(0xffdce9d8),
-              child: Text(
-                _account.name.substring(0, 1),
-                style: const TextStyle(
-                  fontSize: 34,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xff2f6b4f),
+      backgroundColor: const Color(0xfff8faf7),
+      body: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: const SystemUiOverlayStyle(
+          statusBarColor: Color(0xff2f6b4f),
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+        ),
+        child: SafeArea(
+          top: false,
+          bottom: false,
+          child: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(child: _ProfileHeader(onEdit: _editAccount)),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 28, 20, 32),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    _ProfileSummary(account: _account, imageCount: widget.savedFlowerPhotos.length),
+                    const SizedBox(height: 30),
+                    _SavedFlowerPhotosSection(photos: widget.savedFlowerPhotos),
+                  ]),
                 ),
               ),
-            ),
+            ],
           ),
-          const SizedBox(height: 16),
-          Center(
-            child: Text(
-              _account.name,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Center(
-            child: Text('@${_account.username}', style: TextStyle(color: Colors.grey.shade600)),
-          ),
-          const SizedBox(height: 28),
-          Card(
-            child: Column(
-              children: [
-                _AccountRow(icon: Icons.person_outline, label: 'Name', value: _account.name),
-                _AccountRow(icon: Icons.alternate_email, label: 'Username', value: _account.username),
-                _AccountRow(icon: Icons.email_outlined, label: 'Email', value: _account.email),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          Text('Flower identification', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
-          const _ActivityTile(icon: Icons.bookmark_outline, title: 'Saved flowers', value: '12'),
-          const _ActivityTile(icon: Icons.camera_alt_outlined, title: 'Flowers identified', value: '27'),
-          const _ActivityTile(icon: Icons.collections_bookmark_outlined, title: 'Collections', value: '4'),
-          const SizedBox(height: 24),
-          _SavedFlowerPhotosSection(photos: widget.savedFlowerPhotos),
-          const SizedBox(height: 24),
-          _SavedItemsSection(
-            title: 'Saved stickers',
-            items: _savedStickers,
-            emptyIcon: Icons.emoji_emotions_outlined,
-            emptyTitle: 'No saved stickers yet',
-            emptyMessage: 'Stickers created from identified flowers will appear here.',
-          ),
-          const SizedBox(height: 20),
-          OutlinedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.logout),
-            label: const Text('Sign out'),
-          ),
-        ],
+        ),
+      ),
+      bottomNavigationBar: Container(
+        height: 74,
+        decoration: const BoxDecoration(
+          color: Color(0xff2f6b4f),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            Icon(Icons.home_outlined, color: Colors.white70, size: 26),
+            Icon(Icons.local_florist_outlined, color: Colors.white70, size: 26),
+            Icon(Icons.person, color: Colors.white, size: 28),
+          ],
+        ),
       ),
     );
   }
+}
+
+class _ProfileHeader extends StatelessWidget {
+  const _ProfileHeader({required this.onEdit});
+
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 68,
+        color: const Color(0xff2f6b4f),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Row(
+          children: [
+            IconButton(
+              onPressed: () {},
+              tooltip: 'Add',
+              color: Colors.white,
+              icon: const Icon(Icons.add, size: 28),
+            ),
+            const Expanded(
+              child: Text(
+                'Profile Page',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700),
+              ),
+            ),
+            PopupMenuButton<String>(
+              tooltip: 'More options',
+              icon: const Icon(Icons.more_horiz, color: Colors.white, size: 28),
+              onSelected: (value) {
+                if (value == 'edit') onEdit();
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem(value: 'edit', child: Text('Edit account')),
+              ],
+            ),
+          ],
+        ),
+      );
+}
+
+class _ProfileSummary extends StatelessWidget {
+  const _ProfileSummary({required this.account, required this.imageCount});
+
+  final UserAccount account;
+  final int imageCount;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        children: [
+          Row(
+            children: [
+              const CircleAvatar(
+                radius: 45,
+                backgroundColor: Color(0xffdce9d8),
+                child: Icon(Icons.person_outline, color: Color(0xff2f6b4f), size: 48),
+              ),
+              const SizedBox(width: 24),
+              Expanded(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    const _ProfileStat(value: '0', label: 'Stickers'),
+                    _ProfileStat(value: '$imageCount', label: 'Images'),
+                    const _ProfileStat(value: '0', label: 'Diary'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '@${account.username}',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xff23352a)),
+            ),
+          ),
+        ],
+      );
+}
+
+class _ProfileStat extends StatelessWidget {
+  const _ProfileStat({required this.value, required this.label});
+
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        children: [
+          Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xff23352a))),
+          const SizedBox(height: 4),
+          Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+        ],
+      );
 }
 
 class _SavedFlowerPhotosSection extends StatelessWidget {
@@ -133,172 +199,88 @@ class _SavedFlowerPhotosSection extends StatelessWidget {
   final List<SavedFlowerPhoto> photos;
 
   @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Saved flower photos', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
-          if (photos.isEmpty)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    const CircleAvatar(
-                      backgroundColor: Color(0xffe7eee3),
-                      child: Icon(Icons.photo_library_outlined, color: Color(0xff2f6b4f)),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('No saved flower photos yet', style: TextStyle(fontWeight: FontWeight.w700)),
-                          const SizedBox(height: 4),
-                          Text('Photos from future flower scans will appear here.', style: TextStyle(color: Colors.grey.shade600)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else
-            Card(
-              clipBehavior: Clip.antiAlias,
-              child: GridView.builder(
-                padding: const EdgeInsets.all(8),
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 8,
-                  mainAxisSpacing: 8,
-                  childAspectRatio: 1,
-                ),
-                itemCount: photos.length,
-                itemBuilder: (context, index) {
-                  final photo = photos[index];
-                  return ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Image(image: photo.image, fit: BoxFit.cover),
-                        if (photo.label != null)
-                          Align(
-                            alignment: Alignment.bottomCenter,
-                            child: Container(
-                              width: double.infinity,
-                              color: Colors.black54,
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                              child: Text(
-                                photo.label!,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-        ],
-      );
-}
+  Widget build(BuildContext context) {
+    final itemCount = photos.isEmpty ? 6 : photos.length + 1;
 
-class _SavedItemsSection extends StatelessWidget {
-  const _SavedItemsSection({
-    required this.title,
-    required this.items,
-    required this.emptyIcon,
-    required this.emptyTitle,
-    required this.emptyMessage,
-  });
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Your flowers',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xff23352a)),
+        ),
+        const SizedBox(height: 14),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: 1,
+          ),
+          itemCount: itemCount,
+          itemBuilder: (context, index) {
+            if (index == photos.length) return const _AddGalleryTile();
+            if (photos.isEmpty) return _PlaceholderGalleryTile(index: index);
 
-  final String title;
-  final List<String> items;
-  final IconData emptyIcon;
-  final String emptyTitle;
-  final String emptyMessage;
-
-  @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
-          if (items.isEmpty)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: const Color(0xffe7eee3),
-                      child: Icon(emptyIcon, color: const Color(0xff2f6b4f)),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(emptyTitle, style: const TextStyle(fontWeight: FontWeight.w700)),
-                          const SizedBox(height: 4),
-                          Text(emptyMessage, style: TextStyle(color: Colors.grey.shade600)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else
-            Card(
-              child: Column(
+            final photo = photos[index];
+            return ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  for (final item in items) ListTile(title: Text(item)),
+                  Image(image: photo.image, fit: BoxFit.cover),
+                  if (photo.label != null)
+                    Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Container(
+                        width: double.infinity,
+                        color: Colors.black54,
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                        child: Text(
+                          photo.label!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
                 ],
               ),
-            ),
-        ],
-      );
-}
-
-class _AccountRow extends StatelessWidget {
-  const _AccountRow({required this.icon, required this.label, required this.value});
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) => ListTile(
-        leading: Icon(icon, color: const Color(0xff2f6b4f)),
-        title: Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
-        subtitle: Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
-      );
-}
-
-class _ActivityTile extends StatelessWidget {
-  const _ActivityTile({required this.icon, required this.title, required this.value});
-
-  final IconData icon;
-  final String title;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) => ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: CircleAvatar(
-          backgroundColor: const Color(0xffe7eee3),
-          child: Icon(icon, color: const Color(0xff2f6b4f)),
+            );
+          },
         ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-        trailing: Text(value, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+      ],
+    );
+  }
+}
+
+class _PlaceholderGalleryTile extends StatelessWidget {
+  const _PlaceholderGalleryTile({required this.index});
+
+  final int index;
+
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          color: index.isEven ? const Color(0xffdce9d8) : const Color(0xffe9efe6),
+          child: const Icon(Icons.local_florist_outlined, color: Color(0xff6c9274), size: 30),
+        ),
+      );
+}
+
+class _AddGalleryTile extends StatelessWidget {
+  const _AddGalleryTile();
+
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          color: const Color(0xffeef3ed),
+          child: const Icon(Icons.add, color: Color(0xff2f6b4f), size: 32),
+        ),
       );
 }
 

@@ -11,23 +11,28 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flower_finder/main.dart';
 
 void main() {
-  testWidgets('user account page displays account details', (WidgetTester tester) async {
+  testWidgets('profile page displays profile layout', (WidgetTester tester) async {
     await tester.pumpWidget(const MyApp());
 
-    expect(find.text('My account'), findsOneWidget);
-    expect(find.text('New Flower Finder User'), findsNWidgets(2));
+    expect(find.text('Profile Page'), findsOneWidget);
     expect(find.text('@flower_finder_user'), findsOneWidget);
-    expect(find.text('Saved flowers'), findsOneWidget);
+    expect(find.text('Stickers'), findsOneWidget);
+    expect(find.text('Images'), findsOneWidget);
+    expect(find.text('Diary'), findsOneWidget);
+    expect(find.byIcon(Icons.local_florist_outlined), findsNWidgets(6));
+    expect(find.byIcon(Icons.add), findsNWidgets(2));
   });
 
   testWidgets('user can edit and save account details', (WidgetTester tester) async {
     await tester.pumpWidget(const MyApp());
-    await tester.tap(find.byTooltip('Edit account'));
+    await tester.tap(find.byTooltip('More options'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).first, 'Linda Chen');
+    await tester.tap(find.text('Edit account'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(1), 'new_flower_finder_user');
     await tester.tap(find.text('Save changes'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Linda Chen'), findsNWidgets(2));
+    expect(find.text('@new_flower_finder_user'), findsOneWidget);
   });
 }
