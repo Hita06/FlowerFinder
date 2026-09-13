@@ -6,9 +6,7 @@ class DiaryPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Diary'),
-      ),
+      appBar: AppBar(title: const Text('My Diary')),
       body: const Padding(
         padding: EdgeInsets.all(16.0),
         child: Column(
@@ -16,10 +14,7 @@ class DiaryPage extends StatelessWidget {
           children: [
             Text(
               'Flower Memories',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 10),
             Text(
@@ -28,9 +23,7 @@ class DiaryPage extends StatelessWidget {
             SizedBox(height: 30),
             Card(
               child: ListTile(
-                leading: CircleAvatar(
-                  child: Icon(Icons.local_florist),
-                ),
+                leading: CircleAvatar(child: Icon(Icons.local_florist)),
                 title: Text('Purple Orchid'),
                 subtitle: Text('Discovered near campus'),
                 trailing: Icon(Icons.chevron_right),
