@@ -1,11 +1,18 @@
 // FlowerFinder Application
 // Created by the FlowerFinder team
-// This file starts the app and opens the Flower Search page.
+// This file starts the app and loads the private API configuration.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 import 'flower_search_page.dart';
 
-void main() {
+// Loads the local environment file before starting FlowerFinder.
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await dotenv.load(fileName: '.env');
+
   runApp(const MyApp());
 }
 
