@@ -13,17 +13,28 @@ class MockFlowerPhotoSource {
     ),
   );
 
+  static ImageProvider _image(String url) {
+    final isFlutterTest = WidgetsBinding.instance.runtimeType.toString().contains('TestWidgetsFlutterBinding');
+    return isFlutterTest ? _testImage : NetworkImage(url);
+  }
+
   static final photos = [
     SavedFlowerPhoto(
-      image: _testImage,
+      image: _image(
+        'https://perenual.com/storage/image/page-image-asset/plant%202%20compress.png',
+      ),
       label: 'Daisy',
     ),
     SavedFlowerPhoto(
-      image: _testImage,
+      image: _image(
+        'https://perenual.com/storage/image/page-image-asset/plant%203%20compress.png',
+      ),
       label: 'Lavender',
     ),
     SavedFlowerPhoto(
-      image: _testImage,
+      image: _image(
+        'https://perenual.com/storage/image/page-image-asset/plant%204%20compress.png',
+      ),
       label: 'Sunflower',
     ),
   ];
