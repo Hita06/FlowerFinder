@@ -19,9 +19,13 @@ void main() {
     expect(find.text('Stickers'), findsOneWidget);
     expect(find.text('Images'), findsOneWidget);
     expect(find.text('Diary'), findsOneWidget);
-    expect(find.text('Daisy'), findsOneWidget);
-    expect(find.text('Lavender'), findsOneWidget);
-    expect(find.text('Sunflower'), findsOneWidget);
+    expect(find.text('Daisy'), findsNothing);
+    expect(find.text('Lavender'), findsNothing);
+    expect(find.text('Sunflower'), findsNothing);
+    expect(find.byIcon(Icons.qr_code_scanner_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.menu_book_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.map_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.person), findsOneWidget);
     expect(find.byIcon(Icons.add), findsNWidgets(2));
   });
 

@@ -140,8 +140,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
         child: const Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            Icon(Icons.home_outlined, color: Colors.white70, size: 26),
-            Icon(Icons.local_florist_outlined, color: Colors.white70, size: 26),
+            Icon(Icons.qr_code_scanner_outlined, color: Colors.white70, size: 26),
+            Icon(Icons.menu_book_outlined, color: Colors.white70, size: 26),
+            Icon(Icons.map_outlined, color: Colors.white70, size: 26),
             Icon(Icons.person, color: Colors.white, size: 28),
           ],
         ),
@@ -305,21 +306,6 @@ class _SavedFlowerPhotosSection extends StatelessWidget {
                               size: 18,
                             ),
                           ),
-                        ),
-                      ),
-                    ),
-                  if (photo.label != null)
-                    Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Container(
-                        width: double.infinity,
-                        color: Colors.black54,
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
-                        child: Text(
-                          photo.label!,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
                         ),
                       ),
                     ),
