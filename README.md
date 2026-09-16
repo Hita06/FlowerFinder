@@ -1,4 +1,4 @@
-# flower_finder
+# flowerfinder
 
 A new Flutter project.
 
