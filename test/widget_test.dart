@@ -19,8 +19,22 @@ void main() {
     expect(find.text('Stickers'), findsOneWidget);
     expect(find.text('Images'), findsOneWidget);
     expect(find.text('Diary'), findsOneWidget);
-    expect(find.byIcon(Icons.local_florist_outlined), findsNWidgets(6));
+    expect(find.text('Daisy'), findsOneWidget);
+    expect(find.text('Lavender'), findsOneWidget);
+    expect(find.text('Sunflower'), findsOneWidget);
     expect(find.byIcon(Icons.add), findsNWidgets(2));
+  });
+
+  testWidgets('user can create a sticker from a mock flower photo', (WidgetTester tester) async {
+    await tester.pumpWidget(const MyApp());
+    await tester.tap(find.byTooltip('Create sticker'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Create Sticker'), findsOneWidget);
+    await tester.tap(find.text('Save sticker'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1'), findsOneWidget);
   });
 
   testWidgets('user can edit and save account details', (WidgetTester tester) async {
