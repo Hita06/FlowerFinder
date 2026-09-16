@@ -26,7 +26,8 @@ void main() {
     expect(find.byIcon(Icons.menu_book_outlined), findsOneWidget);
     expect(find.byIcon(Icons.map_outlined), findsOneWidget);
     expect(find.byIcon(Icons.person), findsOneWidget);
-    expect(find.byIcon(Icons.add), findsNWidgets(2));
+    expect(find.byIcon(Icons.add_circle_outline), findsOneWidget);
+    expect(find.text('Add Sticker'), findsOneWidget);
   });
 
   testWidgets('user can create a sticker from a mock flower photo', (WidgetTester tester) async {
@@ -47,6 +48,16 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('1'), findsOneWidget);
+  });
+
+  testWidgets('gallery Add Sticker tile opens sticker creation', (WidgetTester tester) async {
+    await tester.pumpWidget(const MyApp());
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -320));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add Sticker'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Create Sticker'), findsOneWidget);
   });
 
   testWidgets('user can edit and save account details', (WidgetTester tester) async {

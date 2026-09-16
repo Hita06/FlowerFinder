@@ -129,16 +129,7 @@ class _StickerPreview extends StatelessWidget {
     if (stickerId == 'bubble_border') {
       return SizedBox(
         height: 220,
-        child: CustomPaint(
-          painter: _BubbleBorderPainter(),
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: ClipPath(
-              clipper: _OrganicClipper(),
-              child: image,
-            ),
-          ),
-        ),
+        child: image,
       );
     }
 
@@ -182,40 +173,6 @@ class _StyleSwatch extends StatelessWidget {
       ),
     );
   }
-}
-
-class _OrganicClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    return Path()
-      ..moveTo(size.width * .18, size.height * .18)
-      ..quadraticBezierTo(size.width * .45, -size.height * .02, size.width * .78, size.height * .16)
-      ..quadraticBezierTo(size.width * 1.02, size.height * .42, size.width * .82, size.height * .82)
-      ..quadraticBezierTo(size.width * .5, size.height * 1.05, size.width * .2, size.height * .84)
-      ..quadraticBezierTo(-size.width * .02, size.height * .5, size.width * .18, size.height * .18)
-      ..close();
-  }
-
-  @override
-  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
-}
-
-class _BubbleBorderPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final path = _OrganicClipper().getClip(size);
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = const Color(0xffb7d5bb).withValues(alpha: .42)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 12
-        ..strokeJoin = StrokeJoin.round,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 const _colourChangeMatrix = <double>[

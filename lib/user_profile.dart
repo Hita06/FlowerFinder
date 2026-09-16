@@ -121,7 +121,10 @@ class _UserProfilePageState extends State<UserProfilePage> {
                           stickerCount: widget.savedFlowerPhotos.where((photo) => photo.stickerId != null).length,
                         ),
                         const SizedBox(height: 30),
-                        _SavedFlowerPhotosSection(photos: widget.savedFlowerPhotos),
+                        _SavedFlowerPhotosSection(
+                          photos: widget.savedFlowerPhotos,
+                          onAddPhoto: widget.onCreateSticker,
+                        ),
                       ]),
                     ),
                   ),
@@ -251,9 +254,10 @@ class _ProfileStat extends StatelessWidget {
 }
 
 class _SavedFlowerPhotosSection extends StatelessWidget {
-  const _SavedFlowerPhotosSection({required this.photos});
+  const _SavedFlowerPhotosSection({required this.photos, this.onAddPhoto});
 
   final List<SavedFlowerPhoto> photos;
+  final VoidCallback? onAddPhoto;
 
   @override
   Widget build(BuildContext context) {
@@ -278,7 +282,7 @@ class _SavedFlowerPhotosSection extends StatelessWidget {
           ),
           itemCount: itemCount,
           itemBuilder: (context, index) {
-            if (index == photos.length) return const _AddGalleryTile();
+            if (index == photos.length) return _AddGalleryTile(onTap: onAddPhoto);
             if (photos.isEmpty) return _PlaceholderGalleryTile(index: index);
 
             final photo = photos[index];
@@ -287,7 +291,7 @@ class _SavedFlowerPhotosSection extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image(image: photo.image, fit: BoxFit.cover),
+                  _StyledPhotoImage(photo: photo),
                   if (photo.stickerId != null)
                     Align(
                       alignment: Alignment.topRight,
@@ -343,17 +347,68 @@ class _PlaceholderGalleryTile extends StatelessWidget {
 }
 
 class _AddGalleryTile extends StatelessWidget {
-  const _AddGalleryTile();
+  const _AddGalleryTile({this.onTap});
+
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) => ClipRRect(
         borderRadius: BorderRadius.circular(14),
-        child: Container(
+        child: Material(
           color: const Color(0xffeef3ed),
-          child: const Icon(Icons.add, color: Color(0xff2f6b4f), size: 32),
+          child: InkWell(
+            onTap: onTap,
+            child: const Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.add_circle_outline, color: Color(0xff2f6b4f), size: 32),
+                SizedBox(height: 6),
+                Text(
+                  'Add Sticker',
+                  style: TextStyle(color: Color(0xff2f6b4f), fontSize: 11, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ),
         ),
       );
 }
+
+class _StyledPhotoImage extends StatelessWidget {
+  const _StyledPhotoImage({required this.photo});
+
+  final SavedFlowerPhoto photo;
+
+  @override
+  Widget build(BuildContext context) {
+    final image = Image(image: photo.image, fit: BoxFit.cover);
+    return switch (photo.stickerId) {
+      'colour_change' => ColorFiltered(
+          colorFilter: ColorFilter.matrix(_colourChangeMatrix),
+          child: image,
+        ),
+      'colour_variation' => ColorFiltered(
+          colorFilter: ColorFilter.matrix(_colourVariationMatrix),
+          child: image,
+        ),
+      _ => image,
+    };
+  }
+}
+
+const _colourChangeMatrix = <double>[
+  1.18, 0, 0, 0, 8,
+  0, 1.08, 0, 0, 8,
+  0, 0, .82, 0, 0,
+  0, 0, 0, 1, 0,
+];
+
+const _colourVariationMatrix = <double>[
+  .92, 0, 0, 0, 8,
+  0, 1.02, 0, 0, 4,
+  0, 0, 1.12, 0, 8,
+  0, 0, 0, 1, 0,
+];
 
 class _EditAccountSheet extends StatefulWidget {
   const _EditAccountSheet({required this.account});
