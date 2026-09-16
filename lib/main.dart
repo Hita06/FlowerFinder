@@ -1,17 +1,46 @@
 import 'package:flutter/material.dart';
+import 'mock_flower_photos.dart';
+import 'sticker_creation.dart';
 import 'user_profile.dart';
 
 void main() {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  final _navigatorKey = GlobalKey<NavigatorState>();
+  final List<SavedFlowerPhoto> _savedFlowerPhotos = List.of(MockFlowerPhotoSource.photos);
+
+  Future<void> _openStickerCreation() async {
+    await _navigatorKey.currentState!.push(
+      MaterialPageRoute<void>(
+        builder: (context) => StickerCreationPage(
+          photos: _savedFlowerPhotos,
+          onSaved: (photoIndex, stickerId) {
+            setState(() {
+              _savedFlowerPhotos[photoIndex] = _savedFlowerPhotos[photoIndex].copyWith(
+                stickerId: stickerId,
+                createdAt: DateTime.now(),
+              );
+            });
+          },
+        ),
+      ),
+    );
+  }
 
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'Flower Finder',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -34,7 +63,10 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xfff7f7f2),
         useMaterial3: true,
       ),
-      home: const UserProfilePage(),
+      home: UserProfilePage(
+        savedFlowerPhotos: _savedFlowerPhotos,
+        onCreateSticker: _openStickerCreation,
+      ),
     );
   }
 }
