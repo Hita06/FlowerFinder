@@ -12,19 +12,54 @@ class UserAccount {
 }
 
 class SavedFlowerPhoto {
-  const SavedFlowerPhoto({required this.image, this.label});
+  const SavedFlowerPhoto({
+    required this.image,
+    this.label,
+    this.stickerId,
+    this.createdAt,
+  });
 
-  SavedFlowerPhoto.fromFile(File file, {String? label})
-      : this(image: FileImage(file), label: label);
+  SavedFlowerPhoto.fromFile(
+    File file, {
+    String? label,
+    String? stickerId,
+    DateTime? createdAt,
+  })
+      : this(
+          image: FileImage(file),
+          label: label,
+          stickerId: stickerId,
+          createdAt: createdAt,
+        );
 
   final ImageProvider image;
   final String? label;
+  final String? stickerId;
+  final DateTime? createdAt;
+
+  SavedFlowerPhoto copyWith({
+    String? label,
+    String? stickerId,
+    DateTime? createdAt,
+  }) {
+    return SavedFlowerPhoto(
+      image: image,
+      label: label ?? this.label,
+      stickerId: stickerId ?? this.stickerId,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
 }
 
 class UserProfilePage extends StatefulWidget {
-  const UserProfilePage({super.key, this.savedFlowerPhotos = const []});
+  const UserProfilePage({
+    super.key,
+    this.savedFlowerPhotos = const [],
+    this.onCreateSticker,
+  });
 
   final List<SavedFlowerPhoto> savedFlowerPhotos;
+  final VoidCallback? onCreateSticker;
 
   @override
   State<UserProfilePage> createState() => _UserProfilePageState();
@@ -70,12 +105,21 @@ class _UserProfilePageState extends State<UserProfilePage> {
               color: const Color(0xfff8faf7),
               child: CustomScrollView(
                 slivers: [
-                  SliverToBoxAdapter(child: _ProfileHeader(onEdit: _editAccount)),
+                  SliverToBoxAdapter(
+                    child: _ProfileHeader(
+                      onEdit: _editAccount,
+                      onCreateSticker: widget.onCreateSticker,
+                    ),
+                  ),
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(20, 28, 20, 32),
                     sliver: SliverList(
                       delegate: SliverChildListDelegate([
-                        _ProfileSummary(account: _account, imageCount: widget.savedFlowerPhotos.length),
+                        _ProfileSummary(
+                          account: _account,
+                          imageCount: widget.savedFlowerPhotos.length,
+                          stickerCount: widget.savedFlowerPhotos.where((photo) => photo.stickerId != null).length,
+                        ),
                         const SizedBox(height: 30),
                         _SavedFlowerPhotosSection(photos: widget.savedFlowerPhotos),
                       ]),
@@ -107,9 +151,10 @@ class _UserProfilePageState extends State<UserProfilePage> {
 }
 
 class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({required this.onEdit});
+  const _ProfileHeader({required this.onEdit, this.onCreateSticker});
 
   final VoidCallback onEdit;
+  final VoidCallback? onCreateSticker;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -119,8 +164,8 @@ class _ProfileHeader extends StatelessWidget {
         child: Row(
           children: [
             IconButton(
-              onPressed: () {},
-              tooltip: 'Add',
+              onPressed: onCreateSticker,
+              tooltip: 'Create sticker',
               color: Colors.white,
               icon: const Icon(Icons.add, size: 28),
             ),
@@ -147,10 +192,11 @@ class _ProfileHeader extends StatelessWidget {
 }
 
 class _ProfileSummary extends StatelessWidget {
-  const _ProfileSummary({required this.account, required this.imageCount});
+  const _ProfileSummary({required this.account, required this.imageCount, required this.stickerCount});
 
   final UserAccount account;
   final int imageCount;
+  final int stickerCount;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -167,7 +213,7 @@ class _ProfileSummary extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    const _ProfileStat(value: '0', label: 'Stickers'),
+                    _ProfileStat(value: '$stickerCount', label: 'Stickers'),
                     _ProfileStat(value: '$imageCount', label: 'Images'),
                     const _ProfileStat(value: '0', label: 'Diary'),
                   ],
@@ -241,6 +287,27 @@ class _SavedFlowerPhotosSection extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   Image(image: photo.image, fit: BoxFit.cover),
+                  if (photo.stickerId != null)
+                    Align(
+                      alignment: Alignment.topRight,
+                      child: Padding(
+                        padding: const EdgeInsets.all(6),
+                        child: DecoratedBox(
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: Icon(
+                              _stickerIcon(photo.stickerId!),
+                              color: Color(0xff2f6b4f),
+                              size: 18,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   if (photo.label != null)
                     Align(
                       alignment: Alignment.bottomCenter,
@@ -263,6 +330,14 @@ class _SavedFlowerPhotosSection extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  IconData _stickerIcon(String stickerId) {
+    return switch (stickerId) {
+      'heart' => Icons.favorite,
+      'sparkle' => Icons.auto_awesome,
+      _ => Icons.wb_sunny,
+    };
   }
 }
 
