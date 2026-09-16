@@ -14,12 +14,21 @@ class StickerCreationPage extends StatefulWidget {
 
 class _StickerCreationPageState extends State<StickerCreationPage> {
   int selectedPhotoIndex = 0;
-  String selectedStickerId = 'sun';
+  String selectedStickerId = 'colour_change';
 
   static const stickers = {
-    'sun': ('Sun', Icons.wb_sunny_outlined),
-    'heart': ('Heart', Icons.favorite_border),
-    'sparkle': ('Sparkle', Icons.auto_awesome),
+    'colour_change': (
+      'Colour Change',
+      'A brighter colour treatment for the original flower photo.',
+    ),
+    'colour_variation': (
+      'Colour Variation',
+      'A softer, subtly different flower colour treatment.',
+    ),
+    'bubble_border': (
+      'Bubble Border',
+      'A translucent, organic edge around the flower photo.',
+    ),
   };
 
   @override
@@ -62,17 +71,23 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
               },
             ),
           ),
+          const SizedBox(height: 24),
+          _StickerPreview(
+            photo: widget.photos.isEmpty ? null : widget.photos[selectedPhotoIndex],
+            stickerId: selectedStickerId,
+          ),
           const SizedBox(height: 28),
           const Text(
-            'Choose a sticker',
+            'Choose a sticker style',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 14),
           ...stickers.entries.map(
             (entry) => ListTile(
               onTap: () => setState(() => selectedStickerId = entry.key),
-              leading: Icon(entry.value.$2),
+              leading: _StyleSwatch(stickerId: entry.key),
               title: Text(entry.value.$1),
+              subtitle: Text(entry.value.$2),
               trailing: selectedStickerId == entry.key
                   ? const Icon(Icons.check_circle, color: Color(0xff2f6b4f))
                   : const Icon(Icons.radio_button_unchecked),
@@ -94,3 +109,125 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
     );
   }
 }
+
+class _StickerPreview extends StatelessWidget {
+  const _StickerPreview({required this.photo, required this.stickerId});
+
+  final SavedFlowerPhoto? photo;
+  final String stickerId;
+
+  @override
+  Widget build(BuildContext context) {
+    if (photo == null) {
+      return const SizedBox(
+        height: 220,
+        child: Center(child: Text('Select a flower photo to preview')),
+      );
+    }
+
+    final image = Image(image: photo!.image, fit: BoxFit.contain);
+    if (stickerId == 'bubble_border') {
+      return SizedBox(
+        height: 220,
+        child: CustomPaint(
+          painter: _BubbleBorderPainter(),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: ClipPath(
+              clipper: _OrganicClipper(),
+              child: image,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 220,
+      child: ColorFiltered(
+        colorFilter: ColorFilter.matrix(
+          stickerId == 'colour_change' ? _colourChangeMatrix : _colourVariationMatrix,
+        ),
+        child: image,
+      ),
+    );
+  }
+}
+
+class _StyleSwatch extends StatelessWidget {
+  const _StyleSwatch({required this.stickerId});
+
+  final String stickerId;
+
+  @override
+  Widget build(BuildContext context) {
+    if (stickerId == 'bubble_border') {
+      return Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: const Color(0xffdce9d8),
+          border: Border.all(color: const Color(0xff6c9274), width: 3),
+          shape: BoxShape.circle,
+        ),
+      );
+    }
+
+    return Container(
+      width: 42,
+      height: 42,
+      decoration: BoxDecoration(
+        color: stickerId == 'colour_change' ? const Color(0xffd6eaa9) : const Color(0xffd9e7f3),
+        borderRadius: BorderRadius.circular(12),
+      ),
+    );
+  }
+}
+
+class _OrganicClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    return Path()
+      ..moveTo(size.width * .18, size.height * .18)
+      ..quadraticBezierTo(size.width * .45, -size.height * .02, size.width * .78, size.height * .16)
+      ..quadraticBezierTo(size.width * 1.02, size.height * .42, size.width * .82, size.height * .82)
+      ..quadraticBezierTo(size.width * .5, size.height * 1.05, size.width * .2, size.height * .84)
+      ..quadraticBezierTo(-size.width * .02, size.height * .5, size.width * .18, size.height * .18)
+      ..close();
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+}
+
+class _BubbleBorderPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = _OrganicClipper().getClip(size);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = const Color(0xffb7d5bb).withValues(alpha: .42)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 12
+        ..strokeJoin = StrokeJoin.round,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+const _colourChangeMatrix = <double>[
+  1.18, 0, 0, 0, 8,
+  0, 1.08, 0, 0, 8,
+  0, 0, .82, 0, 0,
+  0, 0, 0, 1, 0,
+];
+
+const _colourVariationMatrix = <double>[
+  .92, 0, 0, 0, 8,
+  0, 1.02, 0, 0, 4,
+  0, 0, 1.12, 0, 8,
+  0, 0, 0, 1, 0,
+];

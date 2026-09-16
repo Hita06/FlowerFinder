@@ -33,8 +33,16 @@ void main() {
     await tester.pumpWidget(const MyApp());
     await tester.tap(find.byTooltip('Create sticker'));
     await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView).last, const Offset(0, -320));
+    await tester.pumpAndSettle();
 
     expect(find.text('Create Sticker'), findsOneWidget);
+    expect(find.text('Colour Change'), findsOneWidget);
+    expect(find.text('Colour Variation'), findsOneWidget);
+    expect(find.text('Bubble Border'), findsOneWidget);
+    expect(find.text('Sun'), findsNothing);
+    expect(find.text('Heart'), findsNothing);
+    expect(find.text('Sparkle'), findsNothing);
     await tester.tap(find.text('Save sticker'));
     await tester.pumpAndSettle();
 

@@ -320,9 +320,9 @@ class _SavedFlowerPhotosSection extends StatelessWidget {
 
   IconData _stickerIcon(String stickerId) {
     return switch (stickerId) {
-      'heart' => Icons.favorite,
-      'sparkle' => Icons.auto_awesome,
-      _ => Icons.wb_sunny,
+      'colour_variation' => Icons.tonality,
+      'bubble_border' => Icons.bubble_chart_outlined,
+      _ => Icons.color_lens_outlined,
     };
   }
 }
