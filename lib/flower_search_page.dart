@@ -1,6 +1,6 @@
 // FlowerFinder G9 - Flower Search and Filter Page
 // Created by Hita
-// This page allows users to search for flowers using the Perenual API.
+// This page allows users to search and filter flowers using the Perenual API.
 
 import 'package:flutter/material.dart';
 
@@ -36,7 +36,10 @@ class _FlowerSearchPageState extends State<FlowerSearchPage> {
   bool hasSearched = false;
   String? errorMessage;
 
-  // Sends the entered flower name to the Perenual service.
+  // Stores the lifecycle filter currently selected by the user.
+  String selectedCycle = 'all';
+
+  // Sends the entered flower name and selected filter to Perenual.
   Future<void> searchFlowers() async {
     final String searchText = searchController.text.trim();
 
@@ -60,7 +63,10 @@ class _FlowerSearchPageState extends State<FlowerSearchPage> {
     });
 
     try {
-      final results = await perenualService.searchPlants(searchText);
+      final results = await perenualService.searchPlants(
+        searchText,
+        cycle: selectedCycle == 'all' ? null : selectedCycle,
+      );
 
       if (!mounted) {
         return;
@@ -122,9 +128,7 @@ class _FlowerSearchPageState extends State<FlowerSearchPage> {
         foregroundColor: Colors.white,
         title: const Text(
           'Search Flowers',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
       ),
@@ -145,10 +149,7 @@ class _FlowerSearchPageState extends State<FlowerSearchPage> {
               const SizedBox(height: 8),
               const Text(
                 'Search the plant database using a flower name.',
-                style: TextStyle(
-                  color: Color(0xFF4F473C),
-                  fontSize: 15,
-                ),
+                style: TextStyle(color: Color(0xFF4F473C), fontSize: 15),
               ),
               const SizedBox(height: 20),
 
@@ -159,16 +160,10 @@ class _FlowerSearchPageState extends State<FlowerSearchPage> {
                 onSubmitted: (_) => searchFlowers(),
                 decoration: InputDecoration(
                   hintText: 'For example, rose',
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    color: darkGreen,
-                  ),
+                  prefixIcon: const Icon(Icons.search, color: darkGreen),
                   suffixIcon: IconButton(
                     onPressed: isLoading ? null : searchFlowers,
-                    icon: const Icon(
-                      Icons.arrow_forward,
-                      color: darkGreen,
-                    ),
+                    icon: const Icon(Icons.arrow_forward, color: darkGreen),
                   ),
                   filled: true,
                   fillColor: Colors.white,
@@ -178,19 +173,54 @@ class _FlowerSearchPageState extends State<FlowerSearchPage> {
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(
-                      color: lightGreen,
-                      width: 2,
-                    ),
+                    borderSide: const BorderSide(color: lightGreen, width: 2),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(
-                      color: mainGreen,
-                      width: 2,
-                    ),
+                    borderSide: const BorderSide(color: mainGreen, width: 2),
                   ),
                 ),
+              ),
+              const SizedBox(height: 16),
+
+              // Allows the user to filter by plant lifecycle.
+              DropdownButtonFormField<String>(
+                initialValue: selectedCycle,
+                decoration: InputDecoration(
+                  labelText: 'Lifecycle',
+                  prefixIcon: const Icon(Icons.autorenew, color: darkGreen),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: lightGreen, width: 2),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: mainGreen, width: 2),
+                  ),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'all', child: Text('All lifecycles')),
+                  DropdownMenuItem(value: 'annual', child: Text('Annual')),
+                  DropdownMenuItem(
+                    value: 'perennial',
+                    child: Text('Perennial'),
+                  ),
+                  DropdownMenuItem(value: 'biennial', child: Text('Biennial')),
+                  DropdownMenuItem(value: 'biannual', child: Text('Biannual')),
+                ],
+                onChanged: isLoading
+                    ? null
+                    : (value) {
+                        setState(() {
+                          selectedCycle = value ?? 'all';
+                        });
+                      },
               ),
               const SizedBox(height: 16),
 
@@ -214,9 +244,7 @@ class _FlowerSearchPageState extends State<FlowerSearchPage> {
               const SizedBox(height: 20),
 
               // Displays the loading indicator, message or results.
-              Expanded(
-                child: buildResultsArea(),
-              ),
+              Expanded(child: buildResultsArea()),
             ],
           ),
         ),
@@ -227,11 +255,7 @@ class _FlowerSearchPageState extends State<FlowerSearchPage> {
   // Builds the correct content for the current search state.
   Widget buildResultsArea() {
     if (isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(
-          color: mainGreen,
-        ),
-      );
+      return const Center(child: CircularProgressIndicator(color: mainGreen));
     }
 
     if (errorMessage != null) {
@@ -239,10 +263,7 @@ class _FlowerSearchPageState extends State<FlowerSearchPage> {
         child: Text(
           errorMessage!,
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.redAccent,
-            fontSize: 16,
-          ),
+          style: const TextStyle(color: Colors.redAccent, fontSize: 16),
         ),
       );
     }
@@ -252,10 +273,7 @@ class _FlowerSearchPageState extends State<FlowerSearchPage> {
         child: Text(
           'Enter a flower name to begin searching.',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            color: darkGreen,
-            fontSize: 16,
-          ),
+          style: TextStyle(color: darkGreen, fontSize: 16),
         ),
       );
     }
@@ -263,12 +281,9 @@ class _FlowerSearchPageState extends State<FlowerSearchPage> {
     if (searchResults.isEmpty) {
       return const Center(
         child: Text(
-          'No flowers matched your search.',
+          'No flowers matched your search and selected filter.',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            color: darkGreen,
-            fontSize: 16,
-          ),
+          style: TextStyle(color: darkGreen, fontSize: 16),
         ),
       );
     }
@@ -289,7 +304,7 @@ class _FlowerSearchPageState extends State<FlowerSearchPage> {
           child: ListView.builder(
             itemCount: searchResults.length,
             itemBuilder: (context, index) {
-              final plant = searchResults[index];
+              final Map<String, dynamic> plant = searchResults[index];
               final String? imageUrl = getImageUrl(plant);
 
               return Card(
@@ -316,11 +331,7 @@ class _FlowerSearchPageState extends State<FlowerSearchPage> {
                           : Image.network(
                               imageUrl,
                               fit: BoxFit.cover,
-                              errorBuilder: (
-                                context,
-                                error,
-                                stackTrace,
-                              ) {
+                              errorBuilder: (context, error, stackTrace) {
                                 return const ColoredBox(
                                   color: lightGreen,
                                   child: Icon(
@@ -333,8 +344,7 @@ class _FlowerSearchPageState extends State<FlowerSearchPage> {
                     ),
                   ),
                   title: Text(
-                    plant['common_name']?.toString() ??
-                        'Unknown plant',
+                    plant['common_name']?.toString() ?? 'Unknown plant',
                     style: const TextStyle(
                       color: darkGreen,
                       fontSize: 17,
