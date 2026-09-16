@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -11,6 +13,9 @@ class UserAccount {
 
 class SavedFlowerPhoto {
   const SavedFlowerPhoto({required this.image, this.label});
+
+  SavedFlowerPhoto.fromFile(File file, {String? label})
+      : this(image: FileImage(file), label: label);
 
   final ImageProvider image;
   final String? label;
