@@ -3,11 +3,75 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 class UserAccount {
-  UserAccount({required this.name, required this.username, required this.email});
+  UserAccount({
+    required this.name,
+    required this.username,
+    required this.email,
+    this.profileColorId = ProfilePalette.defaultColorId,
+  });
 
   String name;
   String username;
   String email;
+  String profileColorId;
+}
+
+class ProfilePalette {
+  const ProfilePalette._();
+
+  static const defaultColorId = 'leaf';
+
+  static const choices = <ProfileColorChoice>[
+    ProfileColorChoice(
+      id: defaultColorId,
+      label: 'Leaf',
+      color: Color(0xff2f6b4f),
+      softColor: Color(0xffeef3ed),
+      avatarColor: Color(0xffdce9d8),
+    ),
+    ProfileColorChoice(
+      id: 'rose',
+      label: 'Rose',
+      color: Color(0xff9b3f5f),
+      softColor: Color(0xffffeef4),
+      avatarColor: Color(0xffffd9e6),
+    ),
+    ProfileColorChoice(
+      id: 'sky',
+      label: 'Sky',
+      color: Color(0xff2f5f8f),
+      softColor: Color(0xffedf4fb),
+      avatarColor: Color(0xffd7e8f8),
+    ),
+    ProfileColorChoice(
+      id: 'gold',
+      label: 'Gold',
+      color: Color(0xff7a5a12),
+      softColor: Color(0xfffff7df),
+      avatarColor: Color(0xffffedb3),
+    ),
+  ];
+
+  static ProfileColorChoice byId(String id) => choices.firstWhere(
+    (choice) => choice.id == id,
+    orElse: () => choices.first,
+  );
+}
+
+class ProfileColorChoice {
+  const ProfileColorChoice({
+    required this.id,
+    required this.label,
+    required this.color,
+    required this.softColor,
+    required this.avatarColor,
+  });
+
+  final String id;
+  final String label;
+  final Color color;
+  final Color softColor;
+  final Color avatarColor;
 }
 
 class SavedFlowerPhoto {
@@ -76,7 +140,8 @@ class UserProfilePageState extends State<UserProfilePage> {
       _account
         ..name = updatedAccount.name
         ..username = updatedAccount.username
-        ..email = updatedAccount.email;
+        ..email = updatedAccount.email
+        ..profileColorId = updatedAccount.profileColorId;
     });
   }
 
@@ -84,6 +149,7 @@ class UserProfilePageState extends State<UserProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final profileColor = ProfilePalette.byId(_account.profileColorId);
     final stickerCount = widget.savedFlowerPhotos
         .where((photo) => photo.stickerBytes != null)
         .length;
@@ -95,10 +161,14 @@ class UserProfilePageState extends State<UserProfilePage> {
         children: [
           Row(
             children: [
-              const CircleAvatar(
+              CircleAvatar(
                 radius: 45,
-                backgroundColor: Color(0xffdce9d8),
-                child: Icon(Icons.person_outline, color: Color(0xff2f6b4f), size: 48),
+                backgroundColor: profileColor.avatarColor,
+                child: Icon(
+                  Icons.person_outline,
+                  color: profileColor.color,
+                  size: 48,
+                ),
               ),
               const SizedBox(width: 24),
               Expanded(
@@ -114,15 +184,25 @@ class UserProfilePageState extends State<UserProfilePage> {
             ],
           ),
           const SizedBox(height: 16),
-          Text(_account.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+          Text(
+            _account.name,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          ),
           const SizedBox(height: 4),
-          Text('@${_account.username}', style: TextStyle(color: Colors.grey.shade700)),
+          Text(
+            '@${_account.username}',
+            style: TextStyle(color: Colors.grey.shade700),
+          ),
           const SizedBox(height: 4),
-          Text(_account.email, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+          Text(
+            _account.email,
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+          ),
           const SizedBox(height: 28),
           _StickersSection(
             photos: widget.savedFlowerPhotos,
             selectedSticker: _selectedSticker,
+            profileColor: profileColor,
             onCreateSticker: widget.onCreateSticker,
             onStickerSelected: (sticker) {
               setState(() => _selectedSticker = sticker);
@@ -143,37 +223,47 @@ class _ProfileStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-        children: [
-          Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 4),
-          Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
-        ],
-      );
+    children: [
+      Text(
+        value,
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+      ),
+      const SizedBox(height: 4),
+      Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+    ],
+  );
 }
 
 class _StickersSection extends StatelessWidget {
   const _StickersSection({
     required this.photos,
     required this.selectedSticker,
+    required this.profileColor,
     required this.onCreateSticker,
     required this.onStickerSelected,
   });
 
   final List<SavedFlowerPhoto> photos;
   final SavedFlowerPhoto? selectedSticker;
+  final ProfileColorChoice profileColor;
   final VoidCallback? onCreateSticker;
   final ValueChanged<SavedFlowerPhoto> onStickerSelected;
 
   @override
   Widget build(BuildContext context) {
-    final stickers = photos.where((photo) => photo.stickerBytes != null).toList();
+    final stickers = photos
+        .where((photo) => photo.stickerBytes != null)
+        .toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Your Stickers', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+        const Text(
+          'Your Stickers',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+        ),
         const SizedBox(height: 14),
         if (stickers.isEmpty)
-          _AddStickerTile(onTap: onCreateSticker)
+          _AddStickerTile(onTap: onCreateSticker, profileColor: profileColor)
         else
           GridView.builder(
             shrinkWrap: true,
@@ -185,12 +275,18 @@ class _StickersSection extends StatelessWidget {
             ),
             itemCount: stickers.length + 1,
             itemBuilder: (context, index) {
-              if (index == stickers.length) return _AddStickerTile(onTap: onCreateSticker);
+              if (index == stickers.length) {
+                return _AddStickerTile(
+                  onTap: onCreateSticker,
+                  profileColor: profileColor,
+                );
+              }
               final sticker = stickers[index];
               return _StickerTile(
-                        key: ValueKey('saved-sticker-${sticker.stickerId ?? index}'),
+                key: ValueKey('saved-sticker-${sticker.stickerId ?? index}'),
                 sticker: sticker,
                 selected: identical(sticker, selectedSticker),
+                profileColor: profileColor,
                 onTap: () => onStickerSelected(sticker),
               );
             },
@@ -201,64 +297,74 @@ class _StickersSection extends StatelessWidget {
 }
 
 class _StickerTile extends StatelessWidget {
-  const _StickerTile({super.key, required this.sticker, required this.selected, required this.onTap});
+  const _StickerTile({
+    super.key,
+    required this.sticker,
+    required this.selected,
+    required this.profileColor,
+    required this.onTap,
+  });
 
   final SavedFlowerPhoto sticker;
   final bool selected;
+  final ProfileColorChoice profileColor;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) => InkWell(
-        onTap: onTap,
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(14),
+    child: Ink(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: profileColor.softColor,
         borderRadius: BorderRadius.circular(14),
-        child: Ink(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: const Color(0xffeef3ed),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: selected ? const Color(0xff2f6b4f) : Colors.transparent,
-              width: 3,
-            ),
-          ),
-          child: Stack(
-            children: [
-              Center(child: Image.memory(sticker.stickerBytes!, fit: BoxFit.contain)),
-              if (selected)
-                const Align(
-                  alignment: Alignment.topRight,
-                  child: Icon(Icons.check_circle, color: Color(0xff2f6b4f)),
-                ),
-            ],
-          ),
+        border: Border.all(
+          color: selected ? profileColor.color : Colors.transparent,
+          width: 3,
         ),
-      );
+      ),
+      child: Stack(
+        children: [
+          Center(
+            child: Image.memory(sticker.stickerBytes!, fit: BoxFit.contain),
+          ),
+          if (selected)
+            Align(
+              alignment: Alignment.topRight,
+              child: Icon(Icons.check_circle, color: profileColor.color),
+            ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _AddStickerTile extends StatelessWidget {
-  const _AddStickerTile({this.onTap});
+  const _AddStickerTile({this.onTap, required this.profileColor});
 
   final VoidCallback? onTap;
+  final ProfileColorChoice profileColor;
 
   @override
   Widget build(BuildContext context) => InkWell(
-        onTap: onTap,
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(14),
+    child: Ink(
+      decoration: BoxDecoration(
+        color: profileColor.softColor,
         borderRadius: BorderRadius.circular(14),
-        child: Ink(
-          decoration: BoxDecoration(
-            color: const Color(0xffeef3ed),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: const Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.add_circle_outline, color: Color(0xff2f6b4f), size: 32),
-              SizedBox(height: 4),
-              Text('Add Sticker'),
-            ],
-          ),
-        ),
-      );
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.add_circle_outline, color: profileColor.color, size: 32),
+          const SizedBox(height: 4),
+          const Text('Add Sticker'),
+        ],
+      ),
+    ),
+  );
 }
 
 class _EditAccountSheet extends StatefulWidget {
@@ -272,8 +378,13 @@ class _EditAccountSheet extends StatefulWidget {
 
 class _EditAccountSheetState extends State<_EditAccountSheet> {
   late final _nameController = TextEditingController(text: widget.account.name);
-  late final _usernameController = TextEditingController(text: widget.account.username);
-  late final _emailController = TextEditingController(text: widget.account.email);
+  late final _usernameController = TextEditingController(
+    text: widget.account.username,
+  );
+  late final _emailController = TextEditingController(
+    text: widget.account.email,
+  );
+  late String _selectedColorId = widget.account.profileColorId;
 
   @override
   void dispose() {
@@ -285,37 +396,102 @@ class _EditAccountSheetState extends State<_EditAccountSheet> {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-        child: Material(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Change profile details', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
-                const SizedBox(height: 18),
-                TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'Name', prefixIcon: Icon(Icons.person_outline))),
-                const SizedBox(height: 12),
-                TextField(controller: _usernameController, decoration: const InputDecoration(labelText: 'Username', prefixIcon: Icon(Icons.alternate_email))),
-                const SizedBox(height: 12),
-                TextField(controller: _emailController, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.email_outlined))),
-                const SizedBox(height: 20),
-                SizedBox(width: double.infinity, child: FilledButton(onPressed: _save, child: const Text('Save changes'))),
-              ],
+    padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+    child: Material(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Change profile details',
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
             ),
-          ),
+            const SizedBox(height: 18),
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: 'Name',
+                prefixIcon: Icon(Icons.person_outline),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _usernameController,
+              decoration: const InputDecoration(
+                labelText: 'Username',
+                prefixIcon: Icon(Icons.alternate_email),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _emailController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                labelText: 'Email',
+                prefixIcon: Icon(Icons.email_outlined),
+              ),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'Profile colour',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: ProfilePalette.choices.map((choice) {
+                final selected = choice.id == _selectedColorId;
+                return ChoiceChip(
+                  selected: selected,
+                  label: Text(choice.label),
+                  avatar: CircleAvatar(backgroundColor: choice.color),
+                  selectedColor: choice.softColor,
+                  checkmarkColor: choice.color,
+                  labelStyle: TextStyle(
+                    color: selected ? choice.color : Colors.black87,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                  side: BorderSide(
+                    color: selected ? choice.color : Colors.grey.shade300,
+                  ),
+                  onSelected: (_) {
+                    setState(() => _selectedColorId = choice.id);
+                  },
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: _save,
+                child: const Text('Save changes'),
+              ),
+            ),
+          ],
         ),
-      );
+      ),
+    ),
+  );
 
   void _save() {
-    if (_nameController.text.trim().isEmpty || _usernameController.text.trim().isEmpty || _emailController.text.trim().isEmpty) return;
+    if (_nameController.text.trim().isEmpty ||
+        _usernameController.text.trim().isEmpty ||
+        _emailController.text.trim().isEmpty) {
+      return;
+    }
     Navigator.pop(
       context,
       UserAccount(
         name: _nameController.text.trim(),
         username: _usernameController.text.trim(),
         email: _emailController.text.trim(),
+        profileColorId: _selectedColorId,
       ),
     );
   }

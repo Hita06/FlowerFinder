@@ -19,7 +19,9 @@ void main() {
     GoogleFonts.config.allowRuntimeFetching = false;
   });
 
-  testWidgets('profile tab opens the profile page', (WidgetTester tester) async {
+  testWidgets('profile tab opens the profile page', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const MyApp(enableCamera: false));
 
     expect(find.byType(ScannerPage), findsOneWidget);
@@ -51,11 +53,22 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Create Sticker'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Generate sticker'), 180, scrollable: find.descendant(of: find.byKey(const ValueKey('sticker-scroll')), matching: find.byType(Scrollable)).first);
+    await tester.scrollUntilVisible(
+      find.text('Generate sticker'),
+      180,
+      scrollable: find
+          .descendant(
+            of: find.byKey(const ValueKey('sticker-scroll')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
     expect(find.text('Generate sticker'), findsOneWidget);
   });
 
-  testWidgets('profile edit button opens the existing details sheet', (WidgetTester tester) async {
+  testWidgets('profile edit button opens the existing details sheet', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const MyApp(enableCamera: false));
     await _openProfileTab(tester);
     await tester.tap(find.byTooltip('Edit profile details'));
@@ -66,26 +79,67 @@ void main() {
     expect(find.text('Save changes'), findsOneWidget);
   });
 
-  testWidgets('sticker creation keeps all existing styles', (WidgetTester tester) async {
+  testWidgets('profile colour can be changed from the details sheet', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const MyApp(enableCamera: false));
+    await _openProfileTab(tester);
+    await tester.tap(find.byTooltip('Edit profile details'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Profile colour'), findsOneWidget);
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Rose'));
+    await tester.pump();
+    await tester.tap(find.text('Save changes'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    final avatar = tester.widget<CircleAvatar>(find.byType(CircleAvatar));
+    expect(avatar.backgroundColor, const Color(0xffffd9e6));
+  });
+
+  testWidgets('sticker creation keeps all existing styles', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const MyApp(enableCamera: false));
     await _openProfileTab(tester);
     await tester.tap(find.byTooltip('Create sticker'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Save sticker'), 180, scrollable: find.descendant(of: find.byKey(const ValueKey('sticker-scroll')), matching: find.byType(Scrollable)).first);
+    await tester.scrollUntilVisible(
+      find.text('Save sticker'),
+      180,
+      scrollable: find
+          .descendant(
+            of: find.byKey(const ValueKey('sticker-scroll')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Colour Change'), findsOneWidget);
     expect(find.text('Colour Variation'), findsOneWidget);
     expect(find.text('Bubble Border'), findsOneWidget);
-    final saveButton = tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Save sticker'));
+    final saveButton = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Save sticker'),
+    );
     expect(saveButton.onPressed, isNull);
   });
 
-  testWidgets('profile selects a saved sticker for future upload', (WidgetTester tester) async {
+  testWidgets('profile selects a saved sticker for future upload', (
+    WidgetTester tester,
+  ) async {
     final sticker = SavedFlowerPhoto(
-      image: MemoryImage(base64Decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=')),
+      image: MemoryImage(
+        base64Decode(
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+        ),
+      ),
       stickerId: 'saved-sticker',
-      stickerBytes: base64Decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='),
+      stickerBytes: base64Decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+      ),
     );
     SavedFlowerPhoto? selectedSticker;
 
