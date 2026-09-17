@@ -31,16 +31,15 @@ class _FlowerSearchPageState extends State<FlowerSearchPage> {
   // Stores the plants returned by the API.
   List<Map<String, dynamic>> searchResults = [];
 
-  // Controls the loading, error and search result messages.
+  // Controls the loading, error and search-result messages.
   bool isLoading = false;
   bool hasSearched = false;
   String? errorMessage;
 
-  // Stores the lifecycle filter currently selected by the user.
+  // Stores the filters currently selected by the user.
   String selectedCycle = 'all';
-
-  // Stores the watering filter currently selected by the user.
   String selectedWatering = 'all';
+  String selectedColour = 'all';
 
   // Sends the entered flower name and selected filters to Perenual.
   Future<void> searchFlowers() async {
@@ -71,6 +70,7 @@ class _FlowerSearchPageState extends State<FlowerSearchPage> {
             searchText,
             cycle: selectedCycle == 'all' ? null : selectedCycle,
             watering: selectedWatering == 'all' ? null : selectedWatering,
+            colour: selectedColour == 'all' ? null : selectedColour,
           );
 
       if (!mounted) {
@@ -117,9 +117,33 @@ class _FlowerSearchPageState extends State<FlowerSearchPage> {
     return null;
   }
 
+  // Creates the shared decoration used by the filter dropdowns.
+  InputDecoration getFilterDecoration({
+    required String label,
+    required IconData icon,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, color: darkGreen),
+      filled: true,
+      fillColor: Colors.white,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: lightGreen, width: 2),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: mainGreen, width: 2),
+      ),
+    );
+  }
+
   @override
   void dispose() {
-    // Removes the controller when the page is closed.
     searchController.dispose();
     super.dispose();
   }
@@ -153,10 +177,10 @@ class _FlowerSearchPageState extends State<FlowerSearchPage> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Search the plant database using a flower name.',
+                'Search by flower name and select filters.',
                 style: TextStyle(color: Color(0xFF4F473C), fontSize: 15),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
 
               // Search bar used to enter a flower name.
               TextField(
@@ -186,28 +210,14 @@ class _FlowerSearchPageState extends State<FlowerSearchPage> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
 
               // Allows the user to filter by plant lifecycle.
               DropdownButtonFormField<String>(
                 initialValue: selectedCycle,
-                decoration: InputDecoration(
-                  labelText: 'Lifecycle',
-                  prefixIcon: const Icon(Icons.autorenew, color: darkGreen),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: lightGreen, width: 2),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: mainGreen, width: 2),
-                  ),
+                decoration: getFilterDecoration(
+                  label: 'Lifecycle',
+                  icon: Icons.autorenew,
                 ),
                 items: const [
                   DropdownMenuItem(value: 'all', child: Text('All lifecycles')),
@@ -226,28 +236,14 @@ class _FlowerSearchPageState extends State<FlowerSearchPage> {
                         });
                       },
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
 
               // Allows the user to filter plants by watering needs.
               DropdownButtonFormField<String>(
                 initialValue: selectedWatering,
-                decoration: InputDecoration(
-                  labelText: 'Watering',
-                  prefixIcon: const Icon(Icons.water_drop, color: darkGreen),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: lightGreen, width: 2),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: mainGreen, width: 2),
-                  ),
+                decoration: getFilterDecoration(
+                  label: 'Watering',
+                  icon: Icons.water_drop,
                 ),
                 items: const [
                   DropdownMenuItem(
@@ -267,7 +263,34 @@ class _FlowerSearchPageState extends State<FlowerSearchPage> {
                         });
                       },
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
+
+              // Allows the user to search for flowers of a selected colour.
+              DropdownButtonFormField<String>(
+                initialValue: selectedColour,
+                decoration: getFilterDecoration(
+                  label: 'Flower colour',
+                  icon: Icons.palette,
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'all', child: Text('All colours')),
+                  DropdownMenuItem(value: 'red', child: Text('Red')),
+                  DropdownMenuItem(value: 'pink', child: Text('Pink')),
+                  DropdownMenuItem(value: 'white', child: Text('White')),
+                  DropdownMenuItem(value: 'yellow', child: Text('Yellow')),
+                  DropdownMenuItem(value: 'orange', child: Text('Orange')),
+                  DropdownMenuItem(value: 'purple', child: Text('Purple')),
+                  DropdownMenuItem(value: 'blue', child: Text('Blue')),
+                ],
+                onChanged: isLoading
+                    ? null
+                    : (value) {
+                        setState(() {
+                          selectedColour = value ?? 'all';
+                        });
+                      },
+              ),
+              const SizedBox(height: 14),
 
               // Search button used to send the request.
               SizedBox(
@@ -286,7 +309,7 @@ class _FlowerSearchPageState extends State<FlowerSearchPage> {
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
 
               // Displays the loading indicator, message or results.
               Expanded(child: buildResultsArea()),
