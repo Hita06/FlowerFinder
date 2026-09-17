@@ -37,6 +37,10 @@ dependencies:
   flutter_sticker_maker: ^0.2.2
   image_picker: ^1.2.3
   http: ^1.6.0
+  camera: ^0.12.1
+  camera_android: ^0.10.11+1
+  google_fonts: ^8.2.1
+  path_provider: ^2.1.6
 
 dev_dependencies:
   flutter_test:
