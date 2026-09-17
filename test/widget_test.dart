@@ -1,30 +1,32 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flower_finder/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
+  testWidgets('profile opens sticker creation', (WidgetTester tester) async {
     await tester.pumpWidget(const MyApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(find.text('Profile Page'), findsOneWidget);
+    expect(find.text('Add Sticker'), findsOneWidget);
+    await tester.tap(find.byTooltip('Create sticker'));
+    await tester.pumpAndSettle();
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    expect(find.text('Create Sticker'), findsOneWidget);
+    expect(find.text('Generate sticker'), findsOneWidget);
+  });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  testWidgets('sticker creation keeps all existing styles', (WidgetTester tester) async {
+    await tester.pumpWidget(const MyApp());
+    await tester.tap(find.byTooltip('Create sticker'));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView).last, const Offset(0, -360));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Colour Change'), findsOneWidget);
+    expect(find.text('Colour Variation'), findsOneWidget);
+    expect(find.text('Bubble Border'), findsOneWidget);
+    final saveButton = tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Save sticker'));
+    expect(saveButton.onPressed, isNull);
   });
 }
