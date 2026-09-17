@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'theme.dart';
 import '../flower_api.dart';
@@ -19,6 +20,7 @@ class _ScannerPageState extends State<ScannerPage> {
 
   bool cameraReady = false;
   bool isIdentifying = false;
+  bool isSavingSticker = false;
 
   String? imagePath;
 
@@ -184,6 +186,80 @@ class _ScannerPageState extends State<ScannerPage> {
   }
 
   // ============================================================
+  // SAVE IMAGE AS STICKER
+  // ============================================================
+
+  Future<void> saveAsSticker() async {
+    if (imagePath == null) {
+      return;
+    }
+
+    try {
+      setState(() {
+        isSavingSticker = true;
+      });
+
+      // Get the app's private documents directory.
+      final directory =
+          await getApplicationDocumentsDirectory();
+
+      // Create stickers folder.
+      final stickersDirectory = Directory(
+        '${directory.path}/stickers',
+      );
+
+      if (!await stickersDirectory.exists()) {
+        await stickersDirectory.create(
+          recursive: true,
+        );
+      }
+
+      // Give the sticker a unique filename.
+      final fileName =
+          'sticker_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+      final newPath =
+          '${stickersDirectory.path}/$fileName';
+
+      // Copy the selected image into the sticker folder.
+      final savedSticker =
+          await File(imagePath!).copy(newPath);
+
+      print('Sticker saved: ${savedSticker.path}');
+
+      if (!mounted) return;
+
+      setState(() {
+        isSavingSticker = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Image saved as a sticker!',
+          ),
+        ),
+      );
+    } catch (e) {
+      print('Error saving sticker: $e');
+
+      if (!mounted) return;
+
+      setState(() {
+        isSavingSticker = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Failed to save sticker: $e',
+          ),
+        ),
+      );
+    }
+  }
+
+  // ============================================================
   // SHOW FLOWER RESULT
   // ============================================================
 
@@ -247,7 +323,6 @@ class _ScannerPageState extends State<ScannerPage> {
 
                 // ==================================================
                 // TITLE
-                // Uses AppTheme headline style
                 // ==================================================
 
                 Text(
@@ -262,7 +337,6 @@ class _ScannerPageState extends State<ScannerPage> {
 
                 // ==================================================
                 // FLOWER NAME
-                // Uses AppTheme title style
                 // ==================================================
 
                 Text(
@@ -277,7 +351,6 @@ class _ScannerPageState extends State<ScannerPage> {
 
                 // ==================================================
                 // DESCRIPTION
-                // Uses AppTheme body style
                 // ==================================================
 
                 Text(
@@ -289,6 +362,37 @@ class _ScannerPageState extends State<ScannerPage> {
                 ),
 
                 const SizedBox(height: 24),
+
+                // ==================================================
+                // SAVE AS STICKER
+                // ==================================================
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 55,
+
+                  child: OutlinedButton.icon(
+                    onPressed: isSavingSticker
+                        ? null
+                        : () async {
+                            Navigator.pop(context);
+                            await saveAsSticker();
+                          },
+
+                    icon: const Icon(
+                      Icons.sticky_note_2_outlined,
+                    ),
+
+                    label: Text(
+                      'Save as Sticker',
+                      style: Theme.of(context)
+                          .textTheme
+                          .labelLarge,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 10),
 
                 // ==================================================
                 // VIEW DETAILS BUTTON
@@ -379,7 +483,7 @@ class _ScannerPageState extends State<ScannerPage> {
           'Scanner',
         ),
         centerTitle: true,
-    ),
+      ),
 
       // ----------------------------------------------------------
       // MAIN CONTENT
