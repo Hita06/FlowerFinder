@@ -1,30 +1,34 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// FlowerFinder G5 - Widget Test
+// Updated by Hita
+// This test checks that the Flower Information page displays correctly.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:flowerfinderscanner/main.dart';
+import 'package:flowerfinderscanner/flower_information_page.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('Flower Information page displays correctly', (
+    WidgetTester tester,
+  ) async {
+    // Opens the Flower Information page using test information.
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: FlowerInformationPage(
+          flowerName: 'Rose',
+          scientificName: 'Rosa',
+          description:
+              'Roses are flowering plants known for their colourful flowers.',
+          flowerType: 'Garden flower',
+          flowerColour: 'Red',
+          season: 'Spring and summer',
+          careTips: 'Place in sunlight and water regularly.',
+        ),
+      ),
+    );
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Checks that the main flower information is displayed.
+    expect(find.text('Flower Information'), findsOneWidget);
+    expect(find.text('Rose'), findsOneWidget);
+    expect(find.text('Rosa'), findsOneWidget);
   });
 }

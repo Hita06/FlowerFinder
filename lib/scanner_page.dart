@@ -1,3 +1,8 @@
+// FlowerFinder G1 - Flower Scanner Page
+// Created by Iris
+// Connected to the Flower Information page by Hita.
+// This page allows users to photograph, upload and identify flowers.
+
 import 'dart:io';
 
 import 'package:camera/camera.dart';
@@ -5,8 +10,9 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'flower_api.dart';
+import 'flower_information_page.dart';
 import 'theme.dart';
-import '../flower_api.dart';
 
 class ScannerPage extends StatefulWidget {
   const ScannerPage({super.key});
@@ -44,8 +50,7 @@ class _ScannerPageState extends State<ScannerPage> {
       }
 
       final camera = cameras.firstWhere(
-        (camera) =>
-            camera.lensDirection == CameraLensDirection.back,
+        (camera) => camera.lensDirection == CameraLensDirection.back,
         orElse: () => cameras.first,
       );
 
@@ -101,15 +106,11 @@ class _ScannerPageState extends State<ScannerPage> {
     try {
       final ImagePicker picker = ImagePicker();
 
-      final XFile? image = await picker.pickImage(
-        source: ImageSource.gallery,
-      );
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
 
-      if (image == null) {
+      if (image == null || !mounted) {
         return;
       }
-
-      if (!mounted) return;
 
       setState(() {
         imagePath = image.path;
@@ -151,11 +152,9 @@ class _ScannerPageState extends State<ScannerPage> {
 
       print('Sending image for identification...');
 
-      final result = await FlowerApi.identifyFlower(
-        imagePath!,
-      );
+      final result = await FlowerApi.identifyFlower(imagePath!);
 
-      final bestMatch = result['bestMatch'];
+      final String? bestMatch = result['bestMatch']?.toString();
 
       print('Flower identified: $bestMatch');
 
@@ -175,13 +174,9 @@ class _ScannerPageState extends State<ScannerPage> {
         isIdentifying = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Identification failed: $e',
-          ),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Identification failed: $e')));
     }
   }
 
@@ -199,31 +194,23 @@ class _ScannerPageState extends State<ScannerPage> {
         isSavingSticker = true;
       });
 
-      // Get the app's private documents directory.
-      final directory =
-          await getApplicationDocumentsDirectory();
+      // Gets the app's private documents directory.
+      final directory = await getApplicationDocumentsDirectory();
 
-      // Create stickers folder.
-      final stickersDirectory = Directory(
-        '${directory.path}/stickers',
-      );
+      // Creates the stickers folder.
+      final stickersDirectory = Directory('${directory.path}/stickers');
 
       if (!await stickersDirectory.exists()) {
-        await stickersDirectory.create(
-          recursive: true,
-        );
+        await stickersDirectory.create(recursive: true);
       }
 
-      // Give the sticker a unique filename.
-      final fileName =
-          'sticker_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      // Gives the sticker a unique filename.
+      final fileName = 'sticker_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-      final newPath =
-          '${stickersDirectory.path}/$fileName';
+      final newPath = '${stickersDirectory.path}/$fileName';
 
-      // Copy the selected image into the sticker folder.
-      final savedSticker =
-          await File(imagePath!).copy(newPath);
+      // Copies the selected image into the sticker folder.
+      final savedSticker = await File(imagePath!).copy(newPath);
 
       print('Sticker saved: ${savedSticker.path}');
 
@@ -234,11 +221,7 @@ class _ScannerPageState extends State<ScannerPage> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Image saved as a sticker!',
-          ),
-        ),
+        const SnackBar(content: Text('Image saved as a sticker!')),
       );
     } catch (e) {
       print('Error saving sticker: $e');
@@ -249,13 +232,9 @@ class _ScannerPageState extends State<ScannerPage> {
         isSavingSticker = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Failed to save sticker: $e',
-          ),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to save sticker: $e')));
     }
   }
 
@@ -264,73 +243,54 @@ class _ScannerPageState extends State<ScannerPage> {
   // ============================================================
 
   void showFlowerResult(String? flowerName) {
+    // Uses the identified flower name or a fallback value.
+    final String identifiedName = flowerName?.trim().isNotEmpty == true
+        ? flowerName!.trim()
+        : 'Unknown flower';
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-
-      builder: (context) {
+      builder: (sheetContext) {
         return Container(
           width: double.infinity,
-
           constraints: BoxConstraints(
-            maxHeight:
-                MediaQuery.of(context).size.height * 0.55,
+            maxHeight: MediaQuery.of(sheetContext).size.height * 0.55,
           ),
-
-          padding: const EdgeInsets.fromLTRB(
-            24,
-            12,
-            24,
-            30,
-          ),
-
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 30),
           decoration: const BoxDecoration(
             color: AppColors.cream,
-
             borderRadius: BorderRadius.only(
               topLeft: Radius.circular(30),
               topRight: Radius.circular(30),
             ),
           ),
-
           child: SafeArea(
             top: false,
-
             child: Column(
               mainAxisSize: MainAxisSize.min,
-
               children: [
-
                 // ==================================================
                 // DRAG HANDLE
                 // ==================================================
-
                 Container(
                   width: 45,
                   height: 5,
-
-                  margin: const EdgeInsets.only(
-                    bottom: 20,
-                  ),
-
+                  margin: const EdgeInsets.only(bottom: 20),
                   decoration: BoxDecoration(
                     color: Colors.grey.shade400,
-                    borderRadius:
-                        BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
 
                 // ==================================================
                 // TITLE
                 // ==================================================
-
                 Text(
                   'Flower Identified!',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context)
-                      .textTheme
-                      .headlineMedium,
+                  style: Theme.of(sheetContext).textTheme.headlineMedium,
                 ),
 
                 const SizedBox(height: 12),
@@ -338,13 +298,10 @@ class _ScannerPageState extends State<ScannerPage> {
                 // ==================================================
                 // FLOWER NAME
                 // ==================================================
-
                 Text(
-                  flowerName ?? 'Unknown flower',
+                  identifiedName,
                   textAlign: TextAlign.center,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge,
+                  style: Theme.of(sheetContext).textTheme.titleLarge,
                 ),
 
                 const SizedBox(height: 12),
@@ -352,13 +309,10 @@ class _ScannerPageState extends State<ScannerPage> {
                 // ==================================================
                 // DESCRIPTION
                 // ==================================================
-
                 Text(
                   'Your flower has been identified successfully.',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium,
+                  style: Theme.of(sheetContext).textTheme.bodyMedium,
                 ),
 
                 const SizedBox(height: 24),
@@ -366,28 +320,21 @@ class _ScannerPageState extends State<ScannerPage> {
                 // ==================================================
                 // SAVE AS STICKER
                 // ==================================================
-
                 SizedBox(
                   width: double.infinity,
                   height: 55,
-
                   child: OutlinedButton.icon(
                     onPressed: isSavingSticker
                         ? null
                         : () async {
-                            Navigator.pop(context);
+                            Navigator.pop(sheetContext);
+
                             await saveAsSticker();
                           },
-
-                    icon: const Icon(
-                      Icons.sticky_note_2_outlined,
-                    ),
-
+                    icon: const Icon(Icons.sticky_note_2_outlined),
                     label: Text(
                       'Save as Sticker',
-                      style: Theme.of(context)
-                          .textTheme
-                          .labelLarge,
+                      style: Theme.of(sheetContext).textTheme.labelLarge,
                     ),
                   ),
                 ),
@@ -395,29 +342,42 @@ class _ScannerPageState extends State<ScannerPage> {
                 const SizedBox(height: 10),
 
                 // ==================================================
-                // VIEW DETAILS BUTTON
+                // VIEW FLOWER DETAILS
                 // ==================================================
-
                 SizedBox(
                   width: double.infinity,
                   height: 55,
-
                   child: ElevatedButton(
                     onPressed: () {
-                      Navigator.pop(context);
+                      // Closes the result window.
+                      Navigator.pop(sheetContext);
 
-                      // Add navigation to your
-                      // Flower Information page here.
+                      // Opens Hita's Flower Information page.
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => FlowerInformationPage(
+                            flowerName: identifiedName,
+                            scientificName: identifiedName,
+                            description:
+                                'This flower was identified '
+                                'using the FlowerFinder '
+                                'scanner.',
+                            flowerType: 'Flowering plant',
+                            flowerColour: 'Not available',
+                            season: 'Not available',
+                            careTips:
+                                'Detailed care information '
+                                'is not currently available.',
+                          ),
+                        ),
+                      );
                     },
-
                     child: Text(
                       'View Flower Details',
-                      style: Theme.of(context)
-                          .textTheme
-                          .labelLarge
-                          ?.copyWith(
-                            color: Colors.white,
-                          ),
+                      style: Theme.of(
+                        sheetContext,
+                      ).textTheme.labelLarge?.copyWith(color: Colors.white),
                     ),
                   ),
                 ),
@@ -427,24 +387,17 @@ class _ScannerPageState extends State<ScannerPage> {
                 // ==================================================
                 // CLOSE BUTTON
                 // ==================================================
-
                 SizedBox(
                   width: double.infinity,
                   height: 50,
-
                   child: TextButton(
                     onPressed: () {
-                      Navigator.pop(context);
+                      Navigator.pop(sheetContext);
                     },
-
                     child: Text(
                       'Close',
-                      style: Theme.of(context)
-                          .textTheme
-                          .labelLarge
-                          ?.copyWith(
-                            color: AppColors.darkGreen,
-                          ),
+                      style: Theme.of(sheetContext).textTheme.labelLarge
+                          ?.copyWith(color: AppColors.darkGreen),
                     ),
                   ),
                 ),
@@ -467,78 +420,47 @@ class _ScannerPageState extends State<ScannerPage> {
   }
 
   // ============================================================
-  // BUILD UI
+  // BUILD USER INTERFACE
   // ============================================================
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-
       // ----------------------------------------------------------
       // APP BAR
       // ----------------------------------------------------------
-
-      appBar: AppBar(
-        title: const Text(
-          'Scanner',
-        ),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('Scanner'), centerTitle: true),
 
       // ----------------------------------------------------------
       // MAIN CONTENT
       // ----------------------------------------------------------
-
       body: SafeArea(
         child: Container(
           color: AppColors.cream,
-
           child: Column(
             children: [
-
               // ==================================================
-              // CAMERA / IMAGE PREVIEW
+              // CAMERA OR IMAGE PREVIEW
               // ==================================================
-
               Expanded(
                 child: Container(
                   margin: const EdgeInsets.all(16),
-
                   decoration: BoxDecoration(
                     color: Colors.black,
-
-                    borderRadius:
-                        BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(16),
                   ),
-
-                  clipBehavior:
-                      Clip.antiAlias,
-
+                  clipBehavior: Clip.antiAlias,
                   child: Center(
-                    child: !cameraReady ||
-                            controller == null
-
-                        ? const CircularProgressIndicator(
-                            color: Colors.white,
-                          )
-
+                    child: !cameraReady || controller == null
+                        ? const CircularProgressIndicator(color: Colors.white)
                         : imagePath == null
-
-                            ? CameraPreview(
-                                controller!,
-                              )
-
-                            : Image.file(
-                                File(imagePath!),
-
-                                width:
-                                    double.infinity,
-
-                                height:
-                                    double.infinity,
-
-                                fit: BoxFit.contain,
-                              ),
+                        ? CameraPreview(controller!)
+                        : Image.file(
+                            File(imagePath!),
+                            width: double.infinity,
+                            height: double.infinity,
+                            fit: BoxFit.contain,
+                          ),
                   ),
                 ),
               ),
@@ -546,134 +468,77 @@ class _ScannerPageState extends State<ScannerPage> {
               // ==================================================
               // BUTTON AREA
               // ==================================================
-
               Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  20,
-                  5,
-                  20,
-                  20,
-                ),
-
+                padding: const EdgeInsets.fromLTRB(20, 5, 20, 20),
                 child: Column(
                   children: [
-
                     // ==================================================
                     // CAMERA AND UPLOAD BUTTONS
                     // ==================================================
-
                     if (imagePath == null) ...[
-
-                      // ------------------------------------------------
-                      // TAKE PHOTO
-                      // ------------------------------------------------
-
+                      // Takes a new photo.
                       SizedBox(
                         width: double.infinity,
                         height: 55,
-
                         child: ElevatedButton.icon(
-                          onPressed: cameraReady
-                              ? takePicture
-                              : null,
-
-                          icon: const Icon(
-                            Icons.camera_alt,
-                          ),
-
+                          onPressed: cameraReady ? takePicture : null,
+                          icon: const Icon(Icons.camera_alt),
                           label: Text(
                             'Take Photo',
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelLarge
-                                ?.copyWith(
-                                  color: Colors.white,
-                                ),
+                            style: Theme.of(context).textTheme.labelLarge
+                                ?.copyWith(color: Colors.white),
                           ),
                         ),
                       ),
 
                       const SizedBox(height: 10),
 
-                      // ------------------------------------------------
-                      // UPLOAD IMAGE
-                      // ------------------------------------------------
-
+                      // Uploads an image from the gallery.
                       SizedBox(
                         width: double.infinity,
                         height: 55,
-
                         child: OutlinedButton.icon(
                           onPressed: pickImage,
-
-                          icon: const Icon(
-                            Icons.photo_library,
-                          ),
-
+                          icon: const Icon(Icons.photo_library),
                           label: Text(
                             'Upload Image',
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelLarge,
+                            style: Theme.of(context).textTheme.labelLarge,
                           ),
                         ),
                       ),
                     ],
 
                     // ==================================================
-                    // AFTER IMAGE HAS BEEN SELECTED
+                    // BUTTONS SHOWN AFTER SELECTING AN IMAGE
                     // ==================================================
-
                     if (imagePath != null) ...[
-
-                      // ------------------------------------------------
-                      // IDENTIFY FLOWER
-                      // ------------------------------------------------
-
+                      // Identifies the selected flower.
                       SizedBox(
                         width: double.infinity,
                         height: 55,
-
                         child: ElevatedButton(
-                          onPressed: isIdentifying
-                              ? null
-                              : identifyFlower,
-
+                          onPressed: isIdentifying ? null : identifyFlower,
                           child: Text(
                             isIdentifying
                                 ? 'Identifying...'
                                 : 'Identify Flower',
-
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelLarge
-                                ?.copyWith(
-                                  color: Colors.white,
-                                ),
+                            style: Theme.of(context).textTheme.labelLarge
+                                ?.copyWith(color: Colors.white),
                           ),
                         ),
                       ),
 
                       const SizedBox(height: 10),
 
-                      // ------------------------------------------------
-                      // CHOOSE ANOTHER PHOTO
-                      // ------------------------------------------------
-
+                      // Clears the image and allows another selection.
                       SizedBox(
                         width: double.infinity,
                         height: 55,
-
                         child: OutlinedButton(
-                          onPressed: isIdentifying
-                              ? null
-                              : takeAnotherPhoto,
-
+                          onPressed: isIdentifying ? null : takeAnotherPhoto,
                           child: Text(
                             'Choose Another Photo',
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelLarge,
+                            style: Theme.of(context).textTheme.labelLarge,
                           ),
                         ),
                       ),
