@@ -1,4 +1,4 @@
-package com.example.flowerfinder
+package com.example.flower_finder
 
 import io.flutter.embedding.android.FlutterActivity
 
