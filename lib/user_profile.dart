@@ -108,11 +108,13 @@ class SavedFlowerPhoto {
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({
     super.key,
+    this.account,
     this.savedFlowerPhotos = const [],
     this.onCreateSticker,
     this.onStickerSelected,
   });
 
+  final UserAccount? account;
   final List<SavedFlowerPhoto> savedFlowerPhotos;
   final VoidCallback? onCreateSticker;
   final ValueChanged<SavedFlowerPhoto>? onStickerSelected;
@@ -122,24 +124,55 @@ class UserProfilePage extends StatefulWidget {
 }
 
 class UserProfilePageState extends State<UserProfilePage> {
-  final UserAccount _account = UserAccount(
+  late final UserAccount _account = _copyAccount(
+    widget.account ?? _defaultAccount,
+  );
+  static final UserAccount _defaultAccount = UserAccount(
     name: 'New Flower Finder User',
     username: 'flower_finder_user',
     email: 'user@example.com',
   );
   SavedFlowerPhoto? _selectedSticker;
 
+  static UserAccount _copyAccount(UserAccount account) {
+    return UserAccount(
+      name: account.name,
+      username: account.username,
+      email: account.email,
+      profileColorId: account.profileColorId,
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant UserProfilePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final account = widget.account;
+    if (account == null || identical(account, oldWidget.account)) return;
+    setState(() {
+      _account
+        ..name = account.name
+        ..username = account.username
+        ..email = account.email;
+    });
+  }
+
   Future<void> _editAccount() async {
+    final hasLoginAccount = widget.account != null;
     final updatedAccount = await showModalBottomSheet<UserAccount>(
       context: context,
       isScrollControlled: true,
-      builder: (context) => _EditAccountSheet(account: _account),
+      builder: (context) => _EditAccountSheet(
+        account: _account,
+        usernameReadOnly: hasLoginAccount,
+      ),
     );
     if (updatedAccount == null) return;
     setState(() {
       _account
         ..name = updatedAccount.name
-        ..username = updatedAccount.username
+        ..username = hasLoginAccount
+            ? widget.account!.username
+            : updatedAccount.username
         ..email = updatedAccount.email
         ..profileColorId = updatedAccount.profileColorId;
     });
@@ -368,9 +401,13 @@ class _AddStickerTile extends StatelessWidget {
 }
 
 class _EditAccountSheet extends StatefulWidget {
-  const _EditAccountSheet({required this.account});
+  const _EditAccountSheet({
+    required this.account,
+    required this.usernameReadOnly,
+  });
 
   final UserAccount account;
+  final bool usernameReadOnly;
 
   @override
   State<_EditAccountSheet> createState() => _EditAccountSheetState();
@@ -421,9 +458,11 @@ class _EditAccountSheetState extends State<_EditAccountSheet> {
             const SizedBox(height: 12),
             TextField(
               controller: _usernameController,
+              enabled: !widget.usernameReadOnly,
               decoration: const InputDecoration(
                 labelText: 'Username',
                 prefixIcon: Icon(Icons.alternate_email),
+                helperText: 'Connected from login when available',
               ),
             ),
             const SizedBox(height: 12),

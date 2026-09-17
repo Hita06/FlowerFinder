@@ -99,6 +99,36 @@ void main() {
     expect(avatar.backgroundColor, const Color(0xffffd9e6));
   });
 
+  testWidgets('profile can receive username from login account boundary', (
+    WidgetTester tester,
+  ) async {
+    final account = UserAccount(
+      name: 'Linda',
+      username: 'login_linda',
+      email: 'linda@example.com',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(home: UserProfilePage(account: account)),
+    );
+
+    expect(find.text('@login_linda'), findsOneWidget);
+    final state = tester.state<UserProfilePageState>(
+      find.byType(UserProfilePage),
+    );
+    state.editProfileDetails();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final usernameField = tester.widget<TextField>(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is TextField && widget.decoration?.labelText == 'Username',
+      ),
+    );
+    expect(usernameField.enabled, isFalse);
+  });
+
   testWidgets('sticker creation keeps all existing styles', (
     WidgetTester tester,
   ) async {
