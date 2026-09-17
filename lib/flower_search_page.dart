@@ -39,7 +39,10 @@ class _FlowerSearchPageState extends State<FlowerSearchPage> {
   // Stores the lifecycle filter currently selected by the user.
   String selectedCycle = 'all';
 
-  // Sends the entered flower name and selected filter to Perenual.
+  // Stores the watering filter currently selected by the user.
+  String selectedWatering = 'all';
+
+  // Sends the entered flower name and selected filters to Perenual.
   Future<void> searchFlowers() async {
     final String searchText = searchController.text.trim();
 
@@ -63,10 +66,12 @@ class _FlowerSearchPageState extends State<FlowerSearchPage> {
     });
 
     try {
-      final results = await perenualService.searchPlants(
-        searchText,
-        cycle: selectedCycle == 'all' ? null : selectedCycle,
-      );
+      final List<Map<String, dynamic>> results = await perenualService
+          .searchPlants(
+            searchText,
+            cycle: selectedCycle == 'all' ? null : selectedCycle,
+            watering: selectedWatering == 'all' ? null : selectedWatering,
+          );
 
       if (!mounted) {
         return;
@@ -212,13 +217,53 @@ class _FlowerSearchPageState extends State<FlowerSearchPage> {
                     child: Text('Perennial'),
                   ),
                   DropdownMenuItem(value: 'biennial', child: Text('Biennial')),
-                  DropdownMenuItem(value: 'biannual', child: Text('Biannual')),
                 ],
                 onChanged: isLoading
                     ? null
                     : (value) {
                         setState(() {
                           selectedCycle = value ?? 'all';
+                        });
+                      },
+              ),
+              const SizedBox(height: 16),
+
+              // Allows the user to filter plants by watering needs.
+              DropdownButtonFormField<String>(
+                initialValue: selectedWatering,
+                decoration: InputDecoration(
+                  labelText: 'Watering',
+                  prefixIcon: const Icon(Icons.water_drop, color: darkGreen),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: lightGreen, width: 2),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: mainGreen, width: 2),
+                  ),
+                ),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'all',
+                    child: Text('All watering needs'),
+                  ),
+                  DropdownMenuItem(value: 'frequent', child: Text('Frequent')),
+                  DropdownMenuItem(value: 'average', child: Text('Average')),
+                  DropdownMenuItem(value: 'minimum', child: Text('Minimum')),
+                  DropdownMenuItem(value: 'none', child: Text('None')),
+                ],
+                onChanged: isLoading
+                    ? null
+                    : (value) {
+                        setState(() {
+                          selectedWatering = value ?? 'all';
                         });
                       },
               ),
@@ -281,7 +326,7 @@ class _FlowerSearchPageState extends State<FlowerSearchPage> {
     if (searchResults.isEmpty) {
       return const Center(
         child: Text(
-          'No flowers matched your search and selected filter.',
+          'No flowers matched your search and selected filters.',
           textAlign: TextAlign.center,
           style: TextStyle(color: darkGreen, fontSize: 16),
         ),
