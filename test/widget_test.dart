@@ -220,4 +220,39 @@ void main() {
     expect(sharedSticker?.stickerId, 'colour_change');
     expect(sharedSticker?.label, 'Saved rose');
   });
+
+  testWidgets('profile sends only generated sticker bytes to diary handoff', (
+    WidgetTester tester,
+  ) async {
+    final stickerBytes = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    );
+    final sticker = SavedFlowerPhoto(
+      image: MemoryImage(stickerBytes),
+      label: 'Diary rose',
+      stickerId: 'colour_variation',
+      stickerBytes: stickerBytes,
+      createdAt: DateTime(2026, 9, 18),
+    );
+    GeneratedStickerAsset? diarySticker;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: UserProfilePage(
+          savedFlowerPhotos: [sticker],
+          onAddStickerToDiary: (asset) => diarySticker = asset,
+        ),
+      ),
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('saved-sticker-colour_variation')),
+    );
+    await tester.pump();
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Add to Diary'));
+    await tester.pump();
+
+    expect(diarySticker?.stickerBytes, stickerBytes);
+    expect(diarySticker?.stickerId, 'colour_variation');
+    expect(diarySticker?.createdAt, DateTime(2026, 9, 18));
+  });
 }

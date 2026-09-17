@@ -138,6 +138,7 @@ class UserProfilePage extends StatefulWidget {
     this.onCreateSticker,
     this.onStickerSelected,
     this.onShareSticker,
+    this.onAddStickerToDiary,
   });
 
   final UserAccount? account;
@@ -145,6 +146,7 @@ class UserProfilePage extends StatefulWidget {
   final VoidCallback? onCreateSticker;
   final ValueChanged<SavedFlowerPhoto>? onStickerSelected;
   final ValueChanged<GeneratedStickerAsset>? onShareSticker;
+  final ValueChanged<GeneratedStickerAsset>? onAddStickerToDiary;
 
   @override
   State<UserProfilePage> createState() => UserProfilePageState();
@@ -265,6 +267,7 @@ class UserProfilePageState extends State<UserProfilePage> {
             profileColor: profileColor,
             onCreateSticker: widget.onCreateSticker,
             onShareSticker: widget.onShareSticker,
+            onAddStickerToDiary: widget.onAddStickerToDiary,
             onStickerSelected: (sticker) {
               setState(() => _selectedSticker = sticker);
               widget.onStickerSelected?.call(sticker);
@@ -303,6 +306,7 @@ class _StickersSection extends StatelessWidget {
     required this.onCreateSticker,
     required this.onStickerSelected,
     required this.onShareSticker,
+    required this.onAddStickerToDiary,
   });
 
   final List<SavedFlowerPhoto> photos;
@@ -311,6 +315,7 @@ class _StickersSection extends StatelessWidget {
   final VoidCallback? onCreateSticker;
   final ValueChanged<SavedFlowerPhoto> onStickerSelected;
   final ValueChanged<GeneratedStickerAsset>? onShareSticker;
+  final ValueChanged<GeneratedStickerAsset>? onAddStickerToDiary;
 
   @override
   Widget build(BuildContext context) {
@@ -360,6 +365,7 @@ class _StickersSection extends StatelessWidget {
             selectedSticker: selectedSticker!,
             profileColor: profileColor,
             onShareSticker: onShareSticker,
+            onAddStickerToDiary: onAddStickerToDiary,
           ),
         ],
       ],
@@ -372,11 +378,13 @@ class _StickerHandoffActions extends StatelessWidget {
     required this.selectedSticker,
     required this.profileColor,
     required this.onShareSticker,
+    required this.onAddStickerToDiary,
   });
 
   final SavedFlowerPhoto selectedSticker;
   final ProfileColorChoice profileColor;
   final ValueChanged<GeneratedStickerAsset>? onShareSticker;
+  final ValueChanged<GeneratedStickerAsset>? onAddStickerToDiary;
 
   @override
   Widget build(BuildContext context) {
@@ -391,6 +399,13 @@ class _StickerHandoffActions extends StatelessWidget {
               : () => onShareSticker!(asset),
           icon: Icon(Icons.ios_share, color: profileColor.color),
           label: const Text('Share'),
+        ),
+        OutlinedButton.icon(
+          onPressed: asset == null || onAddStickerToDiary == null
+              ? null
+              : () => onAddStickerToDiary!(asset),
+          icon: Icon(Icons.menu_book_outlined, color: profileColor.color),
+          label: const Text('Add to Diary'),
         ),
       ],
     );

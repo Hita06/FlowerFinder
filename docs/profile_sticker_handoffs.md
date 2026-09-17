@@ -18,3 +18,18 @@ The callback receives a `GeneratedStickerAsset` with:
 
 Only completed generated stickers are exposed. The original flower photo is not
 passed to sharing.
+
+## Diary
+
+Use `UserProfilePage.onAddStickerToDiary`.
+
+The callback receives the same `GeneratedStickerAsset` shape:
+
+- `stickerBytes`: the final generated sticker PNG bytes after background
+  removal and transparent-padding crop
+- `stickerId`: the selected sticker style ID when available
+- `createdAt`: the sticker creation time when available
+- `label`: optional display label
+
+Only completed generated stickers are exposed. The original flower photo is not
+passed to Diary, and Profile does not create diary entries or own Diary storage.
