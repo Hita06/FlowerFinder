@@ -3,15 +3,30 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'flower_photo_service.dart';
 import 'package:flutter_sticker_maker/flutter_sticker_maker.dart';
 
 import 'user_profile.dart';
 
 class StickerCreationPage extends StatefulWidget {
-  const StickerCreationPage({required this.photos, required this.onSaved, super.key});
+  const StickerCreationPage({
+    required this.photos,
+    required this.onSaved,
+    this.loadFlowers,
+    this.pickPhoto,
+    super.key,
+  });
 
   final List<SavedFlowerPhoto> photos;
-  final void Function(int photoIndex, Uint8List stickerBytes, String stickerId) onSaved;
+  final Future<List<SavedFlowerPhoto>> Function(String query)? loadFlowers;
+  final Future<Uint8List?> Function()? pickPhoto;
+  final void Function(
+    SavedFlowerPhoto photo,
+    Uint8List stickerBytes,
+    String stickerId,
+  )
+  onSaved;
 
   @override
   State<StickerCreationPage> createState() => _StickerCreationPageState();
@@ -19,21 +34,116 @@ class StickerCreationPage extends StatefulWidget {
 
 class _StickerCreationPageState extends State<StickerCreationPage> {
   int selectedPhotoIndex = 0;
+  late final List<SavedFlowerPhoto> _photos = List.of(widget.photos);
+  final _searchController = TextEditingController(text: 'rose');
+  bool _loadingPhotos = false;
+  bool _pickingPhoto = false;
+  String? _photoError;
+  int _searchRequest = 0;
+  bool get _busy => _isGenerating || _pickingPhoto;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadFlowers() async {
+    final request = ++_searchRequest;
+    setState(() {
+      _loadingPhotos = true;
+      _photoError = null;
+    });
+    try {
+      final photos =
+          await (widget.loadFlowers ?? const FlowerPhotoService().search)(
+            _searchController.text,
+          );
+      if (!mounted || request != _searchRequest) return;
+      setState(() {
+        _photos.removeWhere((photo) => photo.image is NetworkImage);
+        _photos.addAll(photos);
+        selectedPhotoIndex = 0;
+        _stickerBytes = null;
+        _photoError = photos.isEmpty
+            ? 'No flower photos found. Try another name.'
+            : null;
+      });
+    } catch (_) {
+      if (!mounted || request != _searchRequest) return;
+      setState(
+        () => _photoError =
+            'Unable to load flower photos. Try again or choose your own photo.',
+      );
+    } finally {
+      if (mounted && request == _searchRequest) {
+        setState(() => _loadingPhotos = false);
+      }
+    }
+  }
+
+  Future<void> _pickPhoto() async {
+    setState(() {
+      _pickingPhoto = true;
+      _errorMessage = null;
+    });
+    try {
+      Uint8List? bytes;
+      if (widget.pickPhoto != null) {
+        bytes = await widget.pickPhoto!();
+      } else {
+        final file = await ImagePicker().pickImage(
+          source: ImageSource.gallery,
+          maxWidth: 2048,
+          maxHeight: 2048,
+          requestFullMetadata: false,
+        );
+        bytes = await file?.readAsBytes();
+      }
+      if (!mounted || bytes == null) return;
+      setState(() {
+        _photos.add(
+          SavedFlowerPhoto(image: MemoryImage(bytes!), label: 'My photo'),
+        );
+        selectedPhotoIndex = _photos.length - 1;
+        _stickerBytes = null;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _errorMessage =
+              'Could not open this photo. Please try another image.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _pickingPhoto = false);
+    }
+  }
+
   String selectedStickerId = 'colour_change';
   Uint8List? _stickerBytes;
   bool _isGenerating = false;
   String? _errorMessage;
 
   static const stickers = {
-    'colour_change': ('Colour Change', 'A brighter colour treatment for the generated flower sticker.'),
-    'colour_variation': ('Colour Variation', 'A softer, subtly different flower colour treatment.'),
-    'bubble_border': ('Bubble Border', 'Keep this option available while its border treatment is refined.'),
+    'colour_change': (
+      'Colour Change',
+      'A brighter colour treatment for the generated flower sticker.',
+    ),
+    'colour_variation': (
+      'Colour Variation',
+      'A softer, subtly different flower colour treatment.',
+    ),
+    'bubble_border': (
+      'Bubble Border',
+      'Keep this option available while its border treatment is refined.',
+    ),
   };
 
   @override
   void initState() {
     super.initState();
-    unawaited(FlutterStickerMaker.initialize());
+    unawaited(_loadFlowers());
   }
 
   @override
@@ -41,35 +151,80 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
     return Scaffold(
       appBar: AppBar(title: const Text('Create Sticker')),
       body: ListView(
+        key: const ValueKey("sticker-scroll"),
         padding: const EdgeInsets.all(20),
         children: [
-          const Text('Choose a flower photo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+          const Text(
+            'Choose a flower photo',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 14),
+          OutlinedButton.icon(
+            onPressed: _busy || _loadingPhotos ? null : _pickPhoto,
+            icon: const Icon(Icons.photo_library_outlined),
+            label: Text(
+              _pickingPhoto ? 'Opening photos...' : 'Choose my own photo',
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _searchController,
+            enabled: !_busy && !_loadingPhotos,
+            onSubmitted: (_) => _loadFlowers(),
+            decoration: InputDecoration(
+              labelText: 'Search flower photos',
+              hintText: 'Rose, daisy, lavender...',
+              suffixIcon: IconButton(
+                onPressed: _busy || _loadingPhotos ? null : _loadFlowers,
+                icon: const Icon(Icons.search),
+                tooltip: 'Search flowers',
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Flower photos from Perenual',
+            style: TextStyle(fontSize: 12),
+          ),
+          if (_loadingPhotos) const LinearProgressIndicator(),
+          if (_photoError != null) Text(_photoError!),
           const SizedBox(height: 14),
           SizedBox(
             height: 112,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              itemCount: widget.photos.length,
+              itemCount: _photos.length,
               separatorBuilder: (_, index) => const SizedBox(width: 12),
               itemBuilder: (context, index) {
-                final photo = widget.photos[index];
+                final photo = _photos[index];
                 return GestureDetector(
-                  onTap: () => setState(() {
-                    selectedPhotoIndex = index;
-                    _stickerBytes = null;
-                    _errorMessage = null;
-                  }),
+                  onTap: _busy || _loadingPhotos
+                      ? null
+                      : () => setState(() {
+                          selectedPhotoIndex = index;
+                          _stickerBytes = null;
+                          _errorMessage = null;
+                        }),
                   child: Container(
                     width: 112,
                     decoration: BoxDecoration(
                       border: Border.all(
-                        color: selectedPhotoIndex == index ? const Color(0xff2f6b4f) : Colors.transparent,
+                        color: selectedPhotoIndex == index
+                            ? const Color(0xff2f6b4f)
+                            : Colors.transparent,
                         width: 3,
                       ),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     clipBehavior: Clip.antiAlias,
-                    child: Image(image: photo.image, fit: BoxFit.cover),
+                    child: Image(
+                      image: photo.image,
+                      fit: BoxFit.cover,
+                      semanticLabel: photo.label,
+                      errorBuilder: (_, error, stack) => const Center(
+                        child: Icon(Icons.broken_image_outlined),
+                      ),
+                    ),
                   ),
                 );
               },
@@ -77,24 +232,37 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
           ),
           const SizedBox(height: 24),
           _StickerPreview(
-            photo: widget.photos.isEmpty ? null : widget.photos[selectedPhotoIndex],
+            photo: _photos.isEmpty ? null : _photos[selectedPhotoIndex],
             stickerBytes: _stickerBytes,
             stickerId: selectedStickerId,
           ),
           const SizedBox(height: 18),
           FilledButton.icon(
-            onPressed: widget.photos.isEmpty || _isGenerating ? null : _generateSticker,
+            onPressed: _photos.isEmpty || _busy || _loadingPhotos
+                ? null
+                : _generateSticker,
             icon: _isGenerating
-                ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Icon(Icons.auto_awesome),
-            label: Text(_isGenerating ? 'Generating sticker...' : 'Generate sticker'),
+            label: Text(
+              _isGenerating ? 'Generating sticker...' : 'Generate sticker',
+            ),
           ),
           if (_errorMessage != null) ...[
             const SizedBox(height: 10),
-            Text(_errorMessage!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            Text(
+              _errorMessage!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
           ],
           const SizedBox(height: 28),
-          const Text('Choose a sticker style', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+          const Text(
+            'Choose a sticker style',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          ),
           const SizedBox(height: 14),
           ...stickers.entries.map(
             (entry) => ListTile(
@@ -109,7 +277,9 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
           ),
           const SizedBox(height: 24),
           FilledButton.icon(
-            onPressed: _stickerBytes == null ? null : _saveSticker,
+            onPressed: _stickerBytes == null || _busy || _loadingPhotos
+                ? null
+                : _saveSticker,
             icon: const Icon(Icons.save_outlined),
             label: const Text('Save sticker'),
           ),
@@ -124,12 +294,20 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
       _errorMessage = null;
     });
     try {
-      final imageBytes = await _imageProviderToPng(widget.photos[selectedPhotoIndex].image);
-      final stickerBytes = await FlutterStickerMaker.makeSticker(imageBytes, addBorder: false);
+      await FlutterStickerMaker.initialize();
+      final imageBytes = await _imageProviderToPng(
+        _photos[selectedPhotoIndex].image,
+      );
+      final stickerBytes = await FlutterStickerMaker.makeSticker(
+        imageBytes,
+        addBorder: false,
+      );
       if (!mounted) return;
       setState(() {
         _stickerBytes = stickerBytes;
-        _errorMessage = stickerBytes == null ? 'The sticker could not be generated.' : null;
+        _errorMessage = stickerBytes == null
+            ? 'The sticker could not be generated.'
+            : null;
       });
     } catch (error) {
       if (!mounted) return;
@@ -141,8 +319,12 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
 
   void _saveSticker() {
     final stickerBytes = _stickerBytes;
-    if (stickerBytes == null || widget.photos.isEmpty) return;
-    widget.onSaved(selectedPhotoIndex, stickerBytes, selectedStickerId);
+    if (stickerBytes == null || _photos.isEmpty) return;
+    widget.onSaved(
+      _photos[selectedPhotoIndex],
+      stickerBytes,
+      selectedStickerId,
+    );
     Navigator.pop(context);
   }
 
@@ -152,24 +334,34 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
     late final ImageStreamListener listener;
     listener = ImageStreamListener(
       (imageInfo, synchronousCall) {
-        if (!imageCompleter.isCompleted) imageCompleter.complete(imageInfo.image);
+        if (!imageCompleter.isCompleted) {
+          imageCompleter.complete(imageInfo.image);
+        }
         stream.removeListener(listener);
       },
       onError: (error, stackTrace) {
-        if (!imageCompleter.isCompleted) imageCompleter.completeError(error, stackTrace);
+        if (!imageCompleter.isCompleted) {
+          imageCompleter.completeError(error, stackTrace);
+        }
         stream.removeListener(listener);
       },
     );
     stream.addListener(listener);
     final image = await imageCompleter.future;
     final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-    if (byteData == null) throw StateError('The selected flower photo has no image data.');
+    if (byteData == null) {
+      throw StateError('The selected flower photo has no image data.');
+    }
     return Uint8List.fromList(byteData.buffer.asUint8List());
   }
 }
 
 class _StickerPreview extends StatelessWidget {
-  const _StickerPreview({required this.photo, required this.stickerBytes, required this.stickerId});
+  const _StickerPreview({
+    required this.photo,
+    required this.stickerBytes,
+    required this.stickerId,
+  });
 
   final SavedFlowerPhoto? photo;
   final Uint8List? stickerBytes;
@@ -178,10 +370,19 @@ class _StickerPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (photo == null) {
-      return const SizedBox(height: 220, child: Center(child: Text('Select a flower photo to preview')));
+      return const SizedBox(
+        height: 220,
+        child: Center(child: Text('Select a flower photo to preview')),
+      );
     }
     final image = stickerBytes == null
-        ? Image(image: photo!.image, fit: BoxFit.contain)
+        ? Image(
+            image: photo!.image,
+            fit: BoxFit.contain,
+            errorBuilder: (_, error, stack) => const Center(
+              child: Text('Photo unavailable. Please choose another.'),
+            ),
+          )
         : Image.memory(stickerBytes!, fit: BoxFit.contain);
     if (stickerId == 'bubble_border' || stickerBytes == null) {
       return SizedBox(height: 220, child: image);
@@ -189,7 +390,11 @@ class _StickerPreview extends StatelessWidget {
     return SizedBox(
       height: 220,
       child: ColorFiltered(
-        colorFilter: ColorFilter.matrix(stickerId == 'colour_change' ? _colourChangeMatrix : _colourVariationMatrix),
+        colorFilter: ColorFilter.matrix(
+          stickerId == 'colour_change'
+              ? _colourChangeMatrix
+              : _colourVariationMatrix,
+        ),
         child: image,
       ),
     );
@@ -203,26 +408,62 @@ class _StyleSwatch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: stickerId == 'colour_change' ? const Color(0xffd6eaa9) : const Color(0xffd9e7f3),
-          border: stickerId == 'bubble_border' ? Border.all(color: const Color(0xff6c9274), width: 3) : null,
-          borderRadius: BorderRadius.circular(12),
-        ),
-      );
+    width: 42,
+    height: 42,
+    decoration: BoxDecoration(
+      color: stickerId == 'colour_change'
+          ? const Color(0xffd6eaa9)
+          : const Color(0xffd9e7f3),
+      border: stickerId == 'bubble_border'
+          ? Border.all(color: const Color(0xff6c9274), width: 3)
+          : null,
+      borderRadius: BorderRadius.circular(12),
+    ),
+  );
 }
 
 const _colourChangeMatrix = <double>[
-  1.18, 0, 0, 0, 8,
-  0, 1.08, 0, 0, 8,
-  0, 0, .82, 0, 0,
-  0, 0, 0, 1, 0,
+  1.18,
+  0,
+  0,
+  0,
+  8,
+  0,
+  1.08,
+  0,
+  0,
+  8,
+  0,
+  0,
+  .82,
+  0,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
 ];
 
 const _colourVariationMatrix = <double>[
-  .92, 0, 0, 0, 8,
-  0, 1.02, 0, 0, 4,
-  0, 0, 1.12, 0, 8,
-  0, 0, 0, 1, 0,
+  .92,
+  0,
+  0,
+  0,
+  8,
+  0,
+  1.02,
+  0,
+  0,
+  4,
+  0,
+  0,
+  1.12,
+  0,
+  8,
+  0,
+  0,
+  0,
+  1,
+  0,
 ];

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'mock_flower_photos.dart';
 import 'sticker_creation.dart';
 import 'user_profile.dart';
 
@@ -17,20 +16,22 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   final _navigatorKey = GlobalKey<NavigatorState>();
-  final List<SavedFlowerPhoto> _savedFlowerPhotos = List.of(MockFlowerPhotoSource.photos);
+  final List<SavedFlowerPhoto> _savedFlowerPhotos = [];
 
   Future<void> _openStickerCreation() async {
     await _navigatorKey.currentState!.push<void>(
       MaterialPageRoute<void>(
         builder: (context) => StickerCreationPage(
           photos: _savedFlowerPhotos,
-          onSaved: (photoIndex, stickerBytes, stickerId) {
+          onSaved: (photo, stickerBytes, stickerId) {
             setState(() {
-              _savedFlowerPhotos[photoIndex] = _savedFlowerPhotos[photoIndex].copyWith(
-                    stickerId: stickerId,
-                    stickerBytes: stickerBytes,
-                    createdAt: DateTime.now(),
-                  );
+              _savedFlowerPhotos.add(
+                photo.copyWith(
+                  stickerId: stickerId,
+                  stickerBytes: stickerBytes,
+                  createdAt: DateTime.now(),
+                ),
+              );
             });
           },
         ),
