@@ -271,9 +271,28 @@ class UserProfilePageState extends State<UserProfilePage> {
             onStickerSelected: (sticker) {
               setState(() => _selectedSticker = sticker);
               widget.onStickerSelected?.call(sticker);
+              _showStickerActions(sticker, profileColor);
             },
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _showStickerActions(
+    SavedFlowerPhoto sticker,
+    ProfileColorChoice profileColor,
+  ) async {
+    final asset = GeneratedStickerAsset.fromSavedFlowerPhoto(sticker);
+    if (asset == null) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) => _StickerActionDialog(
+        asset: asset,
+        profileColor: profileColor,
+        onShareSticker: widget.onShareSticker,
+        onAddStickerToDiary: widget.onAddStickerToDiary,
       ),
     );
   }
@@ -359,53 +378,72 @@ class _StickersSection extends StatelessWidget {
               );
             },
           ),
-        if (selectedSticker != null) ...[
-          const SizedBox(height: 14),
-          _StickerHandoffActions(
-            selectedSticker: selectedSticker!,
-            profileColor: profileColor,
-            onShareSticker: onShareSticker,
-            onAddStickerToDiary: onAddStickerToDiary,
-          ),
-        ],
       ],
     );
   }
 }
 
-class _StickerHandoffActions extends StatelessWidget {
-  const _StickerHandoffActions({
-    required this.selectedSticker,
+class _StickerActionDialog extends StatelessWidget {
+  const _StickerActionDialog({
+    required this.asset,
     required this.profileColor,
     required this.onShareSticker,
     required this.onAddStickerToDiary,
   });
 
-  final SavedFlowerPhoto selectedSticker;
+  final GeneratedStickerAsset asset;
   final ProfileColorChoice profileColor;
   final ValueChanged<GeneratedStickerAsset>? onShareSticker;
   final ValueChanged<GeneratedStickerAsset>? onAddStickerToDiary;
 
   @override
   Widget build(BuildContext context) {
-    final asset = GeneratedStickerAsset.fromSavedFlowerPhoto(selectedSticker);
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: [
-        OutlinedButton.icon(
-          onPressed: asset == null || onShareSticker == null
-              ? null
-              : () => onShareSticker!(asset),
-          icon: Icon(Icons.ios_share, color: profileColor.color),
-          label: const Text('Share'),
+    return AlertDialog(
+      title: const Text('Your Sticker'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            height: 180,
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: profileColor.softColor,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Image.memory(asset.stickerBytes, fit: BoxFit.contain),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'What would you like to do with this sticker?',
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
         ),
         OutlinedButton.icon(
-          onPressed: asset == null || onAddStickerToDiary == null
+          onPressed: onAddStickerToDiary == null
               ? null
-              : () => onAddStickerToDiary!(asset),
+              : () {
+                  onAddStickerToDiary!(asset);
+                  Navigator.pop(context);
+                },
           icon: Icon(Icons.menu_book_outlined, color: profileColor.color),
           label: const Text('Add to Diary'),
+        ),
+        FilledButton.icon(
+          onPressed: onShareSticker == null
+              ? null
+              : () {
+                  onShareSticker!(asset);
+                  Navigator.pop(context);
+                },
+          icon: const Icon(Icons.ios_share),
+          label: const Text('Share Sticker'),
         ),
       ],
     );

@@ -213,7 +213,15 @@ void main() {
     );
     await tester.tap(find.byKey(const ValueKey('saved-sticker-colour_change')));
     await tester.pump();
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Share'));
+
+    expect(find.text('Your Sticker'), findsOneWidget);
+    expect(
+      find.text('What would you like to do with this sticker?'),
+      findsOneWidget,
+    );
+    expect(sharedSticker, isNull);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Share Sticker'));
     await tester.pump();
 
     expect(sharedSticker?.stickerBytes, stickerBytes);
@@ -248,11 +256,43 @@ void main() {
       find.byKey(const ValueKey('saved-sticker-colour_variation')),
     );
     await tester.pump();
+    expect(find.text('Your Sticker'), findsOneWidget);
+    expect(diarySticker, isNull);
+
     await tester.tap(find.widgetWithText(OutlinedButton, 'Add to Diary'));
     await tester.pump();
 
     expect(diarySticker?.stickerBytes, stickerBytes);
     expect(diarySticker?.stickerId, 'colour_variation');
     expect(diarySticker?.createdAt, DateTime(2026, 9, 18));
+  });
+
+  testWidgets('sticker action dialog is safe without handoff callbacks', (
+    WidgetTester tester,
+  ) async {
+    final stickerBytes = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    );
+    final sticker = SavedFlowerPhoto(
+      image: MemoryImage(stickerBytes),
+      stickerId: 'safe-sticker',
+      stickerBytes: stickerBytes,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(home: UserProfilePage(savedFlowerPhotos: [sticker])),
+    );
+    await tester.tap(find.byKey(const ValueKey('saved-sticker-safe-sticker')));
+    await tester.pump();
+
+    expect(find.text('Your Sticker'), findsOneWidget);
+    final shareButton = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Share Sticker'),
+    );
+    final diaryButton = tester.widget<OutlinedButton>(
+      find.widgetWithText(OutlinedButton, 'Add to Diary'),
+    );
+    expect(shareButton.onPressed, isNull);
+    expect(diaryButton.onPressed, isNull);
   });
 }
