@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'flower_photo_service.dart';
@@ -302,10 +302,13 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
         imageBytes,
         addBorder: false,
       );
+      final croppedStickerBytes = stickerBytes == null
+          ? null
+          : await cropStickerTransparentPadding(stickerBytes);
       if (!mounted) return;
       setState(() {
-        _stickerBytes = stickerBytes;
-        _errorMessage = stickerBytes == null
+        _stickerBytes = croppedStickerBytes;
+        _errorMessage = croppedStickerBytes == null
             ? 'The sticker could not be generated.'
             : null;
       });
@@ -353,6 +356,97 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
       throw StateError('The selected flower photo has no image data.');
     }
     return Uint8List.fromList(byteData.buffer.asUint8List());
+  }
+}
+
+@visibleForTesting
+Future<Uint8List> cropStickerTransparentPadding(
+  Uint8List stickerBytes, {
+  double paddingFraction = 0.06,
+}) async {
+  try {
+    final codec = await ui.instantiateImageCodec(stickerBytes);
+    final frame = await codec.getNextFrame();
+    final image = frame.image;
+    final width = image.width;
+    final height = image.height;
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+    if (byteData == null) return stickerBytes;
+
+    final pixels = byteData.buffer.asUint8List();
+    var left = width;
+    var top = height;
+    var right = -1;
+    var bottom = -1;
+
+    for (var y = 0; y < height; y += 1) {
+      for (var x = 0; x < width; x += 1) {
+        final alpha = pixels[((y * width + x) * 4) + 3];
+        if (alpha == 0) continue;
+        if (x < left) left = x;
+        if (x > right) right = x;
+        if (y < top) top = y;
+        if (y > bottom) bottom = y;
+      }
+    }
+
+    if (right < left || bottom < top) return stickerBytes;
+
+    final originalAspectRatio = width / height;
+    final contentWidth = right - left + 1;
+    final contentHeight = bottom - top + 1;
+    final padding =
+        (contentWidth > contentHeight ? contentWidth : contentHeight) *
+        paddingFraction;
+    final centerX = (left + right + 1) / 2;
+    final centerY = (top + bottom + 1) / 2;
+    var cropWidth = contentWidth + padding * 2;
+    var cropHeight = contentHeight + padding * 2;
+
+    if (cropWidth / cropHeight > originalAspectRatio) {
+      cropHeight = cropWidth / originalAspectRatio;
+    } else {
+      cropWidth = cropHeight * originalAspectRatio;
+    }
+
+    if (cropWidth >= width && cropHeight >= height) return stickerBytes;
+
+    cropWidth = cropWidth.clamp(1, width).toDouble();
+    cropHeight = cropHeight.clamp(1, height).toDouble();
+    var cropLeft = centerX - cropWidth / 2;
+    var cropTop = centerY - cropHeight / 2;
+    cropLeft = cropLeft.clamp(0, width - cropWidth).toDouble();
+    cropTop = cropTop.clamp(0, height - cropHeight).toDouble();
+
+    final outputWidth = cropWidth.round();
+    final outputHeight = cropHeight.round();
+    if (outputWidth <= 0 || outputHeight <= 0) return stickerBytes;
+
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    final sourceRect = Rect.fromLTWH(
+      cropLeft,
+      cropTop,
+      outputWidth.toDouble(),
+      outputHeight.toDouble(),
+    );
+    final destinationRect = Rect.fromLTWH(
+      0,
+      0,
+      outputWidth.toDouble(),
+      outputHeight.toDouble(),
+    );
+    canvas.drawImageRect(image, sourceRect, destinationRect, Paint());
+    final croppedImage = await recorder.endRecording().toImage(
+      outputWidth,
+      outputHeight,
+    );
+    final croppedBytes = await croppedImage.toByteData(
+      format: ui.ImageByteFormat.png,
+    );
+    return croppedBytes?.buffer.asUint8List() ?? stickerBytes;
+  } catch (_) {
+    return stickerBytes;
   }
 }
 

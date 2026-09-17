@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -27,7 +29,16 @@ void main() {
     expect(find.textContaining('Unable to load flower photos'), findsOneWidget);
     await tester.tap(find.text('Choose my own photo'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Generate sticker'), 180, scrollable: find.descendant(of: find.byKey(const ValueKey('sticker-scroll')), matching: find.byType(Scrollable)).first);
+    await tester.scrollUntilVisible(
+      find.text('Generate sticker'),
+      180,
+      scrollable: find
+          .descendant(
+            of: find.byKey(const ValueKey('sticker-scroll')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
     final button = tester.widget<FilledButton>(
       find.widgetWithText(FilledButton, 'Generate sticker'),
     );
@@ -62,4 +73,31 @@ void main() {
     await tester.pumpAndSettle();
     expect(queries, ['rose', 'daisy']);
   });
+
+  test('generated sticker transparent padding is cropped', () async {
+    final stickerBytes = await _transparentPngWithFlowerBounds(
+      canvasSize: 100,
+      flowerBounds: const Rect.fromLTWH(40, 40, 20, 20),
+    );
+
+    final croppedBytes = await cropStickerTransparentPadding(stickerBytes);
+    final codec = await ui.instantiateImageCodec(croppedBytes);
+    final frame = await codec.getNextFrame();
+
+    expect(frame.image.width, lessThan(40));
+    expect(frame.image.height, lessThan(40));
+    expect(frame.image.width, frame.image.height);
+  });
+}
+
+Future<Uint8List> _transparentPngWithFlowerBounds({
+  required int canvasSize,
+  required Rect flowerBounds,
+}) async {
+  final recorder = ui.PictureRecorder();
+  final canvas = Canvas(recorder);
+  canvas.drawRect(flowerBounds, Paint()..color = Colors.pink);
+  final image = await recorder.endRecording().toImage(canvasSize, canvasSize);
+  final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+  return bytes!.buffer.asUint8List();
 }
