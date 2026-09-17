@@ -21,6 +21,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Create Sticker'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Generate sticker'), 180, scrollable: find.descendant(of: find.byKey(const ValueKey('sticker-scroll')), matching: find.byType(Scrollable)).first);
     expect(find.text('Generate sticker'), findsOneWidget);
   });
 
@@ -28,7 +29,7 @@ void main() {
     await tester.pumpWidget(const MyApp());
     await tester.tap(find.byTooltip('Create sticker'));
     await tester.pumpAndSettle();
-    await tester.drag(find.byType(ListView).last, const Offset(0, -360));
+    await tester.scrollUntilVisible(find.text('Save sticker'), 180, scrollable: find.descendant(of: find.byKey(const ValueKey('sticker-scroll')), matching: find.byType(Scrollable)).first);
     await tester.pumpAndSettle();
 
     expect(find.text('Colour Change'), findsOneWidget);

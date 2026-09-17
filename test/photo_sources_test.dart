@@ -1,0 +1,65 @@
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:flower_finder/sticker_creation.dart';
+import 'package:flower_finder/user_profile.dart';
+
+void main() {
+  final bytes = base64Decode(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+  );
+
+  testWidgets('personal photo remains usable when the API fails', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StickerCreationPage(
+          photos: const [],
+          onSaved: (_, sticker, style) {},
+          loadFlowers: (_) async => throw Exception('offline'),
+          pickPhoto: () async => bytes,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Unable to load flower photos'), findsOneWidget);
+    await tester.tap(find.text('Choose my own photo'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Generate sticker'), 180, scrollable: find.descendant(of: find.byKey(const ValueKey('sticker-scroll')), matching: find.byType(Scrollable)).first);
+    final button = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Generate sticker'),
+    );
+    expect(button.onPressed, isNotNull);
+    expect(find.text('Select a flower photo to preview'), findsNothing);
+  });
+
+  testWidgets('search loads API photos and cancelling picker keeps selection', (
+    tester,
+  ) async {
+    final queries = <String>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StickerCreationPage(
+          photos: const [],
+          onSaved: (_, sticker, style) {},
+          loadFlowers: (query) async {
+            queries.add(query);
+            return [SavedFlowerPhoto(image: MemoryImage(bytes), label: 'Rose')];
+          },
+          pickPhoto: () async => null,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(queries, ['rose']);
+    await tester.tap(find.text('Choose my own photo'));
+    await tester.pumpAndSettle();
+    expect(find.text('Select a flower photo to preview'), findsNothing);
+    await tester.enterText(find.byType(TextField), 'daisy');
+    await tester.tap(find.byTooltip('Search flowers'));
+    await tester.pumpAndSettle();
+    expect(queries, ['rose', 'daisy']);
+  });
+}
