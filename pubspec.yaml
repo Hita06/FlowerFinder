@@ -1,4 +1,4 @@
-name: flower_finder
+name: flowerfinderscanner
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -31,11 +31,15 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
+  camera: ^0.12.1
+  camera_android: ^0.10.11+1
+  http: ^1.5.0
+  # The following adds the Cupertino Icons font to your application.g
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-  http: ^1.6.0
-  flutter_dotenv: ^6.0.1
+  image_picker: ^1.2.3
+  google_fonts: ^8.2.1
+  path_provider: ^2.1.6
 
 dev_dependencies:
   flutter_test:
@@ -58,10 +62,6 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
-
-  # Loads the local API configuration file.
-  assets:
-    - .env
 
   # To add assets to your application, add an assets section, like this:
   # assets:
