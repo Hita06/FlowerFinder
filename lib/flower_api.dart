@@ -1,13 +1,18 @@
 import 'dart:convert';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 class FlowerApi {
-  static const String apiKey = '2b10cxcNdTAe2uxSXejQ0tRvWO';
+  static String get apiKey => dotenv.env['PLANTNET_API_KEY'] ?? '';
 
   static Future<Map<String, dynamic>> identifyFlower(
     String imagePath,
   ) async {
+    if (apiKey.isEmpty) {
+      throw Exception('PlantNet API key is missing.');
+    }
+
     final uri = Uri.https(
       'my-api.plantnet.org',
       '/v2/identify/all',
@@ -18,7 +23,7 @@ class FlowerApi {
       },
     );
 
-    print('Sending request to: $uri');
+    print('Sending PlantNet identification request...');
 
     final request = http.MultipartRequest(
       'POST',
@@ -37,7 +42,7 @@ class FlowerApi {
     final responseBody = await response.stream.bytesToString();
 
     print('API status: ${response.statusCode}');
-    print('API response: $responseBody');
+    print('PlantNet response received.');
 
     if (response.statusCode != 200) {
       throw Exception(
