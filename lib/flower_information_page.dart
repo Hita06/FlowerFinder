@@ -43,10 +43,7 @@ class FlowerInformationPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text(
           'Flower Information',
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
         ),
         centerTitle: true,
         backgroundColor: mainGreen,
@@ -121,10 +118,7 @@ class FlowerInformationPage extends StatelessWidget {
                 children: [
                   const Row(
                     children: [
-                      Icon(
-                        Icons.info_outline,
-                        color: darkGreen,
-                      ),
+                      Icon(Icons.info_outline, color: darkGreen),
                       SizedBox(width: 10),
                       Text(
                         'About',
@@ -171,10 +165,7 @@ class FlowerInformationPage extends StatelessWidget {
                 children: [
                   const Row(
                     children: [
-                      Icon(
-                        Icons.local_florist_outlined,
-                        color: darkGreen,
-                      ),
+                      Icon(Icons.local_florist_outlined, color: darkGreen),
                       SizedBox(width: 10),
                       Text(
                         'Flower Details',
@@ -224,10 +215,7 @@ class FlowerInformationPage extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: pinkAccent,
-                  width: 2,
-                ),
+                border: Border.all(color: pinkAccent, width: 2),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.08),
@@ -241,10 +229,7 @@ class FlowerInformationPage extends StatelessWidget {
                 children: [
                   const Row(
                     children: [
-                      Icon(
-                        Icons.favorite_outline,
-                        color: pinkAccent,
-                      ),
+                      Icon(Icons.favorite_outline, color: pinkAccent),
                       SizedBox(width: 10),
                       Text(
                         'Care Tips',

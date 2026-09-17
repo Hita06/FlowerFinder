@@ -1,12 +1,18 @@
 // FlowerFinder Application
-// G5 Flower Information Page created by Hita
-// This file starts the app and opens the Flower Information page.
+// Includes the shared navigation, theme and environment configuration.
 
 import 'package:flutter/material.dart';
-import 'flower_information_page.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-// Starts the FlowerFinder application.
-void main() {
+import 'main_navigation.dart';
+import 'theme.dart';
+
+// Loads the API key and starts the FlowerFinder application.
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await dotenv.load(fileName: '.env');
+
   runApp(const FlowerFinderApp());
 }
 
@@ -17,33 +23,10 @@ class FlowerFinderApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'FlowerFinder',
       debugShowCheckedModeBanner: false,
-
-      // Sets the main colours used by the application.
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6F8F72),
-        ),
-        useMaterial3: true,
-      ),
-
-     // Opens the Flower Information page with identified flower data.
-home: const FlowerInformationPage(
-  flowerName: 'Sunflower',
-  scientificName: 'Helianthus annuus',
-  description:
-      'Sunflowers are tall, robust plants known for their large, bright yellow flowers. They are commonly grown for their seeds and as ornamental plants.',
-
-  flowerType: 'Garden flower',
-  flowerColour: 'Red',
-  season: 'Spring and summer',
-  careTips:
-      '• Place in an area with plenty of sunlight.\n'
-      '• Water regularly without flooding the soil.\n'
-      '• Remove damaged or dried leaves.',
-),
-    ); 
+      title: 'Flower Finder',
+      theme: AppTheme.lightTheme,
+      home: const MainNavigation(),
+    );
   }
 }
-
