@@ -57,3 +57,6 @@ Thumbs.db
 # Logs
 # Log files are generated while developing or debugging.
 *.log
+
+# Keeps the private Perenual API key out of GitHub.
+.env
