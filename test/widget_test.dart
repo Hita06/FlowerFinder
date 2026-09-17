@@ -4,11 +4,41 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flower_finder/main.dart';
+import 'package:flower_finder/scanner_page.dart';
 import 'package:flower_finder/user_profile.dart';
 
+import 'package:google_fonts/google_fonts.dart';
+
+Future<void> _openProfileTab(WidgetTester tester) async {
+  await tester.tap(find.byKey(const ValueKey('nav-profile')));
+  await tester.pump();
+}
+
 void main() {
+  setUpAll(() {
+    GoogleFonts.config.allowRuntimeFetching = false;
+  });
+
+  testWidgets('profile tab opens the profile page', (WidgetTester tester) async {
+    await tester.pumpWidget(const MyApp(enableCamera: false));
+
+    expect(find.byType(ScannerPage), findsOneWidget);
+    expect(find.text('Add Sticker'), findsNothing);
+
+    await _openProfileTab(tester);
+
+    expect(
+      find.descendant(of: find.byType(AppBar), matching: find.text('Profile')),
+      findsOneWidget,
+    );
+    expect(find.byType(UserProfilePage), findsOneWidget);
+    expect(find.text('Your Stickers'), findsOneWidget);
+    expect(find.text('Add Sticker'), findsOneWidget);
+  });
+
   testWidgets('profile opens sticker creation', (WidgetTester tester) async {
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(const MyApp(enableCamera: false));
+    await _openProfileTab(tester);
 
     expect(
       find.descendant(of: find.byType(AppBar), matching: find.text('Profile')),
@@ -25,8 +55,20 @@ void main() {
     expect(find.text('Generate sticker'), findsOneWidget);
   });
 
+  testWidgets('profile edit button opens the existing details sheet', (WidgetTester tester) async {
+    await tester.pumpWidget(const MyApp(enableCamera: false));
+    await _openProfileTab(tester);
+    await tester.tap(find.byTooltip('Edit profile details'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Change profile details'), findsOneWidget);
+    expect(find.text('Save changes'), findsOneWidget);
+  });
+
   testWidgets('sticker creation keeps all existing styles', (WidgetTester tester) async {
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(const MyApp(enableCamera: false));
+    await _openProfileTab(tester);
     await tester.tap(find.byTooltip('Create sticker'));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.text('Save sticker'), 180, scrollable: find.descendant(of: find.byKey(const ValueKey('sticker-scroll')), matching: find.byType(Scrollable)).first);
