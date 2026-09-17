@@ -54,10 +54,10 @@ class UserProfilePage extends StatefulWidget {
   final ValueChanged<SavedFlowerPhoto>? onStickerSelected;
 
   @override
-  State<UserProfilePage> createState() => _UserProfilePageState();
+  State<UserProfilePage> createState() => UserProfilePageState();
 }
 
-class _UserProfilePageState extends State<UserProfilePage> {
+class UserProfilePageState extends State<UserProfilePage> {
   final UserAccount _account = UserAccount(
     name: 'New Flower Finder User',
     username: 'flower_finder_user',
@@ -80,33 +80,17 @@ class _UserProfilePageState extends State<UserProfilePage> {
     });
   }
 
+  Future<void> editProfileDetails() => _editAccount();
+
   @override
   Widget build(BuildContext context) {
     final stickerCount = widget.savedFlowerPhotos
         .where((photo) => photo.stickerBytes != null)
         .length;
 
-    return Scaffold(
-      backgroundColor: const Color(0xfff8faf7),
-      appBar: AppBar(
-        centerTitle: true,
-        title: const Text('Profile'),
-        backgroundColor: const Color(0xff2f6b4f),
-        foregroundColor: Colors.white,
-        leading: IconButton(
-          onPressed: widget.onCreateSticker,
-          tooltip: 'Create sticker',
-          icon: const Icon(Icons.add),
-        ),
-        actions: [
-          IconButton(
-            onPressed: _editAccount,
-            tooltip: 'Edit profile details',
-            icon: const Icon(Icons.edit_outlined),
-          ),
-        ],
-      ),
-      body: ListView(
+    return Material(
+      color: const Color(0xfff8faf7),
+      child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
           Row(
@@ -147,7 +131,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
           ),
         ],
       ),
-      bottomNavigationBar: const _ProfileBottomNavigation(),
     );
   }
 }
@@ -275,46 +258,6 @@ class _AddStickerTile extends StatelessWidget {
             ],
           ),
         ),
-      );
-}
-
-class _ProfileBottomNavigation extends StatelessWidget {
-  const _ProfileBottomNavigation();
-
-  @override
-  Widget build(BuildContext context) => Container(
-        height: 74,
-        decoration: const BoxDecoration(
-          color: Color(0xff2f6b4f),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _BottomNavigationItem(icon: Icons.qr_code_scanner_outlined, label: 'Scanner'),
-            _BottomNavigationItem(icon: Icons.menu_book_outlined, label: 'Diary'),
-            _BottomNavigationItem(icon: Icons.map_outlined, label: 'Map'),
-            _BottomNavigationItem(icon: Icons.person, label: 'Profile', selected: true),
-          ],
-        ),
-      );
-}
-
-class _BottomNavigationItem extends StatelessWidget {
-  const _BottomNavigationItem({required this.icon, required this.label, this.selected = false});
-
-  final IconData icon;
-  final String label;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) => Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: selected ? Colors.white : Colors.white70, size: selected ? 28 : 25),
-          const SizedBox(height: 3),
-          Text(label, style: TextStyle(color: selected ? Colors.white : Colors.white70, fontSize: 10)),
-        ],
       );
 }
 
