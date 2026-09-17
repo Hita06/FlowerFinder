@@ -105,6 +105,31 @@ class SavedFlowerPhoto {
   }
 }
 
+class GeneratedStickerAsset {
+  const GeneratedStickerAsset({
+    required this.stickerBytes,
+    this.stickerId,
+    this.createdAt,
+    this.label,
+  });
+
+  final Uint8List stickerBytes;
+  final String? stickerId;
+  final DateTime? createdAt;
+  final String? label;
+
+  static GeneratedStickerAsset? fromSavedFlowerPhoto(SavedFlowerPhoto photo) {
+    final stickerBytes = photo.stickerBytes;
+    if (stickerBytes == null) return null;
+    return GeneratedStickerAsset(
+      stickerBytes: stickerBytes,
+      stickerId: photo.stickerId,
+      createdAt: photo.createdAt,
+      label: photo.label,
+    );
+  }
+}
+
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({
     super.key,
@@ -112,12 +137,14 @@ class UserProfilePage extends StatefulWidget {
     this.savedFlowerPhotos = const [],
     this.onCreateSticker,
     this.onStickerSelected,
+    this.onShareSticker,
   });
 
   final UserAccount? account;
   final List<SavedFlowerPhoto> savedFlowerPhotos;
   final VoidCallback? onCreateSticker;
   final ValueChanged<SavedFlowerPhoto>? onStickerSelected;
+  final ValueChanged<GeneratedStickerAsset>? onShareSticker;
 
   @override
   State<UserProfilePage> createState() => UserProfilePageState();
@@ -237,6 +264,7 @@ class UserProfilePageState extends State<UserProfilePage> {
             selectedSticker: _selectedSticker,
             profileColor: profileColor,
             onCreateSticker: widget.onCreateSticker,
+            onShareSticker: widget.onShareSticker,
             onStickerSelected: (sticker) {
               setState(() => _selectedSticker = sticker);
               widget.onStickerSelected?.call(sticker);
@@ -274,6 +302,7 @@ class _StickersSection extends StatelessWidget {
     required this.profileColor,
     required this.onCreateSticker,
     required this.onStickerSelected,
+    required this.onShareSticker,
   });
 
   final List<SavedFlowerPhoto> photos;
@@ -281,6 +310,7 @@ class _StickersSection extends StatelessWidget {
   final ProfileColorChoice profileColor;
   final VoidCallback? onCreateSticker;
   final ValueChanged<SavedFlowerPhoto> onStickerSelected;
+  final ValueChanged<GeneratedStickerAsset>? onShareSticker;
 
   @override
   Widget build(BuildContext context) {
@@ -324,6 +354,44 @@ class _StickersSection extends StatelessWidget {
               );
             },
           ),
+        if (selectedSticker != null) ...[
+          const SizedBox(height: 14),
+          _StickerHandoffActions(
+            selectedSticker: selectedSticker!,
+            profileColor: profileColor,
+            onShareSticker: onShareSticker,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _StickerHandoffActions extends StatelessWidget {
+  const _StickerHandoffActions({
+    required this.selectedSticker,
+    required this.profileColor,
+    required this.onShareSticker,
+  });
+
+  final SavedFlowerPhoto selectedSticker;
+  final ProfileColorChoice profileColor;
+  final ValueChanged<GeneratedStickerAsset>? onShareSticker;
+
+  @override
+  Widget build(BuildContext context) {
+    final asset = GeneratedStickerAsset.fromSavedFlowerPhoto(selectedSticker);
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        OutlinedButton.icon(
+          onPressed: asset == null || onShareSticker == null
+              ? null
+              : () => onShareSticker!(asset),
+          icon: Icon(Icons.ios_share, color: profileColor.color),
+          label: const Text('Share'),
+        ),
       ],
     );
   }

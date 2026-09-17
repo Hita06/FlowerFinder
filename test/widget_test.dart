@@ -187,4 +187,37 @@ void main() {
     expect(selectedSticker?.stickerBytes, isNotNull);
     expect(find.byIcon(Icons.check_circle), findsOneWidget);
   });
+
+  testWidgets('profile shares only generated sticker bytes', (
+    WidgetTester tester,
+  ) async {
+    final stickerBytes = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    );
+    final sticker = SavedFlowerPhoto(
+      image: MemoryImage(stickerBytes),
+      label: 'Saved rose',
+      stickerId: 'colour_change',
+      stickerBytes: stickerBytes,
+      createdAt: DateTime(2026, 9, 17),
+    );
+    GeneratedStickerAsset? sharedSticker;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: UserProfilePage(
+          savedFlowerPhotos: [sticker],
+          onShareSticker: (asset) => sharedSticker = asset,
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const ValueKey('saved-sticker-colour_change')));
+    await tester.pump();
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Share'));
+    await tester.pump();
+
+    expect(sharedSticker?.stickerBytes, stickerBytes);
+    expect(sharedSticker?.stickerId, 'colour_change');
+    expect(sharedSticker?.label, 'Saved rose');
+  });
 }
