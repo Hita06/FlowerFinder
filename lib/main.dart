@@ -34,11 +34,7 @@ class FlowerFinderApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Flower Finder',
       theme: AppTheme.lightTheme,
-<<<<<<< HEAD
       home: const LoginPage(),
-=======
-      home: MainNavigation(enableCamera: enableCamera),
->>>>>>> origin/main
     );
   }
 }
