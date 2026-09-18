@@ -15,7 +15,13 @@ import 'flower_information_page.dart';
 import 'theme.dart';
 
 class ScannerPage extends StatefulWidget {
-  const ScannerPage({super.key});
+  // Callback used to open the Create Sticker page.
+  final ValueChanged<String> onAddSticker;
+
+  const ScannerPage({
+    super.key,
+    required this.onAddSticker,
+  });
 
   @override
   State<ScannerPage> createState() => _ScannerPageState();
@@ -56,13 +62,14 @@ class _ScannerPageState extends State<ScannerPage> {
 
       // Prefer the rear-facing camera.
       final camera = cameras.firstWhere(
-        (camera) => camera.lensDirection == CameraLensDirection.back,
+        (camera) =>
+            camera.lensDirection == CameraLensDirection.back,
         orElse: () => cameras.first,
       );
 
       final newController = CameraController(
         camera,
-        ResolutionPreset.high,
+        ResolutionPreset.veryHigh,
         enableAudio: false,
       );
 
@@ -70,7 +77,8 @@ class _ScannerPageState extends State<ScannerPage> {
 
       await newController.initialize();
 
-      // The page may have been removed while the camera was initializing.
+      // The page may have been removed while the camera
+      // was initializing.
       if (!mounted) {
         await newController.dispose();
         controller = null;
@@ -78,7 +86,13 @@ class _ScannerPageState extends State<ScannerPage> {
       }
 
       // Enable automatic focus.
-      await newController.setFocusMode(FocusMode.auto);
+      try {
+        await newController.setFocusMode(
+          FocusMode.auto,
+        );
+      } catch (_) {
+        // Some devices may not support changing focus mode.
+      }
 
       if (!mounted) return;
 
@@ -194,9 +208,11 @@ class _ScannerPageState extends State<ScannerPage> {
 
       print('Sending image for identification...');
 
-      final result = await FlowerApi.identifyFlower(imagePath!);
+      final result =
+          await FlowerApi.identifyFlower(imagePath!);
 
-      final String? bestMatch = result['bestMatch']?.toString();
+      final String? bestMatch =
+          result['bestMatch']?.toString();
 
       print('Flower identified: $bestMatch');
 
@@ -239,7 +255,8 @@ class _ScannerPageState extends State<ScannerPage> {
       });
 
       // Gets the app's private documents directory.
-      final directory = await getApplicationDocumentsDirectory();
+      final directory =
+          await getApplicationDocumentsDirectory();
 
       // Creates the stickers folder.
       final stickersDirectory = Directory(
@@ -247,17 +264,21 @@ class _ScannerPageState extends State<ScannerPage> {
       );
 
       if (!await stickersDirectory.exists()) {
-        await stickersDirectory.create(recursive: true);
+        await stickersDirectory.create(
+          recursive: true,
+        );
       }
 
       // Gives the sticker a unique filename.
       final fileName =
           'sticker_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-      final newPath = '${stickersDirectory.path}/$fileName';
+      final newPath =
+          '${stickersDirectory.path}/$fileName';
 
       // Copies the selected image into the sticker folder.
-      final savedSticker = await File(imagePath!).copy(newPath);
+      final savedSticker =
+          await File(imagePath!).copy(newPath);
 
       print('Sticker saved: ${savedSticker.path}');
 
@@ -269,7 +290,9 @@ class _ScannerPageState extends State<ScannerPage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Image saved as a sticker!'),
+          content: Text(
+            'Image saved as a sticker!',
+          ),
         ),
       );
     } catch (e) {
@@ -283,7 +306,9 @@ class _ScannerPageState extends State<ScannerPage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to save sticker: $e'),
+          content: Text(
+            'Failed to save sticker: $e',
+          ),
         ),
       );
     }
@@ -309,7 +334,8 @@ class _ScannerPageState extends State<ScannerPage> {
           width: double.infinity,
           constraints: BoxConstraints(
             maxHeight:
-                MediaQuery.of(sheetContext).size.height * 0.55,
+                MediaQuery.of(sheetContext).size.height *
+                    0.55,
           ),
           padding: const EdgeInsets.fromLTRB(
             24,
@@ -336,10 +362,13 @@ class _ScannerPageState extends State<ScannerPage> {
                 Container(
                   width: 45,
                   height: 5,
-                  margin: const EdgeInsets.only(bottom: 20),
+                  margin: const EdgeInsets.only(
+                    bottom: 20,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.grey.shade400,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius:
+                        BorderRadius.circular(10),
                   ),
                 ),
 
@@ -350,10 +379,9 @@ class _ScannerPageState extends State<ScannerPage> {
                 Text(
                   'Flower Identified!',
                   textAlign: TextAlign.center,
-                  style:
-                      Theme.of(sheetContext)
-                          .textTheme
-                          .headlineMedium,
+                  style: Theme.of(sheetContext)
+                      .textTheme
+                      .headlineMedium,
                 ),
 
                 const SizedBox(height: 12),
@@ -365,10 +393,9 @@ class _ScannerPageState extends State<ScannerPage> {
                 Text(
                   identifiedName,
                   textAlign: TextAlign.center,
-                  style:
-                      Theme.of(sheetContext)
-                          .textTheme
-                          .titleLarge,
+                  style: Theme.of(sheetContext)
+                      .textTheme
+                      .titleLarge,
                 ),
 
                 const SizedBox(height: 12),
@@ -380,10 +407,9 @@ class _ScannerPageState extends State<ScannerPage> {
                 Text(
                   'Your flower has been identified successfully.',
                   textAlign: TextAlign.center,
-                  style:
-                      Theme.of(sheetContext)
-                          .textTheme
-                          .bodyMedium,
+                  style: Theme.of(sheetContext)
+                      .textTheme
+                      .bodyMedium,
                 ),
 
                 const SizedBox(height: 24),
@@ -398,22 +424,26 @@ class _ScannerPageState extends State<ScannerPage> {
                   child: OutlinedButton.icon(
                     onPressed: isSavingSticker
                         ? null
-                        : () async {
+                        : () {
                             // Close the result popup first.
                             Navigator.pop(sheetContext);
 
-                            // Save the current image.
-                            await saveAsSticker();
+                            // Open Create Sticker using
+                            // the current scanned/selected photo.
+                            if (imagePath != null) {
+                              widget.onAddSticker(
+                                imagePath!,
+                              );
+                            }
                           },
                     icon: const Icon(
                       Icons.sticky_note_2_outlined,
                     ),
                     label: Text(
                       'Save as Sticker',
-                      style:
-                          Theme.of(sheetContext)
-                              .textTheme
-                              .labelLarge,
+                      style: Theme.of(sheetContext)
+                          .textTheme
+                          .labelLarge,
                     ),
                   ),
                 ),
@@ -433,21 +463,26 @@ class _ScannerPageState extends State<ScannerPage> {
                       Navigator.pop(sheetContext);
 
                       // Push Flower Information on top of Scanner.
-                      // This means pressing Back returns to Scanner.
+                      // Pressing Back returns to Scanner.
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) =>
                               FlowerInformationPage(
-                            flowerName: identifiedName,
-                            scientificName: identifiedName,
+                            flowerName:
+                                identifiedName,
+                            scientificName:
+                                identifiedName,
                             description:
                                 'This flower was identified '
                                 'using the FlowerFinder '
                                 'scanner.',
-                            flowerType: 'Flowering plant',
-                            flowerColour: 'Not available',
-                            season: 'Not available',
+                            flowerType:
+                                'Flowering plant',
+                            flowerColour:
+                                'Not available',
+                            season:
+                                'Not available',
                             careTips:
                                 'Detailed care information '
                                 'is not currently available.',
@@ -457,13 +492,12 @@ class _ScannerPageState extends State<ScannerPage> {
                     },
                     child: Text(
                       'View Flower Details',
-                      style:
-                          Theme.of(sheetContext)
-                              .textTheme
-                              .labelLarge
-                              ?.copyWith(
-                                color: Colors.white,
-                              ),
+                      style: Theme.of(sheetContext)
+                          .textTheme
+                          .labelLarge
+                          ?.copyWith(
+                            color: Colors.white,
+                          ),
                     ),
                   ),
                 ),
@@ -483,13 +517,13 @@ class _ScannerPageState extends State<ScannerPage> {
                     },
                     child: Text(
                       'Close',
-                      style:
-                          Theme.of(sheetContext)
-                              .textTheme
-                              .labelLarge
-                              ?.copyWith(
-                                color: AppColors.darkGreen,
-                              ),
+                      style: Theme.of(sheetContext)
+                          .textTheme
+                          .labelLarge
+                          ?.copyWith(
+                            color:
+                                AppColors.darkGreen,
+                          ),
                     ),
                   ),
                 ),
@@ -546,23 +580,65 @@ class _ScannerPageState extends State<ScannerPage> {
                   margin: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Colors.black,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius:
+                        BorderRadius.circular(16),
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: Center(
                     child:
-                        !cameraReady || controller == null
+                        !cameraReady ||
+                                controller == null
                             ? const CircularProgressIndicator(
                                 color: Colors.white,
                               )
                             : imagePath == null
-                                ? CameraPreview(
-                                    controller!,
+
+                                // ==================================================
+                                // CHANGED CAMERA PREVIEW
+                                // ==================================================
+                                //
+                                // BoxFit.cover makes the camera fill the
+                                // entire preview area without stretching.
+                                //
+                                // The camera image may be slightly cropped,
+                                // but it will not be distorted.
+                                //
+                                ? ClipRRect(
+                                    borderRadius:
+                                        BorderRadius.circular(
+                                      16,
+                                    ),
+                                    child: SizedBox.expand(
+                                      child: FittedBox(
+                                        fit: BoxFit.cover,
+                                        child: SizedBox(
+                                          width: controller!
+                                              .value
+                                              .previewSize!
+                                              .height,
+                                          height: controller!
+                                              .value
+                                              .previewSize!
+                                              .width,
+                                          child:
+                                              CameraPreview(
+                                            controller!,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                   )
+
+                                // ==================================================
+                                // SELECTED PHOTO
+                                // ==================================================
+
                                 : Image.file(
                                     File(imagePath!),
-                                    width: double.infinity,
-                                    height: double.infinity,
+                                    width:
+                                        double.infinity,
+                                    height:
+                                        double.infinity,
                                     fit: BoxFit.contain,
                                   ),
                   ),
@@ -592,10 +668,9 @@ class _ScannerPageState extends State<ScannerPage> {
                         width: double.infinity,
                         height: 55,
                         child: ElevatedButton.icon(
-                          onPressed:
-                              cameraReady
-                                  ? takePicture
-                                  : null,
+                          onPressed: cameraReady
+                              ? takePicture
+                              : null,
                           icon: const Icon(
                             Icons.camera_alt,
                           ),
@@ -606,7 +681,8 @@ class _ScannerPageState extends State<ScannerPage> {
                                     .textTheme
                                     .labelLarge
                                     ?.copyWith(
-                                      color: Colors.white,
+                                      color:
+                                          Colors.white,
                                     ),
                           ),
                         ),
@@ -644,10 +720,9 @@ class _ScannerPageState extends State<ScannerPage> {
                         width: double.infinity,
                         height: 55,
                         child: ElevatedButton(
-                          onPressed:
-                              isIdentifying
-                                  ? null
-                                  : identifyFlower,
+                          onPressed: isIdentifying
+                              ? null
+                              : identifyFlower,
                           child: Text(
                             isIdentifying
                                 ? 'Identifying...'
@@ -657,7 +732,8 @@ class _ScannerPageState extends State<ScannerPage> {
                                     .textTheme
                                     .labelLarge
                                     ?.copyWith(
-                                      color: Colors.white,
+                                      color:
+                                          Colors.white,
                                     ),
                           ),
                         ),
@@ -670,10 +746,9 @@ class _ScannerPageState extends State<ScannerPage> {
                         width: double.infinity,
                         height: 55,
                         child: OutlinedButton(
-                          onPressed:
-                              isIdentifying
-                                  ? null
-                                  : takeAnotherPhoto,
+                          onPressed: isIdentifying
+                              ? null
+                              : takeAnotherPhoto,
                           child: Text(
                             'Choose Another Photo',
                             style:

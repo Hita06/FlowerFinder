@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -31,7 +32,9 @@ class _MainNavigationState extends State<MainNavigation> {
 
   late final List<Widget> pages = [
     // 0 - Scanner
-    const ScannerPage(),
+    ScannerPage(
+      onAddSticker: _openStickerCreationFromScanner,
+    ),
 
     // 1 - Maps
     const MapsPlaceholderPage(),
@@ -64,7 +67,7 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 
   // ============================================================
-  // OPEN STICKER CREATION
+  // OPEN STICKER CREATION FROM PROFILE
   // ============================================================
 
   Future<void> _openStickerCreation() async {
@@ -91,13 +94,55 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 
   // ============================================================
+  // OPEN STICKER CREATION FROM SCANNER
+  // ============================================================
+
+  Future<void> _openStickerCreationFromScanner(
+    String imagePath,
+  ) async {
+    final scannedPhoto = SavedFlowerPhoto(
+      image: FileImage(
+        File(imagePath),
+      ),
+      createdAt: DateTime.now(),
+    );
+
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (context) => StickerCreationPage(
+          photos: [
+            scannedPhoto,
+          ],
+          onSaved: (photo, stickerBytes, stickerId) {
+            setState(() {
+              _savedFlowerPhotos.add(
+                photo.copyWith(
+                  stickerId: stickerId,
+                  stickerBytes: stickerBytes,
+                  createdAt: DateTime.now(),
+                ),
+              );
+
+              currentIndex = profileTab;
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
   // SHARE STICKER
   // ============================================================
 
-  void _handleShareSticker(GeneratedStickerAsset sticker) {
+  void _handleShareSticker(
+    GeneratedStickerAsset sticker,
+  ) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Sticker is ready for sharing.'),
+        content: Text(
+          'Sticker is ready for sharing.',
+        ),
       ),
     );
   }
@@ -141,7 +186,6 @@ class _MainNavigationState extends State<MainNavigation> {
         index: currentIndex,
         children: pages,
       ),
-
       bottomNavigationBar: BottomNav(
         currentIndex: currentIndex,
         onTap: onNavTap,
@@ -183,7 +227,6 @@ class _ProfileTab extends StatelessWidget {
 
       appBar: AppBar(
         centerTitle: true,
-
         title: const Text('Profile'),
 
         actions: [
