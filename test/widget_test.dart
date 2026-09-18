@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowerfinderscanner/main_navigation.dart';
 import 'package:flowerfinderscanner/scanner_page.dart';
+import 'package:flowerfinderscanner/sticker_creation.dart';
 import 'package:flowerfinderscanner/user_profile.dart';
 
 import 'package:google_fonts/google_fonts.dart';
@@ -182,6 +183,38 @@ void main() {
       find.widgetWithText(FilledButton, 'Save sticker'),
     );
     expect(saveButton.onPressed, isNull);
+  });
+
+  testWidgets('saved sticker appears in profile after returning from creation', (
+    WidgetTester tester,
+  ) async {
+    final stickerBytes = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    );
+
+    await tester.pumpWidget(const MaterialApp(home: MainNavigation()));
+    await _openProfileTab(tester);
+    await tester.tap(find.byTooltip('Create sticker'));
+    await tester.pumpAndSettle();
+
+    final creation = tester.widget<StickerCreationPage>(
+      find.byType(StickerCreationPage),
+    );
+    creation.onSaved(
+      SavedFlowerPhoto(image: MemoryImage(stickerBytes), label: 'Saved rose'),
+      stickerBytes,
+      'colour_change',
+    );
+    Navigator.of(tester.element(find.byType(StickerCreationPage))).pop();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Your Stickers'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('saved-sticker-colour_change')),
+      findsOneWidget,
+    );
+    expect(find.text('Add Sticker'), findsOneWidget);
   });
 
   testWidgets('profile selects a saved sticker for future upload', (
