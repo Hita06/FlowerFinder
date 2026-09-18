@@ -1,7 +1,20 @@
 import 'package:flutter/material.dart';
-import 'login_page.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-void main() {
+import 'firebase_options.dart';
+import 'main_navigation.dart';
+import 'theme.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await dotenv.load(fileName: '.env');
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp(const FlowerFinderApp());
 }
 
@@ -13,7 +26,8 @@ class FlowerFinderApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Flower Finder',
-      home: const LoginPage(),
+      theme: AppTheme.lightTheme,
+      home: const MainNavigation(),
     );
   }
 }
