@@ -25,9 +25,7 @@ class PerenualService {
     }
 
     // Stores the values that will be sent to Perenual.
-    final Map<String, String> queryParameters = {
-      'key': apiKey,
-    };
+    final Map<String, String> queryParameters = {'key': apiKey};
 
     // Adds the search text only when one was entered.
     if (searchText.trim().isNotEmpty) {
@@ -69,25 +67,16 @@ class PerenualService {
             responseData['data'] as List<dynamic>? ?? [];
 
         return plants
-            .map(
-              (plant) => Map<String, dynamic>.from(
-                plant as Map,
-              ),
-            )
+            .map((plant) => Map<String, dynamic>.from(plant as Map))
             .toList();
       }
 
-      if (response.statusCode == 401 ||
-          response.statusCode == 403) {
-        throw Exception(
-          'The Perenual API key was not accepted.',
-        );
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        throw Exception('The Perenual API key was not accepted.');
       }
 
       if (response.statusCode == 429) {
-        throw Exception(
-          'The Perenual request limit has been reached.',
-        );
+        throw Exception('The Perenual request limit has been reached.');
       }
 
       throw Exception(
@@ -95,13 +84,9 @@ class PerenualService {
         'Status: ${response.statusCode}',
       );
     } on http.ClientException {
-      throw Exception(
-        'A network connection to Perenual could not be made.',
-      );
+      throw Exception('A network connection to Perenual could not be made.');
     } on FormatException {
-      throw Exception(
-        'Perenual returned information in an unexpected format.',
-      );
+      throw Exception('Perenual returned information in an unexpected format.');
     }
   }
 }

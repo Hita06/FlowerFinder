@@ -29,19 +29,21 @@ class FlowerBottomNav extends StatelessWidget {
           activeIcon: Icon(Icons.camera_alt),
           label: 'Scanner',
         ),
+
         BottomNavigationBarItem(
           icon: Icon(Icons.search_outlined),
           activeIcon: Icon(Icons.search),
           label: 'Search',
-        ),
+      ),
+
         BottomNavigationBarItem(
-          icon: Icon(Icons.menu_book_outlined),
-          activeIcon: Icon(Icons.menu_book),
+          icon: Icon(Icons.menu_book),
+          activeIcon: Icon(Icons.menu_book),  
           label: 'Diary',
         ),
+
         BottomNavigationBarItem(
-          icon: Icon(Icons.person_outline),
-          activeIcon: Icon(Icons.person),
+          icon: Icon(Icons.person),
           label: 'Profile',
         ),
       ],
