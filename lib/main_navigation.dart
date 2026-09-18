@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'pages/diary_page.dart';
 import 'scanner_page.dart';
-/*import 'map_page.dart';
-import 'diary_page.dart';
-import 'profile_page.dart';*/
 import '../widgets/bottom_nav.dart';
 
 class MainNavigation extends StatefulWidget {
@@ -22,23 +20,23 @@ class _MainNavigationState extends State<MainNavigation> {
 
   final List<Widget> pages = const [
     ScannerPage(),
-    /*MapPage(),
+    Scaffold(body: Center(child: Text('Map page is under development'))),
     DiaryPage(),
-    ProfilePage(),*/
+    Scaffold(body: Center(child: Text('Profile page is under development'))),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(index: currentIndex, children: pages),
-
       bottomNavigationBar: FlowerBottomNav(
         currentIndex: currentIndex,
-
         onTap: (index) {
-          setState(() {
-            currentIndex = index;
-          });
+          if (index >= 0 && index < pages.length) {
+            setState(() {
+              currentIndex = index;
+            });
+          }
         },
       ),
     );
