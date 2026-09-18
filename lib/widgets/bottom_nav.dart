@@ -23,6 +23,7 @@ class FlowerBottomNav extends StatelessWidget {
       unselectedItemColor: Colors.grey,
       selectedFontSize: 12,
       unselectedFontSize: 12,
+
       items: const [
         BottomNavigationBarItem(
           icon: Icon(Icons.camera_alt_outlined),
@@ -34,16 +35,23 @@ class FlowerBottomNav extends StatelessWidget {
           icon: Icon(Icons.search_outlined),
           activeIcon: Icon(Icons.search),
           label: 'Search',
-      ),
+        ),
 
         BottomNavigationBarItem(
-          icon: Icon(Icons.menu_book),
-          activeIcon: Icon(Icons.menu_book),  
+          icon: Icon(Icons.auto_awesome_outlined),
+          activeIcon: Icon(Icons.auto_awesome),
+          label: 'Stickers',
+        ),
+
+        BottomNavigationBarItem(
+          icon: Icon(Icons.menu_book_outlined),
+          activeIcon: Icon(Icons.menu_book),
           label: 'Diary',
         ),
 
         BottomNavigationBarItem(
-          icon: Icon(Icons.person),
+          icon: Icon(Icons.person_outline),
+          activeIcon: Icon(Icons.person),
           label: 'Profile',
         ),
       ],
