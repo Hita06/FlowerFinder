@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "857251513354",
+    "project_id": "flowerfinder-e2369",
+    "storage_bucket": "flowerfinder-e2369.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:857251513354:android:7dbfec8216fe8f26824bf3",
+        "android_client_info": {
+          "package_name": "com.example.flower_finder"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyANSkOYvx1XcUIkBuQmMM4peSH8mDhuBKU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
