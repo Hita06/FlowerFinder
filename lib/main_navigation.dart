@@ -1,4 +1,5 @@
-// This file manages the main navigation of the app, including the bottom navigation bar and the pages for Scanner, Maps, Search, Diary, and Profile.
+// This file manages the main navigation of the app, including the bottom
+// navigation bar and the pages for Scanner, Maps, Search, Diary, and Profile.
 
 // Handles local files, used for loading scanned images into stickers.
 import 'dart:io';
@@ -34,10 +35,8 @@ class _MainNavigationState extends State<MainNavigation> {
 
   // Tracks the currently selected bottom navigation tab.
   int currentIndex = 0;
-
-  // ============================================================
+  
   // BOTTOM NAVIGATION
-  // ============================================================
 
   // Updates the selected page when the user taps a navigation item.
   void onNavTap(int index) {
@@ -46,9 +45,8 @@ class _MainNavigationState extends State<MainNavigation> {
     });
   }
 
-  // ============================================================
   // STICKER CREATION
-  // ============================================================
+  
 
   // Opens sticker creation from the Profile page and saves the
   // completed sticker to the user's saved photos.
@@ -105,14 +103,16 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 
-  // ============================================================
+
   // STICKER ACTIONS
-  // ============================================================
+
 
   // Handles sharing a generated sticker.
   void _handleShareSticker(GeneratedStickerAsset sticker) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Sticker is ready for sharing.')),
+      const SnackBar(
+        content: Text('Sticker is ready for sharing.'),
+      ),
     );
   }
 
@@ -123,29 +123,33 @@ class _MainNavigationState extends State<MainNavigation> {
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Sticker selected for Diary integration.')),
+      const SnackBar(
+        content: Text('Sticker selected for Diary integration.'),
+      ),
     );
   }
 
-  // ============================================================
+
   // LOGOUT
-  // ============================================================
+
 
   // Signs the current user out through Firebase Authentication.
   Future<void> _handleLogout() async {
     await FirebaseAuth.instance.signOut();
   }
 
-  // ============================================================
+  
   // BUILD
-  // ============================================================
+
 
   @override
   Widget build(BuildContext context) {
     // Rebuilds the tab widgets so Profile receives newly saved stickers.
     final pages = [
       // 0 - Scanner
-      ScannerPage(onAddSticker: _openStickerCreationFromScanner),
+      ScannerPage(
+        onAddSticker: _openStickerCreationFromScanner,
+      ),
 
       // 1 - Maps
       const MapsPlaceholderPage(),
@@ -168,7 +172,10 @@ class _MainNavigationState extends State<MainNavigation> {
     ];
 
     return Scaffold(
-      body: IndexedStack(index: currentIndex, children: pages),
+      body: IndexedStack(
+        index: currentIndex,
+        children: pages,
+      ),
       bottomNavigationBar: BottomNav(
         currentIndex: currentIndex,
         onTap: onNavTap,
@@ -177,9 +184,9 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 }
 
-// ============================================================
+
 // PROFILE TAB
-// ============================================================
+
 
 class _ProfileTab extends StatelessWidget {
   const _ProfileTab({
@@ -202,18 +209,14 @@ class _ProfileTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xfff8faf7),
-
       appBar: AppBar(
         centerTitle: true,
         title: const Text('Profile'),
-
-        // Profile actions: logout, create sticker and edit profile.
         leading: IconButton(
           onPressed: () => profileKey.currentState?.openLogoutPage(),
           tooltip: 'Log out',
           icon: const Icon(Icons.logout),
         ),
-
         actions: [
           IconButton(
             onPressed: onCreateSticker,
@@ -221,14 +224,13 @@ class _ProfileTab extends StatelessWidget {
             icon: const Icon(Icons.add),
           ),
           IconButton(
-            onPressed: () => profileKey.currentState?.editProfileDetails(),
+            onPressed: () =>
+                profileKey.currentState?.editProfileDetails(),
             tooltip: 'Edit profile details',
             icon: const Icon(Icons.edit_outlined),
           ),
         ],
       ),
-
-      // Displays the user's profile information and saved stickers.
       body: UserProfilePage(
         key: profileKey,
         savedFlowerPhotos: savedFlowerPhotos,
@@ -241,9 +243,9 @@ class _ProfileTab extends StatelessWidget {
   }
 }
 
-// ============================================================
+
 // MAPS PLACEHOLDER
-// ============================================================
+
 
 // Temporary page for the Maps feature.
 class MapsPlaceholderPage extends StatelessWidget {
@@ -252,8 +254,12 @@ class MapsPlaceholderPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Maps')),
-      body: const Center(child: Text('Maps coming soon')),
+      appBar: AppBar(
+        title: const Text('Maps'),
+      ),
+      body: const Center(
+        child: Text('Maps coming soon'),
+      ),
     );
   }
 }
