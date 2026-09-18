@@ -34,6 +34,10 @@ class _ScannerPageState extends State<ScannerPage> {
   bool isIdentifying = false;
   bool isSavingSticker = false;
 
+  // Prevents another photo from being taken while the
+  // previous camera capture is still processing.
+  bool isTakingPicture = false;
+
   String? imagePath;
 
   @override
@@ -117,17 +121,27 @@ class _ScannerPageState extends State<ScannerPage> {
   // ============================================================
 
   Future<void> takePicture() async {
-    if (!cameraReady || controller == null) {
+    // Prevent taking another picture if the camera is not ready
+    // or a previous capture is still being processed.
+    if (!cameraReady ||
+        controller == null ||
+        isTakingPicture ||
+        controller!.value.isTakingPicture) {
       return;
     }
 
     try {
+      setState(() {
+        isTakingPicture = true;
+      });
+
       final XFile image = await controller!.takePicture();
 
       if (!mounted) return;
 
       setState(() {
         imagePath = image.path;
+        isTakingPicture = false;
       });
 
       print('Photo captured: ${image.path}');
@@ -136,9 +150,15 @@ class _ScannerPageState extends State<ScannerPage> {
 
       if (!mounted) return;
 
+      setState(() {
+        isTakingPicture = false;
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Unable to take photo: $e'),
+          content: Text(
+            'Unable to take photo: $e',
+          ),
         ),
       );
     }
@@ -172,7 +192,9 @@ class _ScannerPageState extends State<ScannerPage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Unable to select image: $e'),
+          content: Text(
+            'Unable to select image: $e',
+          ),
         ),
       );
     }
@@ -234,7 +256,9 @@ class _ScannerPageState extends State<ScannerPage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Identification failed: $e'),
+          content: Text(
+            'Identification failed: $e',
+          ),
         ),
       );
     }
@@ -329,31 +353,39 @@ class _ScannerPageState extends State<ScannerPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+
       builder: (sheetContext) {
         return Container(
           width: double.infinity,
+
           constraints: BoxConstraints(
             maxHeight:
                 MediaQuery.of(sheetContext).size.height *
                     0.55,
           ),
+
           padding: const EdgeInsets.fromLTRB(
             24,
             12,
             24,
             30,
           ),
+
           decoration: const BoxDecoration(
             color: AppColors.cream,
+
             borderRadius: BorderRadius.only(
               topLeft: Radius.circular(30),
               topRight: Radius.circular(30),
             ),
           ),
+
           child: SafeArea(
             top: false,
+
             child: Column(
               mainAxisSize: MainAxisSize.min,
+
               children: [
                 // ==================================================
                 // DRAG HANDLE
@@ -362,9 +394,11 @@ class _ScannerPageState extends State<ScannerPage> {
                 Container(
                   width: 45,
                   height: 5,
+
                   margin: const EdgeInsets.only(
                     bottom: 20,
                   ),
+
                   decoration: BoxDecoration(
                     color: Colors.grey.shade400,
                     borderRadius:
@@ -379,6 +413,7 @@ class _ScannerPageState extends State<ScannerPage> {
                 Text(
                   'Flower Identified!',
                   textAlign: TextAlign.center,
+
                   style: Theme.of(sheetContext)
                       .textTheme
                       .headlineMedium,
@@ -393,6 +428,7 @@ class _ScannerPageState extends State<ScannerPage> {
                 Text(
                   identifiedName,
                   textAlign: TextAlign.center,
+
                   style: Theme.of(sheetContext)
                       .textTheme
                       .titleLarge,
@@ -407,6 +443,7 @@ class _ScannerPageState extends State<ScannerPage> {
                 Text(
                   'Your flower has been identified successfully.',
                   textAlign: TextAlign.center,
+
                   style: Theme.of(sheetContext)
                       .textTheme
                       .bodyMedium,
@@ -421,6 +458,7 @@ class _ScannerPageState extends State<ScannerPage> {
                 SizedBox(
                   width: double.infinity,
                   height: 55,
+
                   child: OutlinedButton.icon(
                     onPressed: isSavingSticker
                         ? null
@@ -436,11 +474,14 @@ class _ScannerPageState extends State<ScannerPage> {
                               );
                             }
                           },
+
                     icon: const Icon(
                       Icons.sticky_note_2_outlined,
                     ),
+
                     label: Text(
                       'Save as Sticker',
+
                       style: Theme.of(sheetContext)
                           .textTheme
                           .labelLarge,
@@ -457,13 +498,13 @@ class _ScannerPageState extends State<ScannerPage> {
                 SizedBox(
                   width: double.infinity,
                   height: 55,
+
                   child: ElevatedButton(
                     onPressed: () {
                       // Close the result popup.
                       Navigator.pop(sheetContext);
 
-                      // Push Flower Information on top of Scanner.
-                      // Pressing Back returns to Scanner.
+                      // Open the Flower Information page.
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -471,18 +512,24 @@ class _ScannerPageState extends State<ScannerPage> {
                               FlowerInformationPage(
                             flowerName:
                                 identifiedName,
+
                             scientificName:
                                 identifiedName,
+
                             description:
                                 'This flower was identified '
                                 'using the FlowerFinder '
                                 'scanner.',
+
                             flowerType:
                                 'Flowering plant',
+
                             flowerColour:
                                 'Not available',
+
                             season:
                                 'Not available',
+
                             careTips:
                                 'Detailed care information '
                                 'is not currently available.',
@@ -490,8 +537,10 @@ class _ScannerPageState extends State<ScannerPage> {
                         ),
                       );
                     },
+
                     child: Text(
                       'View Flower Details',
+
                       style: Theme.of(sheetContext)
                           .textTheme
                           .labelLarge
@@ -511,18 +560,20 @@ class _ScannerPageState extends State<ScannerPage> {
                 SizedBox(
                   width: double.infinity,
                   height: 50,
+
                   child: TextButton(
                     onPressed: () {
                       Navigator.pop(sheetContext);
                     },
+
                     child: Text(
                       'Close',
+
                       style: Theme.of(sheetContext)
                           .textTheme
                           .labelLarge
                           ?.copyWith(
-                            color:
-                                AppColors.darkGreen,
+                            color: AppColors.darkGreen,
                           ),
                     ),
                   ),
@@ -543,6 +594,7 @@ class _ScannerPageState extends State<ScannerPage> {
   void dispose() {
     controller?.dispose();
     controller = null;
+
     super.dispose();
   }
 
@@ -558,7 +610,9 @@ class _ScannerPageState extends State<ScannerPage> {
       // ----------------------------------------------------------
 
       appBar: AppBar(
-        title: const Text('Scanner'),
+        title: const Text(
+          'Scanner',
+        ),
         centerTitle: true,
       ),
 
@@ -569,6 +623,7 @@ class _ScannerPageState extends State<ScannerPage> {
       body: SafeArea(
         child: Container(
           color: AppColors.cream,
+
           child: Column(
             children: [
               // ==================================================
@@ -578,12 +633,15 @@ class _ScannerPageState extends State<ScannerPage> {
               Expanded(
                 child: Container(
                   margin: const EdgeInsets.all(16),
+
                   decoration: BoxDecoration(
                     color: Colors.black,
                     borderRadius:
                         BorderRadius.circular(16),
                   ),
+
                   clipBehavior: Clip.antiAlias,
+
                   child: Center(
                     child:
                         !cameraReady ||
@@ -594,32 +652,30 @@ class _ScannerPageState extends State<ScannerPage> {
                             : imagePath == null
 
                                 // ==================================================
-                                // CHANGED CAMERA PREVIEW
+                                // CAMERA PREVIEW
                                 // ==================================================
-                                //
-                                // BoxFit.cover makes the camera fill the
-                                // entire preview area without stretching.
-                                //
-                                // The camera image may be slightly cropped,
-                                // but it will not be distorted.
-                                //
+
                                 ? ClipRRect(
                                     borderRadius:
                                         BorderRadius.circular(
                                       16,
                                     ),
+
                                     child: SizedBox.expand(
                                       child: FittedBox(
                                         fit: BoxFit.cover,
+
                                         child: SizedBox(
                                           width: controller!
                                               .value
                                               .previewSize!
                                               .height,
+
                                           height: controller!
                                               .value
                                               .previewSize!
                                               .width,
+
                                           child:
                                               CameraPreview(
                                             controller!,
@@ -656,6 +712,7 @@ class _ScannerPageState extends State<ScannerPage> {
                   20,
                   20,
                 ),
+
                 child: Column(
                   children: [
                     // ==================================================
@@ -663,48 +720,58 @@ class _ScannerPageState extends State<ScannerPage> {
                     // ==================================================
 
                     if (imagePath == null) ...[
-                      // Takes a new photo.
                       SizedBox(
                         width: double.infinity,
                         height: 55,
+
                         child: ElevatedButton.icon(
-                          onPressed: cameraReady
-                              ? takePicture
-                              : null,
+                          onPressed:
+                              cameraReady &&
+                                      !isTakingPicture
+                                  ? takePicture
+                                  : null,
+
                           icon: const Icon(
                             Icons.camera_alt,
                           ),
+
                           label: Text(
-                            'Take Photo',
-                            style:
-                                Theme.of(context)
-                                    .textTheme
-                                    .labelLarge
-                                    ?.copyWith(
-                                      color:
-                                          Colors.white,
-                                    ),
+                            isTakingPicture
+                                ? 'Taking Photo...'
+                                : 'Take Photo',
+
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelLarge
+                                ?.copyWith(
+                                  color: Colors.white,
+                                ),
                           ),
                         ),
                       ),
 
                       const SizedBox(height: 10),
 
-                      // Uploads an image from the gallery.
                       SizedBox(
                         width: double.infinity,
                         height: 55,
+
                         child: OutlinedButton.icon(
-                          onPressed: pickImage,
+                          onPressed:
+                              isTakingPicture
+                                  ? null
+                                  : pickImage,
+
                           icon: const Icon(
                             Icons.photo_library,
                           ),
+
                           label: Text(
                             'Upload Image',
-                            style:
-                                Theme.of(context)
-                                    .textTheme
-                                    .labelLarge,
+
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelLarge,
                           ),
                         ),
                       ),
@@ -715,46 +782,47 @@ class _ScannerPageState extends State<ScannerPage> {
                     // ==================================================
 
                     if (imagePath != null) ...[
-                      // Identifies the selected flower.
                       SizedBox(
                         width: double.infinity,
                         height: 55,
+
                         child: ElevatedButton(
                           onPressed: isIdentifying
                               ? null
                               : identifyFlower,
+
                           child: Text(
                             isIdentifying
                                 ? 'Identifying...'
                                 : 'Identify Flower',
-                            style:
-                                Theme.of(context)
-                                    .textTheme
-                                    .labelLarge
-                                    ?.copyWith(
-                                      color:
-                                          Colors.white,
-                                    ),
+
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelLarge
+                                ?.copyWith(
+                                  color: Colors.white,
+                                ),
                           ),
                         ),
                       ),
 
                       const SizedBox(height: 10),
 
-                      // Clears the image and allows another selection.
                       SizedBox(
                         width: double.infinity,
                         height: 55,
+
                         child: OutlinedButton(
                           onPressed: isIdentifying
                               ? null
                               : takeAnotherPhoto,
+
                           child: Text(
                             'Choose Another Photo',
-                            style:
-                                Theme.of(context)
-                                    .textTheme
-                                    .labelLarge,
+
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelLarge,
                           ),
                         ),
                       ),
