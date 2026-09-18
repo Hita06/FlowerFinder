@@ -42,6 +42,10 @@ class _ScannerPageState extends State<ScannerPage> {
 
   Future<void> initialiseCamera() async {
     try {
+      if (controller != null) {
+        return;
+      }
+
       final cameras = await availableCameras();
 
       if (cameras.isEmpty) {
@@ -54,16 +58,22 @@ class _ScannerPageState extends State<ScannerPage> {
         orElse: () => cameras.first,
       );
 
-      controller = CameraController(
+      final newController = CameraController(
         camera,
         ResolutionPreset.high,
         enableAudio: false,
       );
+      controller = newController;
 
-      await controller!.initialize();
-      await controller!.setFocusMode(FocusMode.auto);
+      await newController.initialize();
 
-      if (!mounted) return;
+      if (!mounted) {
+        await newController.dispose();
+        controller = null;
+        return;
+      }
+
+      await newController.setFocusMode(FocusMode.auto);
 
       setState(() {
         cameraReady = true;
@@ -72,6 +82,12 @@ class _ScannerPageState extends State<ScannerPage> {
       print('Camera ready');
     } catch (e) {
       print('Camera initialisation error: $e');
+
+      if (mounted) {
+        setState(() {
+          cameraReady = false;
+        });
+      }
     }
   }
 
@@ -96,6 +112,12 @@ class _ScannerPageState extends State<ScannerPage> {
       print('Photo captured: ${image.path}');
     } catch (e) {
       print('Error taking photo: $e');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Unable to take photo: $e')));
     }
   }
 
@@ -120,6 +142,12 @@ class _ScannerPageState extends State<ScannerPage> {
       print('Gallery image selected: ${image.path}');
     } catch (e) {
       print('Error selecting image: $e');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Unable to select image: $e')));
     }
   }
 
@@ -417,6 +445,7 @@ class _ScannerPageState extends State<ScannerPage> {
   @override
   void dispose() {
     controller?.dispose();
+    controller = null;
     super.dispose();
   }
 
