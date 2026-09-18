@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
+import 'mock_flower_photos.dart';
 import 'user_profile.dart';
 
 class FlowerPhotoService {
@@ -18,9 +19,7 @@ class FlowerPhotoService {
   Future<List<SavedFlowerPhoto>> search(String query) async {
     final resolvedApiKey = _resolvedApiKey;
     if (resolvedApiKey.isEmpty) {
-      throw StateError(
-        'Flower photos are not connected yet. You can still choose your own photo.',
-      );
+      return MockFlowerPhotoSource.photos;
     }
     final client = http.Client();
     try {
@@ -33,11 +32,7 @@ class FlowerPhotoService {
           )
           .timeout(const Duration(seconds: 20));
       if (response.statusCode != 200) {
-        throw StateError(
-          response.statusCode == 429
-              ? 'Flower photo limit reached. Please try again later.'
-              : 'Flower photos are unavailable. Please try again later.',
-        );
+        return MockFlowerPhotoSource.photos;
       }
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       if (body['data'] is! List) {
@@ -63,6 +58,8 @@ class FlowerPhotoService {
           ),
         ];
       }).toList();
+    } catch (_) {
+      return MockFlowerPhotoSource.photos;
     } finally {
       client.close();
     }
