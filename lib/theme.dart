@@ -1,3 +1,5 @@
+// This file defines the application's theme, including custom colours and text styles.
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 

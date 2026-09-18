@@ -1,4 +1,9 @@
+// This file manages the main navigation of the app, including the bottom navigation bar and the pages for Scanner, Maps, Search, Diary, and Profile.
+
+// Handles local files, used for loading scanned images into stickers.
 import 'dart:io';
+
+// Firebase authentication for logging the user out.
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -17,19 +22,24 @@ class MainNavigation extends StatefulWidget {
 }
 
 class _MainNavigationState extends State<MainNavigation> {
+  // Tab indexes used when navigating to Diary or Profile.
   static const diaryTab = 3;
   static const profileTab = 4;
 
+  // Allows MainNavigation to access functions in UserProfilePage.
   final _profileKey = GlobalKey<UserProfilePageState>();
 
+  // Stores photos and stickers created by the user.
   final List<SavedFlowerPhoto> _savedFlowerPhotos = [];
 
+  // Tracks the currently selected bottom navigation tab.
   int currentIndex = 0;
 
   // ============================================================
   // NAVIGATION PAGES
   // ============================================================
 
+  // IndexedStack keeps each page alive while the user switches tabs.
   late final List<Widget> pages = [
     // 0 - Scanner
     ScannerPage(
@@ -60,6 +70,7 @@ class _MainNavigationState extends State<MainNavigation> {
   // BOTTOM NAVIGATION
   // ============================================================
 
+  // Updates the selected page when the user taps a navigation item.
   void onNavTap(int index) {
     setState(() {
       currentIndex = index;
@@ -67,9 +78,11 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 
   // ============================================================
-  // OPEN STICKER CREATION FROM PROFILE
+  // STICKER CREATION
   // ============================================================
 
+  // Opens sticker creation from the Profile page and saves the
+  // completed sticker to the user's saved photos.
   Future<void> _openStickerCreation() async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
@@ -93,10 +106,8 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 
-  // ============================================================
-  // OPEN STICKER CREATION FROM SCANNER
-  // ============================================================
-
+  // Opens sticker creation using the photo taken or selected
+  // from the Scanner page.
   Future<void> _openStickerCreationFromScanner(
     String imagePath,
   ) async {
@@ -132,9 +143,10 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 
   // ============================================================
-  // SHARE STICKER
+  // STICKER ACTIONS
   // ============================================================
 
+  // Handles sharing a generated sticker.
   void _handleShareSticker(
     GeneratedStickerAsset sticker,
   ) {
@@ -147,10 +159,7 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 
-  // ============================================================
-  // ADD STICKER TO DIARY
-  // ============================================================
-
+  // Switches to the Diary when the user adds a sticker there.
   void _handleAddStickerToDiary(
     GeneratedStickerAsset sticker,
   ) {
@@ -171,6 +180,7 @@ class _MainNavigationState extends State<MainNavigation> {
   // LOGOUT
   // ============================================================
 
+  // Signs the current user out through Firebase Authentication.
   Future<void> _handleLogout() async {
     await FirebaseAuth.instance.signOut();
   }
@@ -209,15 +219,10 @@ class _ProfileTab extends StatelessWidget {
   });
 
   final GlobalKey<UserProfilePageState> profileKey;
-
   final List<SavedFlowerPhoto> savedFlowerPhotos;
-
   final VoidCallback onCreateSticker;
-
   final ValueChanged<GeneratedStickerAsset> onShareSticker;
-
   final ValueChanged<GeneratedStickerAsset> onAddStickerToDiary;
-
   final Future<void> Function() onLogout;
 
   @override
@@ -228,22 +233,21 @@ class _ProfileTab extends StatelessWidget {
       appBar: AppBar(
         centerTitle: true,
         title: const Text('Profile'),
-<<<<<<< HEAD
 
-=======
+        // Profile actions: logout, create sticker and edit profile.
         leading: IconButton(
-          onPressed: () => profileKey.currentState?.openLogoutPage(),
+          onPressed: () =>
+              profileKey.currentState?.openLogoutPage(),
           tooltip: 'Log out',
           icon: const Icon(Icons.logout),
         ),
->>>>>>> origin/main
+
         actions: [
           IconButton(
             onPressed: onCreateSticker,
             tooltip: 'Create sticker',
             icon: const Icon(Icons.add),
           ),
-
           IconButton(
             onPressed: () =>
                 profileKey.currentState?.editProfileDetails(),
@@ -253,6 +257,7 @@ class _ProfileTab extends StatelessWidget {
         ],
       ),
 
+      // Displays the user's profile information and saved stickers.
       body: UserProfilePage(
         key: profileKey,
         savedFlowerPhotos: savedFlowerPhotos,
@@ -269,6 +274,7 @@ class _ProfileTab extends StatelessWidget {
 // MAPS PLACEHOLDER
 // ============================================================
 
+// Temporary page for the Maps feature.
 class MapsPlaceholderPage extends StatelessWidget {
   const MapsPlaceholderPage({super.key});
 
@@ -278,7 +284,6 @@ class MapsPlaceholderPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Maps'),
       ),
-
       body: const Center(
         child: Text('Maps coming soon'),
       ),
