@@ -1,4 +1,3 @@
-// Created by Iris
 // This file defines the application's theme, including custom colours and text styles.
 
 import 'package:flutter/material.dart';

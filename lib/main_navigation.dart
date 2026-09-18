@@ -1,4 +1,3 @@
-// Created by Iris
 // This file manages the main navigation of the app, including the bottom navigation bar and the pages for Scanner, Maps, Search, Diary, and Profile.
 
 // Handles local files, used for loading scanned images into stickers.

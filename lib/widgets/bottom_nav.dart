@@ -1,4 +1,3 @@
-// Created by Iris
 //This file is the bottom navigation bar used to switch between the main sections of the Flower Finder application.
 
 // Flutter Material Design widgets.
