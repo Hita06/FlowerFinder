@@ -62,6 +62,12 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 
+  void _handleLogout() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Logout is ready for login integration.')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final pages = [
@@ -78,6 +84,7 @@ class _MainNavigationState extends State<MainNavigation> {
         onCreateSticker: _openStickerCreation,
         onShareSticker: _handleShareSticker,
         onAddStickerToDiary: _handleAddStickerToDiary,
+        onLogout: _handleLogout,
       ),
     ];
 
@@ -102,6 +109,7 @@ class _ProfileTab extends StatelessWidget {
     required this.onCreateSticker,
     required this.onShareSticker,
     required this.onAddStickerToDiary,
+    required this.onLogout,
   });
 
   final GlobalKey<UserProfilePageState> profileKey;
@@ -109,6 +117,7 @@ class _ProfileTab extends StatelessWidget {
   final VoidCallback onCreateSticker;
   final ValueChanged<GeneratedStickerAsset> onShareSticker;
   final ValueChanged<GeneratedStickerAsset> onAddStickerToDiary;
+  final VoidCallback onLogout;
 
   @override
   Widget build(BuildContext context) {
@@ -136,6 +145,7 @@ class _ProfileTab extends StatelessWidget {
         onCreateSticker: onCreateSticker,
         onShareSticker: onShareSticker,
         onAddStickerToDiary: onAddStickerToDiary,
+        onLogout: onLogout,
       ),
     );
   }

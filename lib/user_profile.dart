@@ -139,6 +139,7 @@ class UserProfilePage extends StatefulWidget {
     this.onStickerSelected,
     this.onShareSticker,
     this.onAddStickerToDiary,
+    this.onLogout,
   });
 
   final UserAccount? account;
@@ -147,6 +148,7 @@ class UserProfilePage extends StatefulWidget {
   final ValueChanged<SavedFlowerPhoto>? onStickerSelected;
   final ValueChanged<GeneratedStickerAsset>? onShareSticker;
   final ValueChanged<GeneratedStickerAsset>? onAddStickerToDiary;
+  final VoidCallback? onLogout;
 
   @override
   State<UserProfilePage> createState() => UserProfilePageState();
@@ -209,6 +211,19 @@ class UserProfilePageState extends State<UserProfilePage> {
 
   Future<void> editProfileDetails() => _editAccount();
 
+  Future<void> _openLogoutPage(ProfileColorChoice profileColor) async {
+    final shouldLogout = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (context) =>
+            LogoutPage(accountName: _account.name, profileColor: profileColor),
+      ),
+    );
+
+    if (shouldLogout == true) {
+      widget.onLogout?.call();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final profileColor = ProfilePalette.byId(_account.profileColorId);
@@ -260,6 +275,22 @@ class UserProfilePageState extends State<UserProfilePage> {
             _account.email,
             style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
           ),
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: () => _openLogoutPage(profileColor),
+              icon: const Icon(Icons.logout),
+              label: const Text('Log out'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: profileColor.color,
+                side: BorderSide(color: profileColor.color),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 28),
           _StickersSection(
             photos: widget.savedFlowerPhotos,
@@ -293,6 +324,89 @@ class UserProfilePageState extends State<UserProfilePage> {
         profileColor: profileColor,
         onShareSticker: widget.onShareSticker,
         onAddStickerToDiary: widget.onAddStickerToDiary,
+      ),
+    );
+  }
+}
+
+class LogoutPage extends StatelessWidget {
+  const LogoutPage({
+    super.key,
+    required this.accountName,
+    required this.profileColor,
+  });
+
+  final String accountName;
+  final ProfileColorChoice profileColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xfff8faf7),
+      appBar: AppBar(centerTitle: true, title: const Text('Log out')),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Card(
+              elevation: 0,
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircleAvatar(
+                      radius: 38,
+                      backgroundColor: profileColor.avatarColor,
+                      child: Icon(
+                        Icons.logout,
+                        color: profileColor.color,
+                        size: 38,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    const Text(
+                      'Log out of FlowerFinder?',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'You are signed in as $accountName. Your saved profile and stickers stay ready for the next login.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey.shade700),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: () => Navigator.pop(context, true),
+                        icon: const Icon(Icons.logout),
+                        label: const Text('Log out'),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

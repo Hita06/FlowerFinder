@@ -79,6 +79,29 @@ void main() {
     expect(find.text('Save changes'), findsOneWidget);
   });
 
+  testWidgets('profile logout page confirms before handoff', (
+    WidgetTester tester,
+  ) async {
+    var loggedOut = false;
+
+    await tester.pumpWidget(
+      MaterialApp(home: UserProfilePage(onLogout: () => loggedOut = true)),
+    );
+
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Log out'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LogoutPage), findsOneWidget);
+    expect(find.text('Log out of FlowerFinder?'), findsOneWidget);
+    expect(loggedOut, isFalse);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Log out'));
+    await tester.pumpAndSettle();
+
+    expect(loggedOut, isTrue);
+    expect(find.byType(LogoutPage), findsNothing);
+  });
+
   testWidgets('profile colour can be changed from the details sheet', (
     WidgetTester tester,
   ) async {
