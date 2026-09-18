@@ -1,0 +1,22 @@
+PODS:
+  - Flutter (1.0.0)
+  - flutter_sticker_maker (0.1.0):
+    - Flutter
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - flutter_sticker_maker (from `.symlinks/plugins/flutter_sticker_maker/ios`)
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  flutter_sticker_maker:
+    :path: ".symlinks/plugins/flutter_sticker_maker/ios"
+
+SPEC CHECKSUMS:
+  Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
+  flutter_sticker_maker: 7f9cc505f6c2b5951829beb38a5da57b77e50102
+
+PODFILE CHECKSUM: 925325d20e05a8bbfce919e0da669633c652835f
+
+COCOAPODS: 1.17.0

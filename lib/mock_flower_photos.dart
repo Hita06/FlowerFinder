@@ -14,7 +14,9 @@ class MockFlowerPhotoSource {
   );
 
   static ImageProvider _image(String url) {
-    final isFlutterTest = WidgetsBinding.instance.runtimeType.toString().contains('TestWidgetsFlutterBinding');
+    final isFlutterTest = WidgetsBinding.instance.runtimeType
+        .toString()
+        .contains('TestWidgetsFlutterBinding');
     return isFlutterTest ? _testImage : NetworkImage(url);
   }
 
