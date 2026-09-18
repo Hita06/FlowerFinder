@@ -1,19 +1,23 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 import 'user_profile.dart';
 
 class FlowerPhotoService {
-  const FlowerPhotoService({
-    this.apiKey = const String.fromEnvironment('PERENUAL_API_KEY'),
-  });
+  const FlowerPhotoService({this.apiKey});
 
-  final String apiKey;
+  final String? apiKey;
+
+  String get _resolvedApiKey => apiKey?.trim().isNotEmpty == true
+      ? apiKey!.trim()
+      : dotenv.env['PERENUAL_API_KEY']?.trim() ?? '';
 
   Future<List<SavedFlowerPhoto>> search(String query) async {
-    if (apiKey.isEmpty) {
+    final resolvedApiKey = _resolvedApiKey;
+    if (resolvedApiKey.isEmpty) {
       throw StateError(
         'Flower photos are not connected yet. You can still choose your own photo.',
       );
@@ -22,8 +26,8 @@ class FlowerPhotoService {
     try {
       final response = await client
           .get(
-            Uri.https('perenual.com', '/api/v2/species-list', {
-              'key': apiKey,
+            Uri.https('www.perenual.com', '/api/v2/species-list', {
+              'key': resolvedApiKey,
               'q': query.trim().isEmpty ? 'rose' : query.trim(),
             }),
           )

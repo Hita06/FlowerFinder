@@ -211,7 +211,8 @@ class UserProfilePageState extends State<UserProfilePage> {
 
   Future<void> editProfileDetails() => _editAccount();
 
-  Future<void> _openLogoutPage(ProfileColorChoice profileColor) async {
+  Future<void> openLogoutPage() async {
+    final profileColor = ProfilePalette.byId(_account.profileColorId);
     final shouldLogout = await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
         builder: (context) =>
@@ -274,22 +275,6 @@ class UserProfilePageState extends State<UserProfilePage> {
           Text(
             _account.email,
             style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-          ),
-          const SizedBox(height: 16),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: OutlinedButton.icon(
-              onPressed: () => _openLogoutPage(profileColor),
-              icon: const Icon(Icons.logout),
-              label: const Text('Log out'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: profileColor.color,
-                side: BorderSide(color: profileColor.color),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
           ),
           const SizedBox(height: 28),
           _StickersSection(
