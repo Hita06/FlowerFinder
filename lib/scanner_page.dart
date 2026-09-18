@@ -56,11 +56,12 @@ class _ScannerPageState extends State<ScannerPage> {
 
       controller = CameraController(
         camera,
-        ResolutionPreset.medium,
+        ResolutionPreset.high,
         enableAudio: false,
       );
 
       await controller!.initialize();
+      await controller!.setFocusMode(FocusMode.auto);
 
       if (!mounted) return;
 
