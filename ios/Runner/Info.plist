@@ -11,7 +11,6 @@
 
 	<key>CFBundleDisplayName</key>
 	<string>FlowerFinder</string>
-
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 
@@ -23,7 +22,6 @@
 
 	<key>CFBundleName</key>
 	<string>flowerfinder</string>
-
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 
