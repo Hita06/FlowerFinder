@@ -14,8 +14,12 @@
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 
 	<key>CFBundleDisplayName</key>
+<<<<<<< HEAD
+	<string>Flower Finder</string>
+=======
 	<string>FlowerFinder</string>
 
+>>>>>>> origin/main
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 
@@ -26,8 +30,12 @@
 	<string>6.0</string>
 
 	<key>CFBundleName</key>
+<<<<<<< HEAD
+	<string>flower_finder</string>
+=======
 	<string>flowerfinder</string>
 
+>>>>>>> origin/main
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 

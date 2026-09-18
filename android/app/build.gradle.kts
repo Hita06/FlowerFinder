@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.flowerfinder"
+    namespace = "com.example.flower_finder"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
