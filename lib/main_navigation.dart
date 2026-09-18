@@ -20,14 +20,52 @@ class _MainNavigationState extends State<MainNavigation> {
   static const profileTab = 4;
 
   final _profileKey = GlobalKey<UserProfilePageState>();
+
   final List<SavedFlowerPhoto> _savedFlowerPhotos = [];
+
   int currentIndex = 0;
+
+  // ============================================================
+  // NAVIGATION PAGES
+  // ============================================================
+
+  late final List<Widget> pages = [
+    // 0 - Scanner
+    const ScannerPage(),
+
+    // 1 - Maps
+    const MapsPlaceholderPage(),
+
+    // 2 - Search
+    const FlowerSearchPage(),
+
+    // 3 - Diary
+    const DiaryPage(),
+
+    // 4 - Profile
+    _ProfileTab(
+      profileKey: _profileKey,
+      savedFlowerPhotos: _savedFlowerPhotos,
+      onCreateSticker: _openStickerCreation,
+      onShareSticker: _handleShareSticker,
+      onAddStickerToDiary: _handleAddStickerToDiary,
+      onLogout: _handleLogout,
+    ),
+  ];
+
+  // ============================================================
+  // BOTTOM NAVIGATION
+  // ============================================================
 
   void onNavTap(int index) {
     setState(() {
       currentIndex = index;
     });
   }
+
+  // ============================================================
+  // OPEN STICKER CREATION
+  // ============================================================
 
   Future<void> _openStickerCreation() async {
     await Navigator.of(context).push<void>(
@@ -43,6 +81,7 @@ class _MainNavigationState extends State<MainNavigation> {
                   createdAt: DateTime.now(),
                 ),
               );
+
               currentIndex = profileTab;
             });
           },
@@ -51,51 +90,58 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 
+  // ============================================================
+  // SHARE STICKER
+  // ============================================================
+
   void _handleShareSticker(GeneratedStickerAsset sticker) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Sticker is ready for sharing.')),
+      const SnackBar(
+        content: Text('Sticker is ready for sharing.'),
+      ),
     );
   }
 
-  void _handleAddStickerToDiary(GeneratedStickerAsset sticker) {
-    setState(() => currentIndex = diaryTab);
+  // ============================================================
+  // ADD STICKER TO DIARY
+  // ============================================================
+
+  void _handleAddStickerToDiary(
+    GeneratedStickerAsset sticker,
+  ) {
+    setState(() {
+      currentIndex = diaryTab;
+    });
+
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Sticker selected for Diary integration.')),
+      const SnackBar(
+        content: Text(
+          'Sticker selected for Diary integration.',
+        ),
+      ),
     );
   }
+
+  // ============================================================
+  // LOGOUT
+  // ============================================================
 
   Future<void> _handleLogout() async {
     await FirebaseAuth.instance.signOut();
   }
 
+  // ============================================================
+  // BUILD
+  // ============================================================
+
   @override
   Widget build(BuildContext context) {
-    final List<Widget> pages = [
-      // 0 - Scanner
-      const ScannerPage(),
-
-      // 1 - Maps
-      const MapsPlaceholderPage(),
-
-      // 2 - Search
-      const FlowerSearchPage(),
-
-      // 3 - Diary
-      const DiaryPage(),
-
-      // 4 - Profile
-      _ProfileTab(
-        profileKey: _profileKey,
-        savedFlowerPhotos: _savedFlowerPhotos,
-        onCreateSticker: _openStickerCreation,
-        onShareSticker: _handleShareSticker,
-        onAddStickerToDiary: _handleAddStickerToDiary,
-        onLogout: _handleLogout,
-      ),
-    ];
-
     return Scaffold(
-      body: IndexedStack(index: currentIndex, children: pages),
+      body: IndexedStack(
+        index: currentIndex,
+        children: pages,
+      ),
+
       bottomNavigationBar: BottomNav(
         currentIndex: currentIndex,
         onTap: onNavTap,
@@ -103,6 +149,10 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 }
+
+// ============================================================
+// PROFILE TAB
+// ============================================================
 
 class _ProfileTab extends StatelessWidget {
   const _ProfileTab({
@@ -115,32 +165,43 @@ class _ProfileTab extends StatelessWidget {
   });
 
   final GlobalKey<UserProfilePageState> profileKey;
+
   final List<SavedFlowerPhoto> savedFlowerPhotos;
+
   final VoidCallback onCreateSticker;
+
   final ValueChanged<GeneratedStickerAsset> onShareSticker;
+
   final ValueChanged<GeneratedStickerAsset> onAddStickerToDiary;
+
   final Future<void> Function() onLogout;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xfff8faf7),
+
       appBar: AppBar(
         centerTitle: true,
+
         title: const Text('Profile'),
+
         actions: [
           IconButton(
             onPressed: onCreateSticker,
             tooltip: 'Create sticker',
             icon: const Icon(Icons.add),
           ),
+
           IconButton(
-            onPressed: () => profileKey.currentState?.editProfileDetails(),
+            onPressed: () =>
+                profileKey.currentState?.editProfileDetails(),
             tooltip: 'Edit profile details',
             icon: const Icon(Icons.edit_outlined),
           ),
         ],
       ),
+
       body: UserProfilePage(
         key: profileKey,
         savedFlowerPhotos: savedFlowerPhotos,
@@ -163,8 +224,13 @@ class MapsPlaceholderPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Maps')),
-      body: const Center(child: Text('Maps coming soon')),
+      appBar: AppBar(
+        title: const Text('Maps'),
+      ),
+
+      body: const Center(
+        child: Text('Maps coming soon'),
+      ),
     );
   }
 }
