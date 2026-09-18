@@ -88,7 +88,11 @@ void main() {
       MaterialApp(home: UserProfilePage(onLogout: () => loggedOut = true)),
     );
 
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Log out'));
+    expect(find.widgetWithText(OutlinedButton, 'Log out'), findsNothing);
+    final state = tester.state<UserProfilePageState>(
+      find.byType(UserProfilePage),
+    );
+    state.openLogoutPage();
     await tester.pumpAndSettle();
 
     expect(find.byType(LogoutPage), findsOneWidget);

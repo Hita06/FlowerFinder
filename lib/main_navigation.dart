@@ -228,7 +228,15 @@ class _ProfileTab extends StatelessWidget {
       appBar: AppBar(
         centerTitle: true,
         title: const Text('Profile'),
+<<<<<<< HEAD
 
+=======
+        leading: IconButton(
+          onPressed: () => profileKey.currentState?.openLogoutPage(),
+          tooltip: 'Log out',
+          icon: const Icon(Icons.logout),
+        ),
+>>>>>>> origin/main
         actions: [
           IconButton(
             onPressed: onCreateSticker,
