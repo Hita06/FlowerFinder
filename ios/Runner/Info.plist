@@ -3,6 +3,10 @@
 
 <plist version="1.0">
 <dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Take a flower photo so Flower Finder can identify it.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Choose your own flower photos to identify or turn into stickers.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 

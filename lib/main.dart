@@ -18,7 +18,9 @@ Future<void> main() async {
 
 // Sets up the main Flutter application.
 class FlowerFinderApp extends StatelessWidget {
-  const FlowerFinderApp({super.key});
+  const FlowerFinderApp({super.key, this.enableCamera = true});
+
+  final bool enableCamera;
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +28,7 @@ class FlowerFinderApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Flower Finder',
       theme: AppTheme.lightTheme,
-      home: const MainNavigation(),
+      home: MainNavigation(enableCamera: enableCamera),
     );
   }
 }
