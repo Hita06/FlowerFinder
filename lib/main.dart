@@ -1,5 +1,5 @@
 // FlowerFinder Application
-// Includes the shared navigation, theme, Firebase and environment configuration.
+// Includes the shared navigation, Firebase and environment configuration.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
