@@ -3,10 +3,6 @@
 
 <plist version="1.0">
 <dict>
-	<key>NSCameraUsageDescription</key>
-	<string>Take a flower photo so Flower Finder can identify it.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Choose your own flower photos to identify or turn into stickers.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 
@@ -15,7 +11,6 @@
 
 	<key>CFBundleDisplayName</key>
 	<string>FlowerFinder</string>
-
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 
@@ -27,7 +22,6 @@
 
 	<key>CFBundleName</key>
 	<string>flowerfinder</string>
-
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 

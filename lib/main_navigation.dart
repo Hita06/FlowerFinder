@@ -1,29 +1,33 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import 'flower_search_page.dart';
 import 'pages/diary_page.dart';
 import 'scanner_page.dart';
 import 'sticker_creation.dart';
-import 'theme.dart';
 import 'user_profile.dart';
 import 'widgets/bottom_nav.dart';
 
 class MainNavigation extends StatefulWidget {
-  const MainNavigation({super.key, this.enableCamera = true});
-
-  final bool enableCamera;
+  const MainNavigation({super.key});
 
   @override
   State<MainNavigation> createState() => _MainNavigationState();
 }
 
 class _MainNavigationState extends State<MainNavigation> {
-  static const scannerTab = 0;
-  static const diaryTab = 2;
-  static const profileTab = 3;
+  static const diaryTab = 3;
+  static const profileTab = 4;
 
   final _profileKey = GlobalKey<UserProfilePageState>();
   final List<SavedFlowerPhoto> _savedFlowerPhotos = [];
-  int currentIndex = scannerTab;
+  int currentIndex = 0;
+
+  void onNavTap(int index) {
+    setState(() {
+      currentIndex = index;
+    });
+  }
 
   Future<void> _openStickerCreation() async {
     await Navigator.of(context).push<void>(
@@ -49,9 +53,7 @@ class _MainNavigationState extends State<MainNavigation> {
 
   void _handleShareSticker(GeneratedStickerAsset sticker) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Sticker is ready for the sharing feature.'),
-      ),
+      const SnackBar(content: Text('Sticker is ready for sharing.')),
     );
   }
 
@@ -62,22 +64,26 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 
-  void _handleLogout() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Logout is ready for login integration.')),
-    );
+  Future<void> _handleLogout() async {
+    await FirebaseAuth.instance.signOut();
   }
 
   @override
   Widget build(BuildContext context) {
-    final pages = [
+    final List<Widget> pages = [
+      // 0 - Scanner
       const ScannerPage(),
-      const _ComingSoonPage(
-        icon: Icons.location_on_outlined,
-        title: 'Map',
-        description: 'Connect the flower map page here.',
-      ),
+
+      // 1 - Maps
+      const MapsPlaceholderPage(),
+
+      // 2 - Search
+      const FlowerSearchPage(),
+
+      // 3 - Diary
       const DiaryPage(),
+
+      // 4 - Profile
       _ProfileTab(
         profileKey: _profileKey,
         savedFlowerPhotos: _savedFlowerPhotos,
@@ -90,13 +96,9 @@ class _MainNavigationState extends State<MainNavigation> {
 
     return Scaffold(
       body: IndexedStack(index: currentIndex, children: pages),
-      bottomNavigationBar: FlowerBottomNav(
+      bottomNavigationBar: BottomNav(
         currentIndex: currentIndex,
-        onTap: (index) {
-          if (index < pages.length) {
-            setState(() => currentIndex = index);
-          }
-        },
+        onTap: onNavTap,
       ),
     );
   }
@@ -117,7 +119,7 @@ class _ProfileTab extends StatelessWidget {
   final VoidCallback onCreateSticker;
   final ValueChanged<GeneratedStickerAsset> onShareSticker;
   final ValueChanged<GeneratedStickerAsset> onAddStickerToDiary;
-  final VoidCallback onLogout;
+  final Future<void> Function() onLogout;
 
   @override
   Widget build(BuildContext context) {
@@ -151,46 +153,18 @@ class _ProfileTab extends StatelessWidget {
   }
 }
 
-class _ComingSoonPage extends StatelessWidget {
-  const _ComingSoonPage({
-    required this.icon,
-    required this.title,
-    required this.description,
-  });
+// ============================================================
+// MAPS PLACEHOLDER
+// ============================================================
 
-  final IconData icon;
-  final String title;
-  final String description;
+class MapsPlaceholderPage extends StatelessWidget {
+  const MapsPlaceholderPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.cream,
-      appBar: AppBar(centerTitle: true, title: Text(title)),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 56, color: AppColors.darkGreen),
-              const SizedBox(height: 16),
-              Text(
-                title,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                description,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey.shade600),
-              ),
-            ],
-          ),
-        ),
-      ),
+      appBar: AppBar(title: const Text('Maps')),
+      body: const Center(child: Text('Maps coming soon')),
     );
   }
 }

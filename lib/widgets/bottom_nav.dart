@@ -1,16 +1,11 @@
 import 'package:flutter/material.dart';
-
 import '../theme.dart';
 
-class FlowerBottomNav extends StatelessWidget {
-  const FlowerBottomNav({
-    super.key,
-    required this.currentIndex,
-    required this.onTap,
-  });
-
+class BottomNav extends StatelessWidget {
   final int currentIndex;
-  final ValueChanged<int> onTap;
+  final Function(int) onTap;
+
+  const BottomNav({super.key, required this.currentIndex, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -18,21 +13,47 @@ class FlowerBottomNav extends StatelessWidget {
       currentIndex: currentIndex,
       onTap: onTap,
       type: BottomNavigationBarType.fixed,
-      backgroundColor: AppColors.green,
-      selectedItemColor: Colors.white,
-      unselectedItemColor: Colors.white,
-      showSelectedLabels: false,
-      showUnselectedLabels: false,
-      elevation: 0,
+
+      backgroundColor: AppColors.cream,
+      selectedItemColor: AppColors.green,
+      unselectedItemColor: Colors.grey,
+
+      selectedFontSize: 12,
+      unselectedFontSize: 12,
+
       items: const [
+        // 0 - Scanner
         BottomNavigationBarItem(
-          icon: Icon(Icons.center_focus_strong),
-          label: 'Scan',
+          icon: Icon(Icons.camera_alt_outlined),
+          activeIcon: Icon(Icons.camera_alt),
+          label: 'Scanner',
         ),
-        BottomNavigationBarItem(icon: Icon(Icons.location_on), label: 'Map'),
-        BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: 'Diary'),
+
+        // 1 - Maps
         BottomNavigationBarItem(
-          icon: Icon(Icons.person, key: ValueKey('nav-profile')),
+          icon: Icon(Icons.map_outlined),
+          activeIcon: Icon(Icons.map),
+          label: 'Maps',
+        ),
+
+        // 2 - Search
+        BottomNavigationBarItem(
+          icon: Icon(Icons.search_outlined),
+          activeIcon: Icon(Icons.search),
+          label: 'Search',
+        ),
+
+        // 3 - Diary
+        BottomNavigationBarItem(
+          icon: Icon(Icons.menu_book_outlined),
+          activeIcon: Icon(Icons.menu_book),
+          label: 'Diary',
+        ),
+
+        // 4 - Profile
+        BottomNavigationBarItem(
+          icon: Icon(Icons.person_outline, key: ValueKey('nav-profile')),
+          activeIcon: Icon(Icons.person),
           label: 'Profile',
         ),
       ],
