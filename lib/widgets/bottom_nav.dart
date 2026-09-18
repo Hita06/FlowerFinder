@@ -35,20 +35,11 @@ class FlowerBottomNav extends StatelessWidget {
           label: 'Scan',
         ),
 
-        BottomNavigationBarItem(
-          icon: Icon(Icons.location_on),
-          label: 'Map',
-        ),
+        BottomNavigationBarItem(icon: Icon(Icons.location_on), label: 'Map'),
 
-        BottomNavigationBarItem(
-          icon: Icon(Icons.menu_book),
-          label: 'Diary',
-        ),
+        BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: 'Diary'),
 
-        BottomNavigationBarItem(
-          icon: Icon(Icons.person),
-          label: 'Profile',
-        ),
+        BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
       ],
     );
   }

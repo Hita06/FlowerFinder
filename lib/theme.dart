@@ -14,9 +14,7 @@ class AppTheme {
 
     scaffoldBackgroundColor: AppColors.cream,
 
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: AppColors.green,
-    ),
+    colorScheme: ColorScheme.fromSeed(seedColor: AppColors.green),
 
     textTheme: TextTheme(
       // Leckerli One for large/display text
@@ -36,13 +34,9 @@ class AppTheme {
       ),
 
       // Normal app text
-      bodyLarge: GoogleFonts.leagueSpartan(
-        fontSize: 16,
-      ),
+      bodyLarge: GoogleFonts.leagueSpartan(fontSize: 16),
 
-      bodyMedium: GoogleFonts.leagueSpartan(
-        fontSize: 14,
-      ),
+      bodyMedium: GoogleFonts.leagueSpartan(fontSize: 14),
 
       labelLarge: GoogleFonts.leagueSpartan(
         fontSize: 16,
@@ -67,9 +61,7 @@ class AppTheme {
         foregroundColor: Colors.white,
         elevation: 0,
 
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     ),
   );

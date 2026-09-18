@@ -14,7 +14,6 @@ class MainNavigation extends StatefulWidget {
 }
 
 class _MainNavigationState extends State<MainNavigation> {
-
   // 0 = Scanner
   // 1 = Map
   // 2 = Diary
@@ -31,10 +30,7 @@ class _MainNavigationState extends State<MainNavigation> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: currentIndex,
-        children: pages,
-      ),
+      body: IndexedStack(index: currentIndex, children: pages),
 
       bottomNavigationBar: FlowerBottomNav(
         currentIndex: currentIndex,
