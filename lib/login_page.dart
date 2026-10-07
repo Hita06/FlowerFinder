@@ -300,7 +300,7 @@ class _LoginPageState extends State<LoginPage> {
                       backgroundColor: AppColors.green,
                       foregroundColor: Colors.white,
                       disabledBackgroundColor:
-                          AppColors.green.withOpacity(0.6),
+                          AppColors.green.withValues(alpha: 0.6),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
@@ -698,7 +698,7 @@ class _SignUpPopupState extends State<SignUpPopup> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
+                  color: Colors.red.withValues(alpha: 0.1),
                   borderRadius:
                       BorderRadius.circular(12),
                 ),
@@ -740,7 +740,7 @@ class _SignUpPopupState extends State<SignUpPopup> {
                   foregroundColor:
                       Colors.white,
                   disabledBackgroundColor:
-                      AppColors.green.withOpacity(0.6),
+                      AppColors.green.withValues(alpha: 0.6),
                   shape:
                       RoundedRectangleBorder(
                     borderRadius:
