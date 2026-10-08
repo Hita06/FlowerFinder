@@ -64,6 +64,7 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
         _photos.removeWhere((photo) => photo.image is NetworkImage);
         _photos.addAll(photos);
         selectedPhotoIndex = 0;
+        _baseStickerBytes = null;
         _stickerBytes = null;
         _photoError = photos.isEmpty
             ? 'No flower photos found. Try another name.'
@@ -106,6 +107,7 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
           SavedFlowerPhoto(image: MemoryImage(bytes!), label: 'My photo'),
         );
         selectedPhotoIndex = _photos.length - 1;
+        _baseStickerBytes = null;
         _stickerBytes = null;
       });
     } catch (_) {
@@ -121,7 +123,10 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
   }
 
   String selectedStickerId = 'colour_change';
+  Uint8List? _baseStickerBytes;
   Uint8List? _stickerBytes;
+  bool _whiteOutlineEnabled = false;
+  double _outlineThickness = 8;
   bool _isGenerating = false;
   String? _errorMessage;
 
@@ -202,6 +207,7 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
                       ? null
                       : () => setState(() {
                           selectedPhotoIndex = index;
+                          _baseStickerBytes = null;
                           _stickerBytes = null;
                           _errorMessage = null;
                         }),
@@ -276,6 +282,38 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
             ),
           ),
           const SizedBox(height: 24),
+          const Text(
+            'Custom effects',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('White Outline'),
+            subtitle: Text('Thickness: ${_outlineThickness.round()} px'),
+            value: _whiteOutlineEnabled,
+            onChanged: _baseStickerBytes == null || _busy
+                ? null
+                : (value) {
+                    setState(() => _whiteOutlineEnabled = value);
+                    unawaited(_refreshStickerEffects());
+                  },
+          ),
+          Slider(
+            value: _outlineThickness,
+            min: 2,
+            max: 24,
+            divisions: 11,
+            label: '${_outlineThickness.round()} px',
+            onChanged:
+                !_whiteOutlineEnabled || _baseStickerBytes == null || _busy
+                ? null
+                : (value) {
+                    setState(() => _outlineThickness = value);
+                    unawaited(_refreshStickerEffects());
+                  },
+          ),
+          const SizedBox(height: 24),
           FilledButton.icon(
             onPressed: _stickerBytes == null || _busy || _loadingPhotos
                 ? null
@@ -305,9 +343,17 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
       final croppedStickerBytes = stickerBytes == null
           ? null
           : await cropStickerTransparentPadding(stickerBytes);
+      final finalStickerBytes = croppedStickerBytes == null
+          ? null
+          : await applyStickerEffects(
+              croppedStickerBytes,
+              whiteOutline: _whiteOutlineEnabled,
+              outlineThickness: _outlineThickness,
+            );
       if (!mounted) return;
       setState(() {
-        _stickerBytes = croppedStickerBytes;
+        _baseStickerBytes = croppedStickerBytes;
+        _stickerBytes = finalStickerBytes;
         _errorMessage = croppedStickerBytes == null
             ? 'The sticker could not be generated.'
             : null;
@@ -318,6 +364,18 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
     } finally {
       if (mounted) setState(() => _isGenerating = false);
     }
+  }
+
+  Future<void> _refreshStickerEffects() async {
+    final baseStickerBytes = _baseStickerBytes;
+    if (baseStickerBytes == null) return;
+    final renderedStickerBytes = await applyStickerEffects(
+      baseStickerBytes,
+      whiteOutline: _whiteOutlineEnabled,
+      outlineThickness: _outlineThickness,
+    );
+    if (!mounted) return;
+    setState(() => _stickerBytes = renderedStickerBytes);
   }
 
   void _saveSticker() {
@@ -445,6 +503,60 @@ Future<Uint8List> cropStickerTransparentPadding(
       format: ui.ImageByteFormat.png,
     );
     return croppedBytes?.buffer.asUint8List() ?? stickerBytes;
+  } catch (_) {
+    return stickerBytes;
+  }
+}
+
+@visibleForTesting
+Future<Uint8List> applyStickerEffects(
+  Uint8List stickerBytes, {
+  bool whiteOutline = false,
+  double outlineThickness = 8,
+}) async {
+  if (!whiteOutline) return stickerBytes;
+  try {
+    final codec = await ui.instantiateImageCodec(stickerBytes);
+    final frame = await codec.getNextFrame();
+    final image = frame.image;
+    final radius = outlineThickness.clamp(1, 64).round();
+    final outputWidth = image.width + radius * 2;
+    final outputHeight = image.height + radius * 2;
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    final outlinePaint = Paint()
+      ..isAntiAlias = true
+      ..filterQuality = FilterQuality.high
+      ..colorFilter = const ColorFilter.mode(Colors.white, BlendMode.srcIn);
+    final originalPaint = Paint()
+      ..isAntiAlias = true
+      ..filterQuality = FilterQuality.high;
+
+    for (var dy = -radius; dy <= radius; dy += 1) {
+      for (var dx = -radius; dx <= radius; dx += 1) {
+        if (dx == 0 && dy == 0) continue;
+        if (dx * dx + dy * dy > radius * radius) continue;
+        canvas.drawImage(
+          image,
+          Offset((radius + dx).toDouble(), (radius + dy).toDouble()),
+          outlinePaint,
+        );
+      }
+    }
+    canvas.drawImage(
+      image,
+      Offset(radius.toDouble(), radius.toDouble()),
+      originalPaint,
+    );
+
+    final renderedImage = await recorder.endRecording().toImage(
+      outputWidth,
+      outputHeight,
+    );
+    final byteData = await renderedImage.toByteData(
+      format: ui.ImageByteFormat.png,
+    );
+    return byteData?.buffer.asUint8List() ?? stickerBytes;
   } catch (_) {
     return stickerBytes;
   }

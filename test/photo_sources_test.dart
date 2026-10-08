@@ -74,6 +74,29 @@ void main() {
     expect(queries, ['rose', 'daisy']);
   });
 
+  test('white outline follows generated sticker alpha shape', () async {
+    final stickerBytes = await _transparentPngWithFlowerBounds(
+      canvasSize: 24,
+      flowerBounds: const Rect.fromLTWH(8, 8, 8, 8),
+    );
+
+    final outlinedBytes = await applyStickerEffects(
+      stickerBytes,
+      whiteOutline: true,
+      outlineThickness: 4,
+    );
+    final codec = await ui.instantiateImageCodec(outlinedBytes);
+    final frame = await codec.getNextFrame();
+    final image = frame.image;
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+    final pixels = byteData!.buffer.asUint8List();
+
+    expect(image.width, 32);
+    expect(image.height, 32);
+    expect(_hasVisibleWhitePixel(pixels, image.width, image.height), isTrue);
+    expect(_alphaAt(pixels, image.width, 0, 0), 0);
+  });
+
   test('generated sticker transparent padding is cropped', () async {
     final stickerBytes = await _transparentPngWithFlowerBounds(
       canvasSize: 100,
@@ -100,4 +123,22 @@ Future<Uint8List> _transparentPngWithFlowerBounds({
   final image = await recorder.endRecording().toImage(canvasSize, canvasSize);
   final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
   return bytes!.buffer.asUint8List();
+}
+
+int _alphaAt(Uint8List pixels, int width, int x, int y) {
+  return pixels[((y * width + x) * 4) + 3];
+}
+
+bool _hasVisibleWhitePixel(Uint8List pixels, int width, int height) {
+  for (var y = 0; y < height; y += 1) {
+    for (var x = 0; x < width; x += 1) {
+      final index = (y * width + x) * 4;
+      final isWhite =
+          pixels[index] == 255 &&
+          pixels[index + 1] == 255 &&
+          pixels[index + 2] == 255;
+      if (isWhite && pixels[index + 3] > 0) return true;
+    }
+  }
+  return false;
 }
