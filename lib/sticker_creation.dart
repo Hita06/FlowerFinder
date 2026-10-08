@@ -266,23 +266,6 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
           ],
-          const SizedBox(height: 28),
-          const Text(
-            'Choose a sticker style',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 14),
-          ...stickers.entries.map(
-            (entry) => ListTile(
-              onTap: () => setState(() => selectedStickerId = entry.key),
-              leading: _StyleSwatch(stickerId: entry.key),
-              title: Text(entry.value.$1),
-              subtitle: Text(entry.value.$2),
-              trailing: selectedStickerId == entry.key
-                  ? const Icon(Icons.check_circle, color: Color(0xff2f6b4f))
-                  : const Icon(Icons.radio_button_unchecked),
-            ),
-          ),
           const SizedBox(height: 24),
           const Text(
             'Custom effects',
@@ -338,6 +321,23 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
                     setState(() => _dropShadowEnabled = value);
                     unawaited(_refreshStickerEffects());
                   },
+          ),
+          const SizedBox(height: 28),
+          const Text(
+            'Choose a sticker style',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 14),
+          ...stickers.entries.map(
+            (entry) => ListTile(
+              onTap: () => setState(() => selectedStickerId = entry.key),
+              leading: _StyleSwatch(stickerId: entry.key),
+              title: Text(entry.value.$1),
+              subtitle: Text(entry.value.$2),
+              trailing: selectedStickerId == entry.key
+                  ? const Icon(Icons.check_circle, color: Color(0xff2f6b4f))
+                  : const Icon(Icons.radio_button_unchecked),
+            ),
           ),
           const SizedBox(height: 24),
           FilledButton.icon(
