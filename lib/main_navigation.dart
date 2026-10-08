@@ -10,9 +10,10 @@ import 'user_profile.dart';
 import 'widgets/bottom_nav.dart';
 
 class MainNavigation extends StatefulWidget {
-  const MainNavigation({super.key, this.enableCamera = true});
+  const MainNavigation({super.key, this.enableCamera = true, this.account});
 
   final bool enableCamera;
+  final UserAccount? account;
 
   @override
   State<MainNavigation> createState() => _MainNavigationState();
@@ -25,15 +26,28 @@ class _MainNavigationState extends State<MainNavigation> {
   final _profileKey = GlobalKey<UserProfilePageState>();
   final List<SavedFlowerPhoto> _savedFlowerPhotos = [];
   final StickerStorage _stickerStorage = const StickerStorage();
-  final UserAccount _account = UserProfilePageState.defaultAccount;
   int currentIndex = 0;
   bool _stickersLoaded = false;
+
+  UserAccount get _account =>
+      widget.account ?? UserProfilePageState.defaultAccount;
 
   String get _accountStorageId => _account.email;
 
   @override
   void initState() {
     super.initState();
+    unawaited(_loadSavedStickers());
+  }
+
+  @override
+  void didUpdateWidget(covariant MainNavigation oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.account?.email == widget.account?.email) return;
+    setState(() {
+      _savedFlowerPhotos.clear();
+      _stickersLoaded = false;
+    });
     unawaited(_loadSavedStickers());
   }
 
