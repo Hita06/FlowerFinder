@@ -34,9 +34,7 @@ class _LoginPageState extends State<LoginPage> {
 
     if (email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter your email and password.'),
-        ),
+        const SnackBar(content: Text('Please enter your email and password.')),
       );
       return;
     }
@@ -52,12 +50,8 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       debugPrint('LOGIN SUCCESS');
-      debugPrint(
-        'User email: ${FirebaseAuth.instance.currentUser?.email}',
-      );
-      debugPrint(
-        'User UID: ${FirebaseAuth.instance.currentUser?.uid}',
-      );
+      debugPrint('User email: ${FirebaseAuth.instance.currentUser?.email}');
+      debugPrint('User UID: ${FirebaseAuth.instance.currentUser?.uid}');
 
       // AuthGate listens to FirebaseAuth.authStateChanges() and opens
       // MainNavigation with the signed-in Firebase account. Avoid pushing a
@@ -108,11 +102,9 @@ class _LoginPageState extends State<LoginPage> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     } catch (e) {
       debugPrint('LOGIN UNKNOWN ERROR: $e');
 
@@ -120,9 +112,7 @@ class _LoginPageState extends State<LoginPage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Something went wrong. Please try again.',
-          ),
+          content: Text('Something went wrong. Please try again.'),
         ),
       );
     } finally {
@@ -175,10 +165,7 @@ class _LoginPageState extends State<LoginPage> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 28,
-              vertical: 24,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -202,13 +189,10 @@ class _LoginPageState extends State<LoginPage> {
                 // Title
                 Text(
                   'Flower Finder',
-                  style: Theme.of(context)
-                      .textTheme
-                      .headlineMedium
-                      ?.copyWith(
-                        color: AppColors.darkGreen,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    color: AppColors.darkGreen,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
 
                 const SizedBox(height: 8),
@@ -227,9 +211,7 @@ class _LoginPageState extends State<LoginPage> {
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
                     labelText: 'Email',
-                    prefixIcon: const Icon(
-                      Icons.email_outlined,
-                    ),
+                    prefixIcon: const Icon(Icons.email_outlined),
                     filled: true,
                     fillColor: Colors.white,
                     border: OutlineInputBorder(
@@ -247,9 +229,7 @@ class _LoginPageState extends State<LoginPage> {
                   obscureText: obscurePassword,
                   decoration: InputDecoration(
                     labelText: 'Password',
-                    prefixIcon: const Icon(
-                      Icons.lock_outline,
-                    ),
+                    prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
                       icon: Icon(
                         obscurePassword
@@ -280,9 +260,7 @@ class _LoginPageState extends State<LoginPage> {
                     onPressed: showForgotPasswordPopup,
                     child: Text(
                       'Forgot Password?',
-                      style: TextStyle(
-                        color: AppColors.darkGreen,
-                      ),
+                      style: TextStyle(color: AppColors.darkGreen),
                     ),
                   ),
                 ),
@@ -298,8 +276,9 @@ class _LoginPageState extends State<LoginPage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.green,
                       foregroundColor: Colors.white,
-                      disabledBackgroundColor:
-                          AppColors.green.withOpacity(0.6),
+                      disabledBackgroundColor: AppColors.green.withValues(
+                        alpha: 0.6,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
@@ -325,8 +304,7 @@ class _LoginPageState extends State<LoginPage> {
                   children: [
                     Text(
                       "Don't have an account?",
-                      style:
-                          Theme.of(context).textTheme.bodyMedium,
+                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     TextButton(
                       onPressed: showSignUpPopup,
@@ -361,11 +339,9 @@ class SignUpPopup extends StatefulWidget {
 }
 
 class _SignUpPopupState extends State<SignUpPopup> {
-  final TextEditingController emailController =
-      TextEditingController();
+  final TextEditingController emailController = TextEditingController();
 
-  final TextEditingController passwordController =
-      TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
 
   final TextEditingController confirmPasswordController =
       TextEditingController();
@@ -398,9 +374,7 @@ class _SignUpPopupState extends State<SignUpPopup> {
     });
 
     // Empty fields
-    if (email.isEmpty ||
-        password.isEmpty ||
-        confirmPassword.isEmpty) {
+    if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
       setState(() {
         errorMessage = 'Please fill in all fields.';
       });
@@ -422,18 +396,11 @@ class _SignUpPopupState extends State<SignUpPopup> {
 
     try {
       final credential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+          .createUserWithEmailAndPassword(email: email, password: password);
 
       debugPrint('SIGN UP SUCCESS');
-      debugPrint(
-        'User email: ${credential.user?.email}',
-      );
-      debugPrint(
-        'User UID: ${credential.user?.uid}',
-      );
+      debugPrint('User email: ${credential.user?.email}');
+      debugPrint('User UID: ${credential.user?.uid}');
 
       if (!mounted) return;
 
@@ -443,19 +410,14 @@ class _SignUpPopupState extends State<SignUpPopup> {
       // AuthGate will react to the new Firebase session and open the main
       // application with the signed-in account.
     } on FirebaseAuthException catch (e) {
-      debugPrint(
-        'SIGN UP ERROR CODE: ${e.code}',
-      );
-      debugPrint(
-        'SIGN UP ERROR MESSAGE: ${e.message}',
-      );
+      debugPrint('SIGN UP ERROR CODE: ${e.code}');
+      debugPrint('SIGN UP ERROR MESSAGE: ${e.message}');
 
       String message;
 
       switch (e.code) {
         case 'weak-password':
-          message =
-              'Password is too weak. Please use a stronger password.';
+          message = 'Password is too weak. Please use a stronger password.';
           break;
 
         case 'email-already-in-use':
@@ -464,28 +426,23 @@ class _SignUpPopupState extends State<SignUpPopup> {
           break;
 
         case 'invalid-email':
-          message =
-              'Please enter a valid email address.';
+          message = 'Please enter a valid email address.';
           break;
 
         case 'operation-not-allowed':
-          message =
-              'Email/password sign-up is not enabled.';
+          message = 'Email/password sign-up is not enabled.';
           break;
 
         case 'too-many-requests':
-          message =
-              'Too many attempts. Please try again later.';
+          message = 'Too many attempts. Please try again later.';
           break;
 
         case 'network-request-failed':
-          message =
-              'Please check your internet connection.';
+          message = 'Please check your internet connection.';
           break;
 
         default:
-          message =
-              'Sign up failed. Please try again.';
+          message = 'Sign up failed. Please try again.';
       }
 
       if (!mounted) return;
@@ -495,15 +452,12 @@ class _SignUpPopupState extends State<SignUpPopup> {
         isCreatingAccount = false;
       });
     } catch (e) {
-      debugPrint(
-        'SIGN UP UNKNOWN ERROR: $e',
-      );
+      debugPrint('SIGN UP UNKNOWN ERROR: $e');
 
       if (!mounted) return;
 
       setState(() {
-        errorMessage =
-            'Something went wrong. Please try again.';
+        errorMessage = 'Something went wrong. Please try again.';
         isCreatingAccount = false;
       });
     }
@@ -519,15 +473,14 @@ class _SignUpPopupState extends State<SignUpPopup> {
 
         // Extra bottom padding keeps the popup above
         // the Android navigation bar.
-        bottom: MediaQuery.of(context).viewInsets.bottom +
+        bottom:
+            MediaQuery.of(context).viewInsets.bottom +
             MediaQuery.of(context).padding.bottom +
             35,
       ),
       decoration: const BoxDecoration(
         color: AppColors.cream,
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(30),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -537,9 +490,7 @@ class _SignUpPopupState extends State<SignUpPopup> {
             Container(
               width: 45,
               height: 5,
-              margin: const EdgeInsets.only(
-                bottom: 20,
-              ),
+              margin: const EdgeInsets.only(bottom: 20),
               decoration: BoxDecoration(
                 color: Colors.grey,
                 borderRadius: BorderRadius.circular(10),
@@ -549,13 +500,10 @@ class _SignUpPopupState extends State<SignUpPopup> {
             // Title
             Text(
               'Create Account',
-              style: Theme.of(context)
-                  .textTheme
-                  .headlineMedium
-                  ?.copyWith(
-                    color: AppColors.darkGreen,
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                color: AppColors.darkGreen,
+                fontWeight: FontWeight.bold,
+              ),
             ),
 
             const SizedBox(height: 8),
@@ -563,8 +511,7 @@ class _SignUpPopupState extends State<SignUpPopup> {
             Text(
               'Create your Flower Finder account',
               textAlign: TextAlign.center,
-              style:
-                  Theme.of(context).textTheme.bodyMedium,
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
 
             const SizedBox(height: 24),
@@ -572,8 +519,7 @@ class _SignUpPopupState extends State<SignUpPopup> {
             // Email
             TextField(
               controller: emailController,
-              keyboardType:
-                  TextInputType.emailAddress,
+              keyboardType: TextInputType.emailAddress,
               onChanged: (_) {
                 if (errorMessage != null) {
                   setState(() {
@@ -583,14 +529,11 @@ class _SignUpPopupState extends State<SignUpPopup> {
               },
               decoration: InputDecoration(
                 labelText: 'Email',
-                prefixIcon: const Icon(
-                  Icons.email_outlined,
-                ),
+                prefixIcon: const Icon(Icons.email_outlined),
                 filled: true,
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
-                  borderRadius:
-                      BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide.none,
                 ),
               ),
@@ -611,27 +554,21 @@ class _SignUpPopupState extends State<SignUpPopup> {
               },
               decoration: InputDecoration(
                 labelText: 'Password',
-                prefixIcon: const Icon(
-                  Icons.lock_outline,
-                ),
+                prefixIcon: const Icon(Icons.lock_outline),
                 suffixIcon: IconButton(
                   icon: Icon(
-                    obscurePassword
-                        ? Icons.visibility_off
-                        : Icons.visibility,
+                    obscurePassword ? Icons.visibility_off : Icons.visibility,
                   ),
                   onPressed: () {
                     setState(() {
-                      obscurePassword =
-                          !obscurePassword;
+                      obscurePassword = !obscurePassword;
                     });
                   },
                 ),
                 filled: true,
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
-                  borderRadius:
-                      BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide.none,
                 ),
               ),
@@ -652,9 +589,7 @@ class _SignUpPopupState extends State<SignUpPopup> {
               },
               decoration: InputDecoration(
                 labelText: 'Confirm Password',
-                prefixIcon: const Icon(
-                  Icons.lock_outline,
-                ),
+                prefixIcon: const Icon(Icons.lock_outline),
                 suffixIcon: IconButton(
                   icon: Icon(
                     obscureConfirmPassword
@@ -663,16 +598,14 @@ class _SignUpPopupState extends State<SignUpPopup> {
                   ),
                   onPressed: () {
                     setState(() {
-                      obscureConfirmPassword =
-                          !obscureConfirmPassword;
+                      obscureConfirmPassword = !obscureConfirmPassword;
                     });
                   },
                 ),
                 filled: true,
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
-                  borderRadius:
-                      BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide.none,
                 ),
               ),
@@ -686,25 +619,18 @@ class _SignUpPopupState extends State<SignUpPopup> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  borderRadius:
-                      BorderRadius.circular(12),
+                  color: Colors.red.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(
-                      Icons.error_outline,
-                      color: Colors.red,
-                    ),
+                    const Icon(Icons.error_outline, color: Colors.red),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         errorMessage!,
-                        style: const TextStyle(
-                          color: Colors.red,
-                        ),
+                        style: const TextStyle(color: Colors.red),
                       ),
                     ),
                   ],
@@ -719,35 +645,27 @@ class _SignUpPopupState extends State<SignUpPopup> {
               width: double.infinity,
               height: 52,
               child: ElevatedButton(
-                onPressed: isCreatingAccount
-                    ? null
-                    : createAccount,
+                onPressed: isCreatingAccount ? null : createAccount,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      AppColors.green,
-                  foregroundColor:
-                      Colors.white,
-                  disabledBackgroundColor:
-                      AppColors.green.withOpacity(0.6),
-                  shape:
-                      RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(16),
+                  backgroundColor: AppColors.green,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: AppColors.green.withValues(
+                    alpha: 0.6,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
                 ),
                 child: isCreatingAccount
                     ? const SizedBox(
                         height: 22,
                         width: 22,
-                        child:
-                            CircularProgressIndicator(
+                        child: CircularProgressIndicator(
                           strokeWidth: 2,
                           color: Colors.white,
                         ),
                       )
-                    : const Text(
-                        'Create Account',
-                      ),
+                    : const Text('Create Account'),
               ),
             ),
 
@@ -762,9 +680,7 @@ class _SignUpPopupState extends State<SignUpPopup> {
                     },
               child: Text(
                 'Close',
-                style: TextStyle(
-                  color: AppColors.darkGreen,
-                ),
+                style: TextStyle(color: AppColors.darkGreen),
               ),
             ),
           ],
@@ -782,14 +698,11 @@ class ForgotPasswordPopup extends StatefulWidget {
   const ForgotPasswordPopup({super.key});
 
   @override
-  State<ForgotPasswordPopup> createState() =>
-      _ForgotPasswordPopupState();
+  State<ForgotPasswordPopup> createState() => _ForgotPasswordPopupState();
 }
 
-class _ForgotPasswordPopupState
-    extends State<ForgotPasswordPopup> {
-  final TextEditingController emailController =
-      TextEditingController();
+class _ForgotPasswordPopupState extends State<ForgotPasswordPopup> {
+  final TextEditingController emailController = TextEditingController();
 
   bool isSending = false;
 
@@ -814,8 +727,7 @@ class _ForgotPasswordPopupState
 
     if (email.isEmpty) {
       setState(() {
-        errorMessage =
-            'Please enter your email address.';
+        errorMessage = 'Please enter your email address.';
       });
       return;
     }
@@ -825,17 +737,10 @@ class _ForgotPasswordPopupState
     });
 
     try {
-      await FirebaseAuth.instance
-          .sendPasswordResetEmail(
-        email: email,
-      );
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
 
-      debugPrint(
-        'PASSWORD RESET EMAIL SENT',
-      );
-      debugPrint(
-        'Email: $email',
-      );
+      debugPrint('PASSWORD RESET EMAIL SENT');
+      debugPrint('Email: $email');
 
       if (!mounted) return;
 
@@ -843,53 +748,40 @@ class _ForgotPasswordPopupState
       Navigator.of(context).pop();
 
       // Wait for popup animation
-      await Future.delayed(
-        const Duration(milliseconds: 250),
-      );
+      await Future.delayed(const Duration(milliseconds: 250));
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Password reset email sent. Check your inbox.',
-          ),
+          content: Text('Password reset email sent. Check your inbox.'),
         ),
       );
     } on FirebaseAuthException catch (e) {
-      debugPrint(
-        'PASSWORD RESET ERROR CODE: ${e.code}',
-      );
-      debugPrint(
-        'PASSWORD RESET ERROR MESSAGE: ${e.message}',
-      );
+      debugPrint('PASSWORD RESET ERROR CODE: ${e.code}');
+      debugPrint('PASSWORD RESET ERROR MESSAGE: ${e.message}');
 
       String message;
 
       switch (e.code) {
         case 'user-not-found':
-          message =
-              'No account found with this email.';
+          message = 'No account found with this email.';
           break;
 
         case 'invalid-email':
-          message =
-              'Please enter a valid email address.';
+          message = 'Please enter a valid email address.';
           break;
 
         case 'network-request-failed':
-          message =
-              'Please check your internet connection.';
+          message = 'Please check your internet connection.';
           break;
 
         case 'too-many-requests':
-          message =
-              'Too many attempts. Please try again later.';
+          message = 'Too many attempts. Please try again later.';
           break;
 
         default:
-          message =
-              'Could not send password reset email.';
+          message = 'Could not send password reset email.';
       }
 
       if (!mounted) return;
@@ -899,15 +791,12 @@ class _ForgotPasswordPopupState
         isSending = false;
       });
     } catch (e) {
-      debugPrint(
-        'PASSWORD RESET UNKNOWN ERROR: $e',
-      );
+      debugPrint('PASSWORD RESET UNKNOWN ERROR: $e');
 
       if (!mounted) return;
 
       setState(() {
-        errorMessage =
-            'Something went wrong. Please try again.';
+        errorMessage = 'Something went wrong. Please try again.';
         isSending = false;
       });
     }
@@ -923,15 +812,14 @@ class _ForgotPasswordPopupState
 
         // Extra bottom padding keeps the popup above
         // the Android navigation bar.
-        bottom: MediaQuery.of(context).viewInsets.bottom +
+        bottom:
+            MediaQuery.of(context).viewInsets.bottom +
             MediaQuery.of(context).padding.bottom +
             35,
       ),
       decoration: const BoxDecoration(
         color: AppColors.cream,
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(30),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -941,26 +829,20 @@ class _ForgotPasswordPopupState
             Container(
               width: 45,
               height: 5,
-              margin: const EdgeInsets.only(
-                bottom: 20,
-              ),
+              margin: const EdgeInsets.only(bottom: 20),
               decoration: BoxDecoration(
                 color: Colors.grey,
-                borderRadius:
-                    BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(10),
               ),
             ),
 
             // Title
             Text(
               'Reset Password',
-              style: Theme.of(context)
-                  .textTheme
-                  .headlineMedium
-                  ?.copyWith(
-                    color: AppColors.darkGreen,
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                color: AppColors.darkGreen,
+                fontWeight: FontWeight.bold,
+              ),
             ),
 
             const SizedBox(height: 8),
@@ -969,8 +851,7 @@ class _ForgotPasswordPopupState
               'Enter your email and we will send you a '
               'password reset link.',
               textAlign: TextAlign.center,
-              style:
-                  Theme.of(context).textTheme.bodyMedium,
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
 
             const SizedBox(height: 24),
@@ -978,8 +859,7 @@ class _ForgotPasswordPopupState
             // Email
             TextField(
               controller: emailController,
-              keyboardType:
-                  TextInputType.emailAddress,
+              keyboardType: TextInputType.emailAddress,
               onChanged: (_) {
                 if (errorMessage != null) {
                   setState(() {
@@ -989,14 +869,11 @@ class _ForgotPasswordPopupState
               },
               decoration: InputDecoration(
                 labelText: 'Email',
-                prefixIcon: const Icon(
-                  Icons.email_outlined,
-                ),
+                prefixIcon: const Icon(Icons.email_outlined),
                 filled: true,
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
-                  borderRadius:
-                      BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide.none,
                 ),
               ),
@@ -1010,25 +887,18 @@ class _ForgotPasswordPopupState
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  borderRadius:
-                      BorderRadius.circular(12),
+                  color: Colors.red.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(
-                      Icons.error_outline,
-                      color: Colors.red,
-                    ),
+                    const Icon(Icons.error_outline, color: Colors.red),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         errorMessage!,
-                        style: const TextStyle(
-                          color: Colors.red,
-                        ),
+                        style: const TextStyle(color: Colors.red),
                       ),
                     ),
                   ],
@@ -1043,34 +913,27 @@ class _ForgotPasswordPopupState
               width: double.infinity,
               height: 52,
               child: ElevatedButton(
-                onPressed:
-                    isSending ? null : sendResetEmail,
+                onPressed: isSending ? null : sendResetEmail,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      AppColors.green,
-                  foregroundColor:
-                      Colors.white,
-                  disabledBackgroundColor:
-                      AppColors.green.withOpacity(0.6),
-                  shape:
-                      RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(16),
+                  backgroundColor: AppColors.green,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: AppColors.green.withValues(
+                    alpha: 0.6,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
                 ),
                 child: isSending
                     ? const SizedBox(
                         height: 22,
                         width: 22,
-                        child:
-                            CircularProgressIndicator(
+                        child: CircularProgressIndicator(
                           strokeWidth: 2,
                           color: Colors.white,
                         ),
                       )
-                    : const Text(
-                        'Send Reset Link',
-                      ),
+                    : const Text('Send Reset Link'),
               ),
             ),
 
@@ -1085,9 +948,7 @@ class _ForgotPasswordPopupState
                     },
               child: Text(
                 'Close',
-                style: TextStyle(
-                  color: AppColors.darkGreen,
-                ),
+                style: TextStyle(color: AppColors.darkGreen),
               ),
             ),
           ],
