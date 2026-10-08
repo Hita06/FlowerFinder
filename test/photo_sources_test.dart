@@ -144,6 +144,39 @@ void main() {
     },
   );
 
+  test('drop shadow strength increases shadow footprint', () async {
+    final stickerBytes = await _transparentPngWithFlowerBounds(
+      canvasSize: 24,
+      flowerBounds: const Rect.fromLTWH(6, 6, 12, 12),
+    );
+
+    final softShadowBytes = await applyStickerEffects(
+      stickerBytes,
+      dropShadow: true,
+      dropShadowStrength: 0.25,
+    );
+    final strongShadowBytes = await applyStickerEffects(
+      stickerBytes,
+      dropShadow: true,
+      dropShadowStrength: 1,
+    );
+    final softShadow = await _decodeRawRgba(softShadowBytes);
+    final strongShadow = await _decodeRawRgba(strongShadowBytes);
+
+    expect(strongShadow.width, greaterThan(softShadow.width));
+    expect(strongShadow.height, greaterThan(softShadow.height));
+    expect(
+      _darkPixelCount(
+        strongShadow.pixels,
+        strongShadow.width,
+        strongShadow.height,
+      ),
+      greaterThan(
+        _darkPixelCount(softShadow.pixels, softShadow.width, softShadow.height),
+      ),
+    );
+  });
+
   test('generated sticker transparent padding is cropped', () async {
     final stickerBytes = await _transparentPngWithFlowerBounds(
       canvasSize: 100,
@@ -231,4 +264,19 @@ class _RawImage {
   final int width;
   final int height;
   final Uint8List pixels;
+}
+
+int _darkPixelCount(Uint8List pixels, int width, int height) {
+  var count = 0;
+  for (var y = 0; y < height; y += 1) {
+    for (var x = 0; x < width; x += 1) {
+      final offset = (y * width + x) * 4;
+      final red = pixels[offset];
+      final green = pixels[offset + 1];
+      final blue = pixels[offset + 2];
+      final alpha = pixels[offset + 3];
+      if (alpha > 10 && red < 80 && green < 80 && blue < 80) count += 1;
+    }
+  }
+  return count;
 }

@@ -129,6 +129,7 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
   double _outlineThickness = 8;
   bool _innerShadowEnabled = false;
   bool _dropShadowEnabled = false;
+  double _dropShadowStrength = 0.6;
   bool _isGenerating = false;
   String? _errorMessage;
 
@@ -313,7 +314,7 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Drop Shadow'),
-            subtitle: const Text('Adds a soft shadow behind the sticker'),
+            subtitle: Text('Strength: ${(_dropShadowStrength * 100).round()}%'),
             value: _dropShadowEnabled,
             onChanged: _baseStickerBytes == null || _busy
                 ? null
@@ -321,6 +322,27 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
                     setState(() => _dropShadowEnabled = value);
                     unawaited(_refreshStickerEffects());
                   },
+          ),
+          Slider(
+            value: _dropShadowStrength,
+            min: 0.25,
+            max: 1,
+            divisions: 15,
+            label: '${(_dropShadowStrength * 100).round()}%',
+            onChanged: !_dropShadowEnabled || _baseStickerBytes == null || _busy
+                ? null
+                : (value) {
+                    setState(() => _dropShadowStrength = value);
+                    unawaited(_refreshStickerEffects());
+                  },
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: _baseStickerBytes == null || _busy
+                ? null
+                : _applyClassicStickerPreset,
+            icon: const Icon(Icons.auto_fix_high),
+            label: const Text('Use classic sticker preset'),
           ),
           const SizedBox(height: 28),
           const Text(
@@ -377,6 +399,7 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
               outlineThickness: _outlineThickness,
               innerShadow: _innerShadowEnabled,
               dropShadow: _dropShadowEnabled,
+              dropShadowStrength: _dropShadowStrength,
             );
       if (!mounted) return;
       setState(() {
@@ -403,9 +426,21 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
       outlineThickness: _outlineThickness,
       innerShadow: _innerShadowEnabled,
       dropShadow: _dropShadowEnabled,
+      dropShadowStrength: _dropShadowStrength,
     );
     if (!mounted) return;
     setState(() => _stickerBytes = renderedStickerBytes);
+  }
+
+  void _applyClassicStickerPreset() {
+    setState(() {
+      _whiteOutlineEnabled = true;
+      _outlineThickness = 10;
+      _innerShadowEnabled = false;
+      _dropShadowEnabled = true;
+      _dropShadowStrength = 0.75;
+    });
+    unawaited(_refreshStickerEffects());
   }
 
   void _saveSticker() {
@@ -545,6 +580,7 @@ Future<Uint8List> applyStickerEffects(
   double outlineThickness = 8,
   bool innerShadow = false,
   bool dropShadow = false,
+  double dropShadowStrength = 0.6,
 }) async {
   if (!whiteOutline && !innerShadow && !dropShadow) return stickerBytes;
   try {
@@ -557,9 +593,10 @@ Future<Uint8List> applyStickerEffects(
     final outlineRadius = whiteOutline
         ? outlineThickness.clamp(1, 64).round()
         : 0;
-    const dropShadowBlur = 8;
-    const dropShadowDx = 5;
-    const dropShadowDy = 7;
+    final shadowStrength = dropShadowStrength.clamp(0.25, 1.0);
+    final dropShadowBlur = (6 + shadowStrength * 10).round();
+    final dropShadowDx = (4 + shadowStrength * 5).round();
+    final dropShadowDy = (5 + shadowStrength * 7).round();
     final shadowMargin = dropShadow
         ? dropShadowBlur +
               (dropShadowDx.abs() > dropShadowDy.abs()
@@ -582,7 +619,7 @@ Future<Uint8List> applyStickerEffects(
       ..isAntiAlias = true
       ..filterQuality = FilterQuality.high
       ..colorFilter = ColorFilter.mode(
-        Colors.black.withValues(alpha: 0.36),
+        Colors.black.withValues(alpha: 0.28 + shadowStrength * 0.42),
         BlendMode.srcIn,
       )
       ..imageFilter = ui.ImageFilter.blur(
