@@ -73,14 +73,6 @@ class _ScannerPageState extends State<ScannerPage> {
 
       final newController = CameraController(
         camera,
-<<<<<<< HEAD
-        ResolutionPreset.high,
-        enableAudio: false,
-      );
-
-      await controller!.initialize();
-      await controller!.setFocusMode(FocusMode.auto);
-=======
         ResolutionPreset.veryHigh,
         enableAudio: false,
       );
@@ -105,7 +97,6 @@ class _ScannerPageState extends State<ScannerPage> {
       } catch (_) {
         // Some devices may not support changing focus mode.
       }
->>>>>>> 3cad6541d5a666a3f89056bba0c9e0cb7e77bf66
 
       if (!mounted) return;
 
