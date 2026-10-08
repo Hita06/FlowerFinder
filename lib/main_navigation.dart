@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'scanner_page.dart';
 import 'sticker_creation.dart';
+import 'sticker_storage.dart';
 import 'theme.dart';
 import 'user_profile.dart';
 import 'widgets/bottom_nav.dart';
@@ -21,7 +24,41 @@ class _MainNavigationState extends State<MainNavigation> {
   final _scannerKey = GlobalKey();
   final _profileKey = GlobalKey<UserProfilePageState>();
   final List<SavedFlowerPhoto> _savedFlowerPhotos = [];
+  final StickerStorage _stickerStorage = const StickerStorage();
+  final UserAccount _account = UserProfilePageState.defaultAccount;
   int currentIndex = 0;
+  bool _stickersLoaded = false;
+
+  String get _accountStorageId => _account.email;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadSavedStickers());
+  }
+
+  Future<void> _loadSavedStickers() async {
+    final savedStickers = await _stickerStorage.loadStickers(_accountStorageId);
+    if (!mounted) return;
+    setState(() {
+      _savedFlowerPhotos
+        ..clear()
+        ..addAll(savedStickers);
+      _stickersLoaded = true;
+    });
+  }
+
+  Future<void> _persistSavedStickers() async {
+    await _stickerStorage.saveStickers(_accountStorageId, _savedFlowerPhotos);
+  }
+
+  void _addSavedSticker(SavedFlowerPhoto photo) {
+    setState(() {
+      _savedFlowerPhotos.add(photo);
+      currentIndex = profileTab;
+    });
+    unawaited(_persistSavedStickers());
+  }
 
   Future<void> _openStickerCreation() async {
     await Navigator.of(context).push<void>(
@@ -29,15 +66,13 @@ class _MainNavigationState extends State<MainNavigation> {
         builder: (context) => StickerCreationPage(
           photos: _savedFlowerPhotos,
           onSaved: (photo, stickerBytes, stickerId) {
-            setState(() {
-              _savedFlowerPhotos.add(
-                photo.copyWith(
-                  stickerId: stickerId,
-                  stickerBytes: stickerBytes,
-                  createdAt: DateTime.now(),
-                ),
-              );
-            });
+            _addSavedSticker(
+              photo.copyWith(
+                stickerId: stickerId,
+                stickerBytes: stickerBytes,
+                createdAt: DateTime.now(),
+              ),
+            );
           },
         ),
       ),
@@ -45,10 +80,7 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 
   void _saveScannerSticker(SavedFlowerPhoto photo) {
-    setState(() {
-      _savedFlowerPhotos.add(photo);
-      currentIndex = profileTab;
-    });
+    _addSavedSticker(photo);
   }
 
   @override
@@ -71,16 +103,15 @@ class _MainNavigationState extends State<MainNavigation> {
       ),
       _ProfileTab(
         profileKey: _profileKey,
+        account: _account,
         savedFlowerPhotos: _savedFlowerPhotos,
+        stickersLoaded: _stickersLoaded,
         onCreateSticker: _openStickerCreation,
       ),
     ];
 
     return Scaffold(
-      body: IndexedStack(
-        index: currentIndex,
-        children: pages,
-      ),
+      body: IndexedStack(index: currentIndex, children: pages),
       bottomNavigationBar: FlowerBottomNav(
         currentIndex: currentIndex,
         onTap: (index) {
@@ -94,12 +125,16 @@ class _MainNavigationState extends State<MainNavigation> {
 class _ProfileTab extends StatelessWidget {
   const _ProfileTab({
     required this.profileKey,
+    required this.account,
     required this.savedFlowerPhotos,
+    required this.stickersLoaded,
     required this.onCreateSticker,
   });
 
   final GlobalKey<UserProfilePageState> profileKey;
+  final UserAccount account;
   final List<SavedFlowerPhoto> savedFlowerPhotos;
+  final bool stickersLoaded;
   final VoidCallback onCreateSticker;
 
   @override
@@ -122,10 +157,16 @@ class _ProfileTab extends StatelessWidget {
           ),
         ],
       ),
-      body: UserProfilePage(
-        key: profileKey,
-        savedFlowerPhotos: savedFlowerPhotos,
-        onCreateSticker: onCreateSticker,
+      body: Stack(
+        children: [
+          UserProfilePage(
+            key: profileKey,
+            account: account,
+            savedFlowerPhotos: savedFlowerPhotos,
+            onCreateSticker: onCreateSticker,
+          ),
+          if (!stickersLoaded) const LinearProgressIndicator(),
+        ],
       ),
     );
   }
@@ -146,10 +187,7 @@ class _ComingSoonPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.cream,
-      appBar: AppBar(
-        centerTitle: true,
-        title: Text(title),
-      ),
+      appBar: AppBar(centerTitle: true, title: Text(title)),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -160,10 +198,9 @@ class _ComingSoonPage extends StatelessWidget {
               const SizedBox(height: 16),
               Text(
                 title,
-                style: Theme.of(context)
-                    .textTheme
-                    .headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.w800),
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: 8),
               Text(

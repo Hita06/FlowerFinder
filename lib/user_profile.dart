@@ -154,9 +154,9 @@ class UserProfilePage extends StatefulWidget {
 
 class UserProfilePageState extends State<UserProfilePage> {
   late final UserAccount _account = _copyAccount(
-    widget.account ?? _defaultAccount,
+    widget.account ?? defaultAccount,
   );
-  static final UserAccount _defaultAccount = UserAccount(
+  static final UserAccount defaultAccount = UserAccount(
     name: 'New Flower Finder User',
     username: 'flower_finder_user',
     email: 'user@example.com',
