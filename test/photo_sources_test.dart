@@ -97,6 +97,28 @@ void main() {
     expect(_alphaAt(pixels, image.width, 0, 0), 0);
   });
 
+  test('inner shadow keeps transparency and darkens sticker edges', () async {
+    final stickerBytes = await _transparentPngWithFlowerBounds(
+      canvasSize: 24,
+      flowerBounds: const Rect.fromLTWH(6, 6, 12, 12),
+    );
+
+    final shadowedBytes = await applyStickerEffects(
+      stickerBytes,
+      innerShadow: true,
+    );
+    final original = await _decodeRawRgba(stickerBytes);
+    final shadowed = await _decodeRawRgba(shadowedBytes);
+
+    expect(shadowed.width, original.width);
+    expect(shadowed.height, original.height);
+    expect(_alphaAt(shadowed.pixels, shadowed.width, 0, 0), 0);
+    expect(
+      _brightnessAt(shadowed.pixels, shadowed.width, 6, 6),
+      lessThan(_brightnessAt(original.pixels, original.width, 6, 6)),
+    );
+  });
+
   test('generated sticker transparent padding is cropped', () async {
     final stickerBytes = await _transparentPngWithFlowerBounds(
       canvasSize: 100,
@@ -141,4 +163,33 @@ bool _hasVisibleWhitePixel(Uint8List pixels, int width, int height) {
     }
   }
   return false;
+}
+
+Future<_RawImage> _decodeRawRgba(Uint8List bytes) async {
+  final codec = await ui.instantiateImageCodec(bytes);
+  final frame = await codec.getNextFrame();
+  final image = frame.image;
+  final byteData = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+  return _RawImage(
+    width: image.width,
+    height: image.height,
+    pixels: byteData!.buffer.asUint8List(),
+  );
+}
+
+int _brightnessAt(Uint8List pixels, int width, int x, int y) {
+  final index = (y * width + x) * 4;
+  return pixels[index] + pixels[index + 1] + pixels[index + 2];
+}
+
+class _RawImage {
+  const _RawImage({
+    required this.width,
+    required this.height,
+    required this.pixels,
+  });
+
+  final int width;
+  final int height;
+  final Uint8List pixels;
 }

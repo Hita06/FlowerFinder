@@ -127,6 +127,7 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
   Uint8List? _stickerBytes;
   bool _whiteOutlineEnabled = false;
   double _outlineThickness = 8;
+  bool _innerShadowEnabled = false;
   bool _isGenerating = false;
   String? _errorMessage;
 
@@ -313,6 +314,18 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
                     unawaited(_refreshStickerEffects());
                   },
           ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Inner Shadow'),
+            subtitle: const Text('Softly darkens the inside edge'),
+            value: _innerShadowEnabled,
+            onChanged: _baseStickerBytes == null || _busy
+                ? null
+                : (value) {
+                    setState(() => _innerShadowEnabled = value);
+                    unawaited(_refreshStickerEffects());
+                  },
+          ),
           const SizedBox(height: 24),
           FilledButton.icon(
             onPressed: _stickerBytes == null || _busy || _loadingPhotos
@@ -349,6 +362,7 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
               croppedStickerBytes,
               whiteOutline: _whiteOutlineEnabled,
               outlineThickness: _outlineThickness,
+              innerShadow: _innerShadowEnabled,
             );
       if (!mounted) return;
       setState(() {
@@ -373,6 +387,7 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
       baseStickerBytes,
       whiteOutline: _whiteOutlineEnabled,
       outlineThickness: _outlineThickness,
+      innerShadow: _innerShadowEnabled,
     );
     if (!mounted) return;
     setState(() => _stickerBytes = renderedStickerBytes);
@@ -513,13 +528,17 @@ Future<Uint8List> applyStickerEffects(
   Uint8List stickerBytes, {
   bool whiteOutline = false,
   double outlineThickness = 8,
+  bool innerShadow = false,
 }) async {
-  if (!whiteOutline) return stickerBytes;
+  if (!whiteOutline && !innerShadow) return stickerBytes;
   try {
     final codec = await ui.instantiateImageCodec(stickerBytes);
     final frame = await codec.getNextFrame();
-    final image = frame.image;
-    final radius = outlineThickness.clamp(1, 64).round();
+    var image = frame.image;
+    if (innerShadow) {
+      image = await _drawInnerShadow(image);
+    }
+    final radius = whiteOutline ? outlineThickness.clamp(1, 64).round() : 0;
     final outputWidth = image.width + radius * 2;
     final outputHeight = image.height + radius * 2;
     final recorder = ui.PictureRecorder();
@@ -532,15 +551,17 @@ Future<Uint8List> applyStickerEffects(
       ..isAntiAlias = true
       ..filterQuality = FilterQuality.high;
 
-    for (var dy = -radius; dy <= radius; dy += 1) {
-      for (var dx = -radius; dx <= radius; dx += 1) {
-        if (dx == 0 && dy == 0) continue;
-        if (dx * dx + dy * dy > radius * radius) continue;
-        canvas.drawImage(
-          image,
-          Offset((radius + dx).toDouble(), (radius + dy).toDouble()),
-          outlinePaint,
-        );
+    if (whiteOutline) {
+      for (var dy = -radius; dy <= radius; dy += 1) {
+        for (var dx = -radius; dx <= radius; dx += 1) {
+          if (dx == 0 && dy == 0) continue;
+          if (dx * dx + dy * dy > radius * radius) continue;
+          canvas.drawImage(
+            image,
+            Offset((radius + dx).toDouble(), (radius + dy).toDouble()),
+            outlinePaint,
+          );
+        }
       }
     }
     canvas.drawImage(
@@ -560,6 +581,36 @@ Future<Uint8List> applyStickerEffects(
   } catch (_) {
     return stickerBytes;
   }
+}
+
+Future<ui.Image> _drawInnerShadow(ui.Image image) async {
+  final recorder = ui.PictureRecorder();
+  final canvas = Canvas(recorder);
+  final bounds = Rect.fromLTWH(
+    0,
+    0,
+    image.width.toDouble(),
+    image.height.toDouble(),
+  );
+  final originalPaint = Paint()
+    ..isAntiAlias = true
+    ..filterQuality = FilterQuality.high;
+  final shadowPaint = Paint()
+    ..isAntiAlias = true
+    ..filterQuality = FilterQuality.high
+    ..colorFilter = ColorFilter.mode(
+      Colors.black.withValues(alpha: 0.38),
+      BlendMode.srcIn,
+    )
+    ..imageFilter = ui.ImageFilter.blur(sigmaX: 5, sigmaY: 5);
+
+  canvas.saveLayer(bounds, Paint());
+  canvas.drawImage(image, Offset.zero, originalPaint);
+  canvas.saveLayer(bounds, Paint()..blendMode = BlendMode.srcATop);
+  canvas.drawImage(image, const Offset(-4, -4), shadowPaint);
+  canvas.restore();
+  canvas.restore();
+  return recorder.endRecording().toImage(image.width, image.height);
 }
 
 class _StickerPreview extends StatelessWidget {
