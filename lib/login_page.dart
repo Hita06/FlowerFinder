@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import 'main_navigation.dart';
 import 'theme.dart';
 
 class LoginPage extends StatefulWidget {
@@ -60,14 +59,14 @@ class _LoginPageState extends State<LoginPage> {
         'User UID: ${FirebaseAuth.instance.currentUser?.uid}',
       );
 
+      // AuthGate listens to FirebaseAuth.authStateChanges() and opens
+      // MainNavigation with the signed-in Firebase account. Avoid pushing a
+      // default MainNavigation here, otherwise Profile falls back to the
+      // default account and uses a separate sticker storage file.
       if (!mounted) return;
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const MainNavigation(),
-        ),
-      );
+      setState(() {
+        isLoading = false;
+      });
     } on FirebaseAuthException catch (e) {
       debugPrint('LOGIN ERROR CODE: ${e.code}');
       debugPrint('LOGIN ERROR MESSAGE: ${e.message}');
@@ -441,19 +440,8 @@ class _SignUpPopupState extends State<SignUpPopup> {
       // Close popup
       Navigator.of(context).pop();
 
-      // Wait for popup animation to finish
-      await Future.delayed(
-        const Duration(milliseconds: 250),
-      );
-
-      if (!mounted) return;
-
-      // Open main application
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => const MainNavigation(),
-        ),
-      );
+      // AuthGate will react to the new Firebase session and open the main
+      // application with the signed-in account.
     } on FirebaseAuthException catch (e) {
       debugPrint(
         'SIGN UP ERROR CODE: ${e.code}',
