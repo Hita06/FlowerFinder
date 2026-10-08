@@ -32,6 +32,7 @@ class _MainNavigationState extends State<MainNavigation> {
             setState(() {
               _savedFlowerPhotos.add(
                 photo.copyWith(
+                  image: MemoryImage(stickerBytes),
                   stickerId: stickerId,
                   stickerBytes: stickerBytes,
                   createdAt: DateTime.now(),
@@ -49,6 +50,30 @@ class _MainNavigationState extends State<MainNavigation> {
       _savedFlowerPhotos.add(photo);
       currentIndex = profileTab;
     });
+  }
+
+  Future<void> _openStickerEditor(SavedFlowerPhoto sticker) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (context) => StickerCreationPage(
+          photos: [sticker],
+          initialSticker: sticker,
+          onSaved: (photo, stickerBytes, stickerId) {
+            setState(() {
+              final index = _savedFlowerPhotos.indexOf(sticker);
+              if (index == -1) return;
+              _savedFlowerPhotos[index] = sticker.copyWith(
+                image: MemoryImage(stickerBytes),
+                stickerId: stickerId,
+                stickerBytes: stickerBytes,
+                createdAt: DateTime.now(),
+              );
+              currentIndex = profileTab;
+            });
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -73,14 +98,14 @@ class _MainNavigationState extends State<MainNavigation> {
         profileKey: _profileKey,
         savedFlowerPhotos: _savedFlowerPhotos,
         onCreateSticker: _openStickerCreation,
+        onEditSticker: (sticker) {
+          _openStickerEditor(sticker);
+        },
       ),
     ];
 
     return Scaffold(
-      body: IndexedStack(
-        index: currentIndex,
-        children: pages,
-      ),
+      body: IndexedStack(index: currentIndex, children: pages),
       bottomNavigationBar: FlowerBottomNav(
         currentIndex: currentIndex,
         onTap: (index) {
@@ -96,11 +121,13 @@ class _ProfileTab extends StatelessWidget {
     required this.profileKey,
     required this.savedFlowerPhotos,
     required this.onCreateSticker,
+    required this.onEditSticker,
   });
 
   final GlobalKey<UserProfilePageState> profileKey;
   final List<SavedFlowerPhoto> savedFlowerPhotos;
   final VoidCallback onCreateSticker;
+  final ValueChanged<SavedFlowerPhoto> onEditSticker;
 
   @override
   Widget build(BuildContext context) {
@@ -126,6 +153,7 @@ class _ProfileTab extends StatelessWidget {
         key: profileKey,
         savedFlowerPhotos: savedFlowerPhotos,
         onCreateSticker: onCreateSticker,
+        onEditSticker: onEditSticker,
       ),
     );
   }
@@ -146,10 +174,7 @@ class _ComingSoonPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.cream,
-      appBar: AppBar(
-        centerTitle: true,
-        title: Text(title),
-      ),
+      appBar: AppBar(centerTitle: true, title: Text(title)),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -160,10 +185,9 @@ class _ComingSoonPage extends StatelessWidget {
               const SizedBox(height: 16),
               Text(
                 title,
-                style: Theme.of(context)
-                    .textTheme
-                    .headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.w800),
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
