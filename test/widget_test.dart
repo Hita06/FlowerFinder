@@ -355,4 +355,88 @@ void main() {
     expect(shareButton.onPressed, isNull);
     expect(diaryButton.onPressed, isNull);
   });
+
+  testWidgets('profile confirms before deleting a saved sticker', (
+    WidgetTester tester,
+  ) async {
+    final stickerBytes = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    );
+    final sticker = SavedFlowerPhoto(
+      image: MemoryImage(stickerBytes),
+      label: 'Delete rose',
+      stickerId: 'delete-sticker',
+      stickerBytes: stickerBytes,
+    );
+    SavedFlowerPhoto? deletedSticker;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: UserProfilePage(
+          savedFlowerPhotos: [sticker],
+          onDeleteSticker: (value) => deletedSticker = value,
+        ),
+      ),
+    );
+
+    await tester.tap(find.widgetWithText(TextButton, 'Manage'));
+    await tester.pumpAndSettle();
+    expect(find.text('Delete rose'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Delete sticker'));
+    await tester.pumpAndSettle();
+    expect(find.text('Delete sticker?'), findsOneWidget);
+    expect(deletedSticker, isNull);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+    await tester.pumpAndSettle();
+
+    expect(deletedSticker, same(sticker));
+    expect(find.text('Delete sticker?'), findsNothing);
+  });
+
+  testWidgets('profile exposes reorder callback from manage mode', (
+    WidgetTester tester,
+  ) async {
+    final stickerBytes = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    );
+    final firstSticker = SavedFlowerPhoto(
+      image: MemoryImage(stickerBytes),
+      label: 'First sticker',
+      stickerId: 'first-sticker',
+      stickerBytes: stickerBytes,
+    );
+    final secondSticker = SavedFlowerPhoto(
+      image: MemoryImage(stickerBytes),
+      label: 'Second sticker',
+      stickerId: 'second-sticker',
+      stickerBytes: stickerBytes,
+    );
+    int? oldReorderIndex;
+    int? newReorderIndex;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: UserProfilePage(
+          savedFlowerPhotos: [firstSticker, secondSticker],
+          onReorderStickers: (oldIndex, newIndex) {
+            oldReorderIndex = oldIndex;
+            newReorderIndex = newIndex;
+          },
+        ),
+      ),
+    );
+
+    await tester.tap(find.widgetWithText(TextButton, 'Manage'));
+    await tester.pumpAndSettle();
+
+    final list = tester.widget<ReorderableListView>(
+      find.byType(ReorderableListView),
+    );
+    list.onReorderItem!(0, 1);
+
+    expect(oldReorderIndex, 0);
+    expect(newReorderIndex, 1);
+  });
 }

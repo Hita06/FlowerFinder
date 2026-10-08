@@ -63,4 +63,34 @@ void main() {
       expect(await storage.loadStickers('linda@example.com'), isEmpty);
     },
   );
+
+  test('keeps saved sticker order after saving and reloading', () async {
+    final stickerBytes = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    );
+    final firstSticker = SavedFlowerPhoto(
+      image: MemoryImage(stickerBytes),
+      label: 'First sticker',
+      stickerId: 'first-sticker',
+      stickerBytes: stickerBytes,
+    );
+    final secondSticker = SavedFlowerPhoto(
+      image: MemoryImage(stickerBytes),
+      label: 'Second sticker',
+      stickerId: 'second-sticker',
+      stickerBytes: stickerBytes,
+    );
+
+    await storage.saveStickers('linda@example.com', [
+      secondSticker,
+      firstSticker,
+    ]);
+
+    final stickers = await storage.loadStickers('linda@example.com');
+
+    expect(stickers.map((sticker) => sticker.stickerId), [
+      'second-sticker',
+      'first-sticker',
+    ]);
+  });
 }

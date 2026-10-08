@@ -79,6 +79,24 @@ class _MainNavigationState extends State<MainNavigation> {
     unawaited(_persistSavedStickers());
   }
 
+  void _deleteSavedSticker(SavedFlowerPhoto sticker) {
+    setState(() {
+      _savedFlowerPhotos.remove(sticker);
+    });
+    unawaited(_persistSavedStickers());
+  }
+
+  void _reorderSavedStickers(int oldIndex, int newIndex) {
+    setState(() {
+      if (newIndex > oldIndex) {
+        newIndex -= 1;
+      }
+      final sticker = _savedFlowerPhotos.removeAt(oldIndex);
+      _savedFlowerPhotos.insert(newIndex, sticker);
+    });
+    unawaited(_persistSavedStickers());
+  }
+
   void onNavTap(int index) {
     setState(() {
       currentIndex = index;
@@ -163,6 +181,8 @@ class _MainNavigationState extends State<MainNavigation> {
         onCreateSticker: _openStickerCreation,
         onShareSticker: _handleShareSticker,
         onAddStickerToDiary: _handleAddStickerToDiary,
+        onDeleteSticker: _deleteSavedSticker,
+        onReorderStickers: _reorderSavedStickers,
         onLogout: _handleLogout,
       ),
     ];
@@ -186,6 +206,8 @@ class _ProfileTab extends StatelessWidget {
     required this.onCreateSticker,
     required this.onShareSticker,
     required this.onAddStickerToDiary,
+    required this.onDeleteSticker,
+    required this.onReorderStickers,
     required this.onLogout,
   });
 
@@ -196,6 +218,8 @@ class _ProfileTab extends StatelessWidget {
   final VoidCallback onCreateSticker;
   final ValueChanged<GeneratedStickerAsset> onShareSticker;
   final ValueChanged<GeneratedStickerAsset> onAddStickerToDiary;
+  final ValueChanged<SavedFlowerPhoto> onDeleteSticker;
+  final void Function(int oldIndex, int newIndex) onReorderStickers;
   final Future<void> Function() onLogout;
 
   @override
@@ -232,6 +256,8 @@ class _ProfileTab extends StatelessWidget {
             onCreateSticker: onCreateSticker,
             onShareSticker: onShareSticker,
             onAddStickerToDiary: onAddStickerToDiary,
+            onDeleteSticker: onDeleteSticker,
+            onReorderStickers: onReorderStickers,
             onLogout: onLogout,
           ),
           if (!stickersLoaded) const LinearProgressIndicator(),

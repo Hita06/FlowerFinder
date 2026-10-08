@@ -139,6 +139,8 @@ class UserProfilePage extends StatefulWidget {
     this.onStickerSelected,
     this.onShareSticker,
     this.onAddStickerToDiary,
+    this.onDeleteSticker,
+    this.onReorderStickers,
     this.onLogout,
   });
 
@@ -148,6 +150,8 @@ class UserProfilePage extends StatefulWidget {
   final ValueChanged<SavedFlowerPhoto>? onStickerSelected;
   final ValueChanged<GeneratedStickerAsset>? onShareSticker;
   final ValueChanged<GeneratedStickerAsset>? onAddStickerToDiary;
+  final ValueChanged<SavedFlowerPhoto>? onDeleteSticker;
+  final void Function(int oldIndex, int newIndex)? onReorderStickers;
   final VoidCallback? onLogout;
 
   @override
@@ -164,6 +168,7 @@ class UserProfilePageState extends State<UserProfilePage> {
     email: 'user@example.com',
   );
   SavedFlowerPhoto? _selectedSticker;
+  bool _isManagingStickers = false;
 
   static UserAccount _copyAccount(UserAccount account) {
     return UserAccount(
@@ -284,6 +289,14 @@ class UserProfilePageState extends State<UserProfilePage> {
             onCreateSticker: widget.onCreateSticker,
             onShareSticker: widget.onShareSticker,
             onAddStickerToDiary: widget.onAddStickerToDiary,
+            onDeleteSticker: widget.onDeleteSticker == null
+                ? null
+                : (sticker) => _confirmDeleteSticker(sticker, profileColor),
+            onReorderStickers: widget.onReorderStickers,
+            isManaging: _isManagingStickers,
+            onToggleManaging: () {
+              setState(() => _isManagingStickers = !_isManagingStickers);
+            },
             onStickerSelected: (sticker) {
               setState(() => _selectedSticker = sticker);
               widget.onStickerSelected?.call(sticker);
@@ -311,6 +324,42 @@ class UserProfilePageState extends State<UserProfilePage> {
         onAddStickerToDiary: widget.onAddStickerToDiary,
       ),
     );
+  }
+
+  Future<void> _confirmDeleteSticker(
+    SavedFlowerPhoto sticker,
+    ProfileColorChoice profileColor,
+  ) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete sticker?'),
+        content: const Text(
+          'This removes the saved sticker from your profile collection.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red.shade700,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldDelete != true) return;
+    if (_selectedSticker == sticker) {
+      setState(() => _selectedSticker = null);
+    }
+    widget.onDeleteSticker?.call(sticker);
   }
 }
 
@@ -425,6 +474,10 @@ class _StickersSection extends StatelessWidget {
     required this.onStickerSelected,
     required this.onShareSticker,
     required this.onAddStickerToDiary,
+    required this.onDeleteSticker,
+    required this.onReorderStickers,
+    required this.isManaging,
+    required this.onToggleManaging,
   });
 
   final List<SavedFlowerPhoto> photos;
@@ -434,22 +487,58 @@ class _StickersSection extends StatelessWidget {
   final ValueChanged<SavedFlowerPhoto> onStickerSelected;
   final ValueChanged<GeneratedStickerAsset>? onShareSticker;
   final ValueChanged<GeneratedStickerAsset>? onAddStickerToDiary;
+  final ValueChanged<SavedFlowerPhoto>? onDeleteSticker;
+  final void Function(int oldIndex, int newIndex)? onReorderStickers;
+  final bool isManaging;
+  final VoidCallback onToggleManaging;
 
   @override
   Widget build(BuildContext context) {
     final stickers = photos
         .where((photo) => photo.stickerBytes != null)
         .toList();
+    final canManage =
+        stickers.isNotEmpty &&
+        (onDeleteSticker != null || onReorderStickers != null);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Your Stickers',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Your Stickers',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              ),
+            ),
+            if (canManage)
+              TextButton.icon(
+                onPressed: onToggleManaging,
+                icon: Icon(
+                  isManaging ? Icons.check : Icons.tune,
+                  color: profileColor.color,
+                ),
+                label: Text(isManaging ? 'Done' : 'Manage'),
+              ),
+          ],
         ),
+        const SizedBox(height: 6),
+        if (isManaging && stickers.isNotEmpty)
+          Text(
+            'Drag to rearrange your saved stickers, or delete stickers you no longer want.',
+            style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+          ),
         const SizedBox(height: 14),
         if (stickers.isEmpty)
           _AddStickerTile(onTap: onCreateSticker, profileColor: profileColor)
+        else if (isManaging)
+          _ManageStickersList(
+            stickers: stickers,
+            profileColor: profileColor,
+            onDeleteSticker: onDeleteSticker,
+            onReorderStickers: onReorderStickers,
+          )
         else
           GridView.builder(
             shrinkWrap: true,
@@ -469,7 +558,9 @@ class _StickersSection extends StatelessWidget {
               }
               final sticker = stickers[index];
               return _StickerTile(
-                key: ValueKey('saved-sticker-${sticker.stickerId ?? index}'),
+                key: ValueKey(
+                  'saved-sticker-${sticker.stickerId ?? index.toString()}',
+                ),
                 sticker: sticker,
                 selected: identical(sticker, selectedSticker),
                 profileColor: profileColor,
@@ -479,6 +570,91 @@ class _StickersSection extends StatelessWidget {
           ),
       ],
     );
+  }
+}
+
+class _ManageStickersList extends StatelessWidget {
+  const _ManageStickersList({
+    required this.stickers,
+    required this.profileColor,
+    required this.onDeleteSticker,
+    required this.onReorderStickers,
+  });
+
+  final List<SavedFlowerPhoto> stickers;
+  final ProfileColorChoice profileColor;
+  final ValueChanged<SavedFlowerPhoto>? onDeleteSticker;
+  final void Function(int oldIndex, int newIndex)? onReorderStickers;
+
+  @override
+  Widget build(BuildContext context) {
+    return ReorderableListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      buildDefaultDragHandles: false,
+      itemCount: stickers.length,
+      onReorderItem: onReorderStickers ?? (_, _) {},
+      itemBuilder: (context, index) {
+        final sticker = stickers[index];
+        return Card(
+          key: ObjectKey(sticker),
+          elevation: 0,
+          color: Colors.white,
+          margin: const EdgeInsets.only(bottom: 10),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: profileColor.softColor, width: 2),
+          ),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 8,
+            ),
+            leading: Container(
+              width: 54,
+              height: 54,
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: profileColor.softColor,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Image.memory(sticker.stickerBytes!, fit: BoxFit.contain),
+            ),
+            title: Text(sticker.label ?? 'Saved sticker'),
+            subtitle: Text(
+              sticker.createdAt == null
+                  ? 'Generated sticker'
+                  : 'Saved ${_formatStickerDate(sticker.createdAt!)}',
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: 'Delete sticker',
+                  onPressed: onDeleteSticker == null
+                      ? null
+                      : () => onDeleteSticker!(sticker),
+                  icon: const Icon(Icons.delete_outline),
+                ),
+                ReorderableDragStartListener(
+                  index: index,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Icon(Icons.drag_handle, color: profileColor.color),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  static String _formatStickerDate(DateTime date) {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    return '$day/$month/${date.year}';
   }
 }
 
