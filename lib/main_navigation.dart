@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 
 import 'flower_search_page.dart';
 import 'pages/diary_page.dart';
+import 'profile_storage.dart';
 import 'scanner_page.dart';
 import 'sticker_creation.dart';
 import 'sticker_storage.dart';
@@ -31,17 +32,33 @@ class _MainNavigationState extends State<MainNavigation> {
   final _profileKey = GlobalKey<UserProfilePageState>();
   final List<SavedFlowerPhoto> _savedFlowerPhotos = [];
   final StickerStorage _stickerStorage = const StickerStorage();
+  final ProfileStorage _profileStorage = const ProfileStorage();
+  EditableProfileDetails? _savedProfileDetails;
   int currentIndex = 0;
   bool _stickersLoaded = false;
 
-  UserAccount get _account =>
+  UserAccount get _baseAccount =>
       widget.account ?? UserProfilePageState.defaultAccount;
 
-  String get _accountStorageId => _account.email;
+  UserAccount get _account => _accountWithSavedProfile(_baseAccount);
+
+  UserAccount _accountWithSavedProfile(UserAccount baseAccount) {
+    final details = _savedProfileDetails;
+    if (details == null) return baseAccount;
+    return UserAccount(
+      name: details.name ?? baseAccount.name,
+      username: baseAccount.username,
+      email: details.email ?? baseAccount.email,
+      profileColorId: details.profileColorId ?? baseAccount.profileColorId,
+    );
+  }
+
+  String get _accountStorageId => _baseAccount.email;
 
   @override
   void initState() {
     super.initState();
+    unawaited(_loadSavedProfile());
     unawaited(_loadSavedStickers());
   }
 
@@ -51,9 +68,31 @@ class _MainNavigationState extends State<MainNavigation> {
     if (oldWidget.account?.email == widget.account?.email) return;
     setState(() {
       _savedFlowerPhotos.clear();
+      _savedProfileDetails = null;
       _stickersLoaded = false;
     });
+    unawaited(_loadSavedProfile());
     unawaited(_loadSavedStickers());
+  }
+
+  Future<void> _loadSavedProfile() async {
+    final savedProfile = await _profileStorage.loadProfile(_accountStorageId);
+    if (!mounted) return;
+    setState(() {
+      _savedProfileDetails = savedProfile;
+    });
+  }
+
+  Future<void> _persistSavedProfile(UserAccount account) async {
+    final details = EditableProfileDetails(
+      name: account.name,
+      email: account.email,
+      profileColorId: account.profileColorId,
+    );
+    setState(() {
+      _savedProfileDetails = details;
+    });
+    await _profileStorage.saveProfile(_accountStorageId, details);
   }
 
   Future<void> _loadSavedStickers() async {
@@ -183,6 +222,7 @@ class _MainNavigationState extends State<MainNavigation> {
         onAddStickerToDiary: _handleAddStickerToDiary,
         onDeleteSticker: _deleteSavedSticker,
         onReorderStickers: _reorderSavedStickers,
+        onProfileChanged: (account) => unawaited(_persistSavedProfile(account)),
         onLogout: _handleLogout,
       ),
     ];
@@ -208,6 +248,7 @@ class _ProfileTab extends StatelessWidget {
     required this.onAddStickerToDiary,
     required this.onDeleteSticker,
     required this.onReorderStickers,
+    required this.onProfileChanged,
     required this.onLogout,
   });
 
@@ -220,6 +261,7 @@ class _ProfileTab extends StatelessWidget {
   final ValueChanged<GeneratedStickerAsset> onAddStickerToDiary;
   final ValueChanged<SavedFlowerPhoto> onDeleteSticker;
   final void Function(int oldIndex, int newIndex) onReorderStickers;
+  final ValueChanged<UserAccount> onProfileChanged;
   final Future<void> Function() onLogout;
 
   @override
@@ -258,6 +300,7 @@ class _ProfileTab extends StatelessWidget {
             onAddStickerToDiary: onAddStickerToDiary,
             onDeleteSticker: onDeleteSticker,
             onReorderStickers: onReorderStickers,
+            onProfileChanged: onProfileChanged,
             onLogout: onLogout,
           ),
           if (!stickersLoaded) const LinearProgressIndicator(),

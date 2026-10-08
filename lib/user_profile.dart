@@ -141,6 +141,7 @@ class UserProfilePage extends StatefulWidget {
     this.onAddStickerToDiary,
     this.onDeleteSticker,
     this.onReorderStickers,
+    this.onProfileChanged,
     this.onLogout,
   });
 
@@ -152,6 +153,7 @@ class UserProfilePage extends StatefulWidget {
   final ValueChanged<GeneratedStickerAsset>? onAddStickerToDiary;
   final ValueChanged<SavedFlowerPhoto>? onDeleteSticker;
   final void Function(int oldIndex, int newIndex)? onReorderStickers;
+  final ValueChanged<UserAccount>? onProfileChanged;
   final VoidCallback? onLogout;
 
   @override
@@ -188,7 +190,8 @@ class UserProfilePageState extends State<UserProfilePage> {
       _account
         ..name = account.name
         ..username = account.username
-        ..email = account.email;
+        ..email = account.email
+        ..profileColorId = account.profileColorId;
     });
   }
 
@@ -212,6 +215,7 @@ class UserProfilePageState extends State<UserProfilePage> {
         ..email = updatedAccount.email
         ..profileColorId = updatedAccount.profileColorId;
     });
+    widget.onProfileChanged?.call(_copyAccount(_account));
   }
 
   Future<void> editProfileDetails() => _editAccount();
