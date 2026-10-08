@@ -119,6 +119,31 @@ void main() {
     );
   });
 
+  test(
+    'drop shadow adds visible transparent-space shadow outside sticker',
+    () async {
+      final stickerBytes = await _transparentPngWithFlowerBounds(
+        canvasSize: 24,
+        flowerBounds: const Rect.fromLTWH(6, 6, 12, 12),
+      );
+
+      final shadowedBytes = await applyStickerEffects(
+        stickerBytes,
+        dropShadow: true,
+      );
+      final original = await _decodeRawRgba(stickerBytes);
+      final shadowed = await _decodeRawRgba(shadowedBytes);
+
+      expect(shadowed.width, greaterThan(original.width));
+      expect(shadowed.height, greaterThan(original.height));
+      expect(_alphaAt(shadowed.pixels, shadowed.width, 0, 0), 0);
+      expect(
+        _hasVisibleDarkPixel(shadowed.pixels, shadowed.width, shadowed.height),
+        isTrue,
+      );
+    },
+  );
+
   test('generated sticker transparent padding is cropped', () async {
     final stickerBytes = await _transparentPngWithFlowerBounds(
       canvasSize: 100,
@@ -180,6 +205,20 @@ Future<_RawImage> _decodeRawRgba(Uint8List bytes) async {
 int _brightnessAt(Uint8List pixels, int width, int x, int y) {
   final index = (y * width + x) * 4;
   return pixels[index] + pixels[index + 1] + pixels[index + 2];
+}
+
+bool _hasVisibleDarkPixel(Uint8List pixels, int width, int height) {
+  for (var y = 0; y < height; y += 1) {
+    for (var x = 0; x < width; x += 1) {
+      final index = (y * width + x) * 4;
+      final red = pixels[index];
+      final green = pixels[index + 1];
+      final blue = pixels[index + 2];
+      final alpha = pixels[index + 3];
+      if (alpha > 0 && red < 70 && green < 70 && blue < 70) return true;
+    }
+  }
+  return false;
 }
 
 class _RawImage {

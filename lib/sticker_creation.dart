@@ -128,6 +128,7 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
   bool _whiteOutlineEnabled = false;
   double _outlineThickness = 8;
   bool _innerShadowEnabled = false;
+  bool _dropShadowEnabled = false;
   bool _isGenerating = false;
   String? _errorMessage;
 
@@ -326,6 +327,18 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
                     unawaited(_refreshStickerEffects());
                   },
           ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Drop Shadow'),
+            subtitle: const Text('Adds a soft shadow behind the sticker'),
+            value: _dropShadowEnabled,
+            onChanged: _baseStickerBytes == null || _busy
+                ? null
+                : (value) {
+                    setState(() => _dropShadowEnabled = value);
+                    unawaited(_refreshStickerEffects());
+                  },
+          ),
           const SizedBox(height: 24),
           FilledButton.icon(
             onPressed: _stickerBytes == null || _busy || _loadingPhotos
@@ -363,6 +376,7 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
               whiteOutline: _whiteOutlineEnabled,
               outlineThickness: _outlineThickness,
               innerShadow: _innerShadowEnabled,
+              dropShadow: _dropShadowEnabled,
             );
       if (!mounted) return;
       setState(() {
@@ -388,6 +402,7 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
       whiteOutline: _whiteOutlineEnabled,
       outlineThickness: _outlineThickness,
       innerShadow: _innerShadowEnabled,
+      dropShadow: _dropShadowEnabled,
     );
     if (!mounted) return;
     setState(() => _stickerBytes = renderedStickerBytes);
@@ -529,8 +544,9 @@ Future<Uint8List> applyStickerEffects(
   bool whiteOutline = false,
   double outlineThickness = 8,
   bool innerShadow = false,
+  bool dropShadow = false,
 }) async {
-  if (!whiteOutline && !innerShadow) return stickerBytes;
+  if (!whiteOutline && !innerShadow && !dropShadow) return stickerBytes;
   try {
     final codec = await ui.instantiateImageCodec(stickerBytes);
     final frame = await codec.getNextFrame();
@@ -538,9 +554,21 @@ Future<Uint8List> applyStickerEffects(
     if (innerShadow) {
       image = await _drawInnerShadow(image);
     }
-    final radius = whiteOutline ? outlineThickness.clamp(1, 64).round() : 0;
-    final outputWidth = image.width + radius * 2;
-    final outputHeight = image.height + radius * 2;
+    final outlineRadius = whiteOutline
+        ? outlineThickness.clamp(1, 64).round()
+        : 0;
+    const dropShadowBlur = 8;
+    const dropShadowDx = 5;
+    const dropShadowDy = 7;
+    final shadowMargin = dropShadow
+        ? dropShadowBlur +
+              (dropShadowDx.abs() > dropShadowDy.abs()
+                  ? dropShadowDx.abs()
+                  : dropShadowDy.abs())
+        : 0;
+    final margin = outlineRadius + shadowMargin;
+    final outputWidth = image.width + margin * 2;
+    final outputHeight = image.height + margin * 2;
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
     final outlinePaint = Paint()
@@ -550,15 +578,36 @@ Future<Uint8List> applyStickerEffects(
     final originalPaint = Paint()
       ..isAntiAlias = true
       ..filterQuality = FilterQuality.high;
+    final dropShadowPaint = Paint()
+      ..isAntiAlias = true
+      ..filterQuality = FilterQuality.high
+      ..colorFilter = ColorFilter.mode(
+        Colors.black.withValues(alpha: 0.36),
+        BlendMode.srcIn,
+      )
+      ..imageFilter = ui.ImageFilter.blur(
+        sigmaX: dropShadowBlur.toDouble(),
+        sigmaY: dropShadowBlur.toDouble(),
+      );
 
+    if (dropShadow) {
+      canvas.drawImage(
+        image,
+        Offset(
+          (margin + dropShadowDx).toDouble(),
+          (margin + dropShadowDy).toDouble(),
+        ),
+        dropShadowPaint,
+      );
+    }
     if (whiteOutline) {
-      for (var dy = -radius; dy <= radius; dy += 1) {
-        for (var dx = -radius; dx <= radius; dx += 1) {
+      for (var dy = -outlineRadius; dy <= outlineRadius; dy += 1) {
+        for (var dx = -outlineRadius; dx <= outlineRadius; dx += 1) {
           if (dx == 0 && dy == 0) continue;
-          if (dx * dx + dy * dy > radius * radius) continue;
+          if (dx * dx + dy * dy > outlineRadius * outlineRadius) continue;
           canvas.drawImage(
             image,
-            Offset((radius + dx).toDouble(), (radius + dy).toDouble()),
+            Offset((margin + dx).toDouble(), (margin + dy).toDouble()),
             outlinePaint,
           );
         }
@@ -566,7 +615,7 @@ Future<Uint8List> applyStickerEffects(
     }
     canvas.drawImage(
       image,
-      Offset(radius.toDouble(), radius.toDouble()),
+      Offset(margin.toDouble(), margin.toDouble()),
       originalPaint,
     );
 
