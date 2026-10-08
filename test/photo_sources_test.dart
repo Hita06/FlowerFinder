@@ -4,8 +4,8 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flower_finder/sticker_creation.dart';
-import 'package:flower_finder/user_profile.dart';
+import 'package:flowerfinderscanner/sticker_creation.dart';
+import 'package:flowerfinderscanner/user_profile.dart';
 
 void main() {
   final bytes = base64Decode(

@@ -58,5 +58,6 @@ Thumbs.db
 # Log files are generated while developing or debugging.
 *.log
 
-# Local API configuration (never commit real keys)
+# Keeps private API keys out of GitHub.
+.env
 config/perenual.local.json

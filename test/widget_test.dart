@@ -3,9 +3,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flower_finder/main.dart';
-import 'package:flower_finder/scanner_page.dart';
-import 'package:flower_finder/user_profile.dart';
+import 'package:flowerfinderscanner/main_navigation.dart';
+import 'package:flowerfinderscanner/scanner_page.dart';
+import 'package:flowerfinderscanner/sticker_creation.dart';
+import 'package:flowerfinderscanner/user_profile.dart';
 
 import 'package:google_fonts/google_fonts.dart';
 
@@ -22,7 +23,7 @@ void main() {
   testWidgets('profile tab opens the profile page', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const MyApp(enableCamera: false));
+    await tester.pumpWidget(const MaterialApp(home: MainNavigation()));
 
     expect(find.byType(ScannerPage), findsOneWidget);
     expect(find.text('Add Sticker'), findsNothing);
@@ -39,7 +40,7 @@ void main() {
   });
 
   testWidgets('profile opens sticker creation', (WidgetTester tester) async {
-    await tester.pumpWidget(const MyApp(enableCamera: false));
+    await tester.pumpWidget(const MaterialApp(home: MainNavigation()));
     await _openProfileTab(tester);
 
     expect(
@@ -69,7 +70,7 @@ void main() {
   testWidgets('profile edit button opens the existing details sheet', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const MyApp(enableCamera: false));
+    await tester.pumpWidget(const MaterialApp(home: MainNavigation()));
     await _openProfileTab(tester);
     await tester.tap(find.byTooltip('Edit profile details'));
     await tester.pump();
@@ -79,10 +80,37 @@ void main() {
     expect(find.text('Save changes'), findsOneWidget);
   });
 
+  testWidgets('profile logout page confirms before handoff', (
+    WidgetTester tester,
+  ) async {
+    var loggedOut = false;
+
+    await tester.pumpWidget(
+      MaterialApp(home: UserProfilePage(onLogout: () => loggedOut = true)),
+    );
+
+    expect(find.widgetWithText(OutlinedButton, 'Log out'), findsNothing);
+    final state = tester.state<UserProfilePageState>(
+      find.byType(UserProfilePage),
+    );
+    state.openLogoutPage();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LogoutPage), findsOneWidget);
+    expect(find.text('Log out of FlowerFinder?'), findsOneWidget);
+    expect(loggedOut, isFalse);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Log out'));
+    await tester.pumpAndSettle();
+
+    expect(loggedOut, isTrue);
+    expect(find.byType(LogoutPage), findsNothing);
+  });
+
   testWidgets('profile colour can be changed from the details sheet', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const MyApp(enableCamera: false));
+    await tester.pumpWidget(const MaterialApp(home: MainNavigation()));
     await _openProfileTab(tester);
     await tester.tap(find.byTooltip('Edit profile details'));
     await tester.pump();
@@ -132,7 +160,7 @@ void main() {
   testWidgets('sticker creation keeps all existing styles', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const MyApp(enableCamera: false));
+    await tester.pumpWidget(const MaterialApp(home: MainNavigation()));
     await _openProfileTab(tester);
     await tester.tap(find.byTooltip('Create sticker'));
     await tester.pumpAndSettle();
@@ -155,6 +183,38 @@ void main() {
       find.widgetWithText(FilledButton, 'Save sticker'),
     );
     expect(saveButton.onPressed, isNull);
+  });
+
+  testWidgets('saved sticker appears in profile after returning from creation', (
+    WidgetTester tester,
+  ) async {
+    final stickerBytes = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    );
+
+    await tester.pumpWidget(const MaterialApp(home: MainNavigation()));
+    await _openProfileTab(tester);
+    await tester.tap(find.byTooltip('Create sticker'));
+    await tester.pumpAndSettle();
+
+    final creation = tester.widget<StickerCreationPage>(
+      find.byType(StickerCreationPage),
+    );
+    creation.onSaved(
+      SavedFlowerPhoto(image: MemoryImage(stickerBytes), label: 'Saved rose'),
+      stickerBytes,
+      'colour_change',
+    );
+    Navigator.of(tester.element(find.byType(StickerCreationPage))).pop();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Your Stickers'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('saved-sticker-colour_change')),
+      findsOneWidget,
+    );
+    expect(find.text('Add Sticker'), findsOneWidget);
   });
 
   testWidgets('profile selects a saved sticker for future upload', (

@@ -1,18 +1,23 @@
-import 'dart:async';
+// This file manages the main navigation of the app, including the bottom
+// navigation bar and the pages for Scanner, Maps, Search, Diary, and Profile.
 
+import 'dart:async';
+import 'dart:io';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import 'flower_search_page.dart';
+import 'pages/diary_page.dart';
 import 'scanner_page.dart';
 import 'sticker_creation.dart';
 import 'sticker_storage.dart';
-import 'theme.dart';
 import 'user_profile.dart';
 import 'widgets/bottom_nav.dart';
 
 class MainNavigation extends StatefulWidget {
-  const MainNavigation({super.key, this.enableCamera = true, this.account});
+  const MainNavigation({super.key, this.account});
 
-  final bool enableCamera;
   final UserAccount? account;
 
   @override
@@ -20,9 +25,9 @@ class MainNavigation extends StatefulWidget {
 }
 
 class _MainNavigationState extends State<MainNavigation> {
-  static const profileTab = 3;
+  static const diaryTab = 3;
+  static const profileTab = 4;
 
-  final _scannerKey = GlobalKey();
   final _profileKey = GlobalKey<UserProfilePageState>();
   final List<SavedFlowerPhoto> _savedFlowerPhotos = [];
   final StickerStorage _stickerStorage = const StickerStorage();
@@ -74,6 +79,12 @@ class _MainNavigationState extends State<MainNavigation> {
     unawaited(_persistSavedStickers());
   }
 
+  void onNavTap(int index) {
+    setState(() {
+      currentIndex = index;
+    });
+  }
+
   Future<void> _openStickerCreation() async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
@@ -93,44 +104,74 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 
-  void _saveScannerSticker(SavedFlowerPhoto photo) {
-    _addSavedSticker(photo);
+  Future<void> _openStickerCreationFromScanner(String imagePath) async {
+    final scannedPhoto = SavedFlowerPhoto(
+      image: FileImage(File(imagePath)),
+      createdAt: DateTime.now(),
+    );
+
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (context) => StickerCreationPage(
+          photos: [scannedPhoto],
+          onSaved: (photo, stickerBytes, stickerId) {
+            _addSavedSticker(
+              photo.copyWith(
+                stickerId: stickerId,
+                stickerBytes: stickerBytes,
+                createdAt: DateTime.now(),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  void _handleShareSticker(GeneratedStickerAsset sticker) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Sticker is ready for sharing.')),
+    );
+  }
+
+  void _handleAddStickerToDiary(GeneratedStickerAsset sticker) {
+    setState(() {
+      currentIndex = diaryTab;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Sticker selected for Diary integration.')),
+    );
+  }
+
+  Future<void> _handleLogout() async {
+    await FirebaseAuth.instance.signOut();
   }
 
   @override
   Widget build(BuildContext context) {
     final pages = [
-      ScannerPage(
-        key: _scannerKey,
-        enableCamera: widget.enableCamera,
-        onStickerSaved: _saveScannerSticker,
-      ),
-      const _ComingSoonPage(
-        icon: Icons.location_on_outlined,
-        title: 'Map',
-        description: 'Connect the flower map page here.',
-      ),
-      const _ComingSoonPage(
-        icon: Icons.menu_book_outlined,
-        title: 'Diary',
-        description: 'Connect the diary page here.',
-      ),
+      ScannerPage(onAddSticker: _openStickerCreationFromScanner),
+      const MapsPlaceholderPage(),
+      const FlowerSearchPage(),
+      const DiaryPage(),
       _ProfileTab(
         profileKey: _profileKey,
         account: _account,
         savedFlowerPhotos: _savedFlowerPhotos,
         stickersLoaded: _stickersLoaded,
         onCreateSticker: _openStickerCreation,
+        onShareSticker: _handleShareSticker,
+        onAddStickerToDiary: _handleAddStickerToDiary,
+        onLogout: _handleLogout,
       ),
     ];
 
     return Scaffold(
       body: IndexedStack(index: currentIndex, children: pages),
-      bottomNavigationBar: FlowerBottomNav(
+      bottomNavigationBar: BottomNav(
         currentIndex: currentIndex,
-        onTap: (index) {
-          setState(() => currentIndex = index);
-        },
+        onTap: onNavTap,
       ),
     );
   }
@@ -143,6 +184,9 @@ class _ProfileTab extends StatelessWidget {
     required this.savedFlowerPhotos,
     required this.stickersLoaded,
     required this.onCreateSticker,
+    required this.onShareSticker,
+    required this.onAddStickerToDiary,
+    required this.onLogout,
   });
 
   final GlobalKey<UserProfilePageState> profileKey;
@@ -150,6 +194,9 @@ class _ProfileTab extends StatelessWidget {
   final List<SavedFlowerPhoto> savedFlowerPhotos;
   final bool stickersLoaded;
   final VoidCallback onCreateSticker;
+  final ValueChanged<GeneratedStickerAsset> onShareSticker;
+  final ValueChanged<GeneratedStickerAsset> onAddStickerToDiary;
+  final Future<void> Function() onLogout;
 
   @override
   Widget build(BuildContext context) {
@@ -158,6 +205,11 @@ class _ProfileTab extends StatelessWidget {
       appBar: AppBar(
         centerTitle: true,
         title: const Text('Profile'),
+        leading: IconButton(
+          onPressed: () => profileKey.currentState?.openLogoutPage(),
+          tooltip: 'Log out',
+          icon: const Icon(Icons.logout),
+        ),
         actions: [
           IconButton(
             onPressed: onCreateSticker,
@@ -178,6 +230,9 @@ class _ProfileTab extends StatelessWidget {
             account: account,
             savedFlowerPhotos: savedFlowerPhotos,
             onCreateSticker: onCreateSticker,
+            onShareSticker: onShareSticker,
+            onAddStickerToDiary: onAddStickerToDiary,
+            onLogout: onLogout,
           ),
           if (!stickersLoaded) const LinearProgressIndicator(),
         ],
@@ -186,46 +241,14 @@ class _ProfileTab extends StatelessWidget {
   }
 }
 
-class _ComingSoonPage extends StatelessWidget {
-  const _ComingSoonPage({
-    required this.icon,
-    required this.title,
-    required this.description,
-  });
-
-  final IconData icon;
-  final String title;
-  final String description;
+class MapsPlaceholderPage extends StatelessWidget {
+  const MapsPlaceholderPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.cream,
-      appBar: AppBar(centerTitle: true, title: Text(title)),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 56, color: AppColors.darkGreen),
-              const SizedBox(height: 16),
-              Text(
-                title,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                description,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey.shade600),
-              ),
-            ],
-          ),
-        ),
-      ),
+      appBar: AppBar(title: const Text('Maps')),
+      body: const Center(child: Text('Maps coming soon')),
     );
   }
 }

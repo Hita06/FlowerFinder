@@ -1,3 +1,8 @@
+// FlowerFinder G1 - Flower Scanner Page
+// Created by Iris
+// Connected to the Flower Information page by Hita.
+// This page allows users to photograph, upload and identify flowers.
+
 import 'dart:io';
 
 import 'package:camera/camera.dart';
@@ -6,18 +11,17 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'flower_api.dart';
+import 'flower_information_page.dart';
 import 'theme.dart';
-import 'user_profile.dart';
 
 class ScannerPage extends StatefulWidget {
+  // Callback used to open the Create Sticker page.
+  final ValueChanged<String> onAddSticker;
+
   const ScannerPage({
     super.key,
-    this.onStickerSaved,
-    this.enableCamera = true,
+    required this.onAddSticker,
   });
-
-  final ValueChanged<SavedFlowerPhoto>? onStickerSaved;
-  final bool enableCamera;
 
   @override
   State<ScannerPage> createState() => _ScannerPageState();
@@ -30,14 +34,16 @@ class _ScannerPageState extends State<ScannerPage> {
   bool isIdentifying = false;
   bool isSavingSticker = false;
 
+  // Prevents another photo from being taken while the
+  // previous camera capture is still processing.
+  bool isTakingPicture = false;
+
   String? imagePath;
 
   @override
   void initState() {
     super.initState();
-    if (widget.enableCamera) {
-      initialiseCamera();
-    }
+    initialiseCamera();
   }
 
   // ============================================================
@@ -46,6 +52,11 @@ class _ScannerPageState extends State<ScannerPage> {
 
   Future<void> initialiseCamera() async {
     try {
+      // Prevent multiple camera controllers from being created.
+      if (controller != null) {
+        return;
+      }
+
       final cameras = await availableCameras();
 
       if (cameras.isEmpty) {
@@ -53,19 +64,39 @@ class _ScannerPageState extends State<ScannerPage> {
         return;
       }
 
+      // Prefer the rear-facing camera.
       final camera = cameras.firstWhere(
         (camera) =>
             camera.lensDirection == CameraLensDirection.back,
         orElse: () => cameras.first,
       );
 
-      controller = CameraController(
+      final newController = CameraController(
         camera,
-        ResolutionPreset.medium,
+        ResolutionPreset.veryHigh,
         enableAudio: false,
       );
 
-      await controller!.initialize();
+      controller = newController;
+
+      await newController.initialize();
+
+      // The page may have been removed while the camera
+      // was initializing.
+      if (!mounted) {
+        await newController.dispose();
+        controller = null;
+        return;
+      }
+
+      // Enable automatic focus.
+      try {
+        await newController.setFocusMode(
+          FocusMode.auto,
+        );
+      } catch (_) {
+        // Some devices may not support changing focus mode.
+      }
 
       if (!mounted) return;
 
@@ -76,6 +107,12 @@ class _ScannerPageState extends State<ScannerPage> {
       print('Camera ready');
     } catch (e) {
       print('Camera initialisation error: $e');
+
+      if (mounted) {
+        setState(() {
+          cameraReady = false;
+        });
+      }
     }
   }
 
@@ -84,22 +121,46 @@ class _ScannerPageState extends State<ScannerPage> {
   // ============================================================
 
   Future<void> takePicture() async {
-    if (!cameraReady || controller == null) {
+    // Prevent taking another picture if the camera is not ready
+    // or a previous capture is still being processed.
+    if (!cameraReady ||
+        controller == null ||
+        isTakingPicture ||
+        controller!.value.isTakingPicture) {
       return;
     }
 
     try {
+      setState(() {
+        isTakingPicture = true;
+      });
+
       final XFile image = await controller!.takePicture();
 
       if (!mounted) return;
 
       setState(() {
         imagePath = image.path;
+        isTakingPicture = false;
       });
 
       print('Photo captured: ${image.path}');
     } catch (e) {
       print('Error taking photo: $e');
+
+      if (!mounted) return;
+
+      setState(() {
+        isTakingPicture = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Unable to take photo: $e',
+          ),
+        ),
+      );
     }
   }
 
@@ -115,11 +176,9 @@ class _ScannerPageState extends State<ScannerPage> {
         source: ImageSource.gallery,
       );
 
-      if (image == null) {
+      if (image == null || !mounted) {
         return;
       }
-
-      if (!mounted) return;
 
       setState(() {
         imagePath = image.path;
@@ -128,6 +187,16 @@ class _ScannerPageState extends State<ScannerPage> {
       print('Gallery image selected: ${image.path}');
     } catch (e) {
       print('Error selecting image: $e');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Unable to select image: $e',
+          ),
+        ),
+      );
     }
   }
 
@@ -161,11 +230,11 @@ class _ScannerPageState extends State<ScannerPage> {
 
       print('Sending image for identification...');
 
-      final result = await FlowerApi.identifyFlower(
-        imagePath!,
-      );
+      final result =
+          await FlowerApi.identifyFlower(imagePath!);
 
-      final bestMatch = result['bestMatch'];
+      final String? bestMatch =
+          result['bestMatch']?.toString();
 
       print('Flower identified: $bestMatch');
 
@@ -209,11 +278,11 @@ class _ScannerPageState extends State<ScannerPage> {
         isSavingSticker = true;
       });
 
-      // Get the app's private documents directory.
+      // Gets the app's private documents directory.
       final directory =
           await getApplicationDocumentsDirectory();
 
-      // Create stickers folder.
+      // Creates the stickers folder.
       final stickersDirectory = Directory(
         '${directory.path}/stickers',
       );
@@ -224,28 +293,18 @@ class _ScannerPageState extends State<ScannerPage> {
         );
       }
 
-      // Give the sticker a unique filename.
+      // Gives the sticker a unique filename.
       final fileName =
           'sticker_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
       final newPath =
           '${stickersDirectory.path}/$fileName';
 
-      // Copy the selected image into the sticker folder.
+      // Copies the selected image into the sticker folder.
       final savedSticker =
           await File(imagePath!).copy(newPath);
 
       print('Sticker saved: ${savedSticker.path}');
-
-      final bytes = await savedSticker.readAsBytes();
-      widget.onStickerSaved?.call(
-        SavedFlowerPhoto(
-          image: MemoryImage(bytes),
-          stickerBytes: bytes,
-          stickerId: fileName,
-          createdAt: DateTime.now(),
-        ),
-      );
 
       if (!mounted) return;
 
@@ -284,18 +343,25 @@ class _ScannerPageState extends State<ScannerPage> {
   // ============================================================
 
   void showFlowerResult(String? flowerName) {
+    // Uses the identified flower name or a fallback value.
+    final String identifiedName =
+        flowerName?.trim().isNotEmpty == true
+            ? flowerName!.trim()
+            : 'Unknown flower';
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
 
-      builder: (context) {
+      builder: (sheetContext) {
         return Container(
           width: double.infinity,
 
           constraints: BoxConstraints(
             maxHeight:
-                MediaQuery.of(context).size.height * 0.55,
+                MediaQuery.of(sheetContext).size.height *
+                    0.55,
           ),
 
           padding: const EdgeInsets.fromLTRB(
@@ -321,7 +387,6 @@ class _ScannerPageState extends State<ScannerPage> {
               mainAxisSize: MainAxisSize.min,
 
               children: [
-
                 // ==================================================
                 // DRAG HANDLE
                 // ==================================================
@@ -348,7 +413,8 @@ class _ScannerPageState extends State<ScannerPage> {
                 Text(
                   'Flower Identified!',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context)
+
+                  style: Theme.of(sheetContext)
                       .textTheme
                       .headlineMedium,
                 ),
@@ -360,9 +426,10 @@ class _ScannerPageState extends State<ScannerPage> {
                 // ==================================================
 
                 Text(
-                  flowerName ?? 'Unknown flower',
+                  identifiedName,
                   textAlign: TextAlign.center,
-                  style: Theme.of(context)
+
+                  style: Theme.of(sheetContext)
                       .textTheme
                       .titleLarge,
                 ),
@@ -376,7 +443,8 @@ class _ScannerPageState extends State<ScannerPage> {
                 Text(
                   'Your flower has been identified successfully.',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context)
+
+                  style: Theme.of(sheetContext)
                       .textTheme
                       .bodyMedium,
                 ),
@@ -394,9 +462,17 @@ class _ScannerPageState extends State<ScannerPage> {
                   child: OutlinedButton.icon(
                     onPressed: isSavingSticker
                         ? null
-                        : () async {
-                            Navigator.pop(context);
-                            await saveAsSticker();
+                        : () {
+                            // Close the result popup first.
+                            Navigator.pop(sheetContext);
+
+                            // Open Create Sticker using
+                            // the current scanned/selected photo.
+                            if (imagePath != null) {
+                              widget.onAddSticker(
+                                imagePath!,
+                              );
+                            }
                           },
 
                     icon: const Icon(
@@ -405,7 +481,8 @@ class _ScannerPageState extends State<ScannerPage> {
 
                     label: Text(
                       'Save as Sticker',
-                      style: Theme.of(context)
+
+                      style: Theme.of(sheetContext)
                           .textTheme
                           .labelLarge,
                     ),
@@ -415,7 +492,7 @@ class _ScannerPageState extends State<ScannerPage> {
                 const SizedBox(height: 10),
 
                 // ==================================================
-                // VIEW DETAILS BUTTON
+                // VIEW FLOWER DETAILS
                 // ==================================================
 
                 SizedBox(
@@ -424,15 +501,47 @@ class _ScannerPageState extends State<ScannerPage> {
 
                   child: ElevatedButton(
                     onPressed: () {
-                      Navigator.pop(context);
+                      // Close the result popup.
+                      Navigator.pop(sheetContext);
 
-                      // Add navigation to your
-                      // Flower Information page here.
+                      // Open the Flower Information page.
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              FlowerInformationPage(
+                            flowerName:
+                                identifiedName,
+
+                            scientificName:
+                                identifiedName,
+
+                            description:
+                                'This flower was identified '
+                                'using the FlowerFinder '
+                                'scanner.',
+
+                            flowerType:
+                                'Flowering plant',
+
+                            flowerColour:
+                                'Not available',
+
+                            season:
+                                'Not available',
+
+                            careTips:
+                                'Detailed care information '
+                                'is not currently available.',
+                          ),
+                        ),
+                      );
                     },
 
                     child: Text(
                       'View Flower Details',
-                      style: Theme.of(context)
+
+                      style: Theme.of(sheetContext)
                           .textTheme
                           .labelLarge
                           ?.copyWith(
@@ -454,12 +563,13 @@ class _ScannerPageState extends State<ScannerPage> {
 
                   child: TextButton(
                     onPressed: () {
-                      Navigator.pop(context);
+                      Navigator.pop(sheetContext);
                     },
 
                     child: Text(
                       'Close',
-                      style: Theme.of(context)
+
+                      style: Theme.of(sheetContext)
                           .textTheme
                           .labelLarge
                           ?.copyWith(
@@ -483,17 +593,18 @@ class _ScannerPageState extends State<ScannerPage> {
   @override
   void dispose() {
     controller?.dispose();
+    controller = null;
+
     super.dispose();
   }
 
   // ============================================================
-  // BUILD UI
+  // BUILD USER INTERFACE
   // ============================================================
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-
       // ----------------------------------------------------------
       // APP BAR
       // ----------------------------------------------------------
@@ -515,9 +626,8 @@ class _ScannerPageState extends State<ScannerPage> {
 
           child: Column(
             children: [
-
               // ==================================================
-              // CAMERA / IMAGE PREVIEW
+              // CAMERA OR IMAGE PREVIEW
               // ==================================================
 
               Expanded(
@@ -526,39 +636,67 @@ class _ScannerPageState extends State<ScannerPage> {
 
                   decoration: BoxDecoration(
                     color: Colors.black,
-
                     borderRadius:
                         BorderRadius.circular(16),
                   ),
 
-                  clipBehavior:
-                      Clip.antiAlias,
+                  clipBehavior: Clip.antiAlias,
 
                   child: Center(
-                    child: !cameraReady ||
-                            controller == null
-
-                        ? const CircularProgressIndicator(
-                            color: Colors.white,
-                          )
-
-                        : imagePath == null
-
-                            ? CameraPreview(
-                                controller!,
+                    child:
+                        !cameraReady ||
+                                controller == null
+                            ? const CircularProgressIndicator(
+                                color: Colors.white,
                               )
+                            : imagePath == null
 
-                            : Image.file(
-                                File(imagePath!),
+                                // ==================================================
+                                // CAMERA PREVIEW
+                                // ==================================================
 
-                                width:
-                                    double.infinity,
+                                ? ClipRRect(
+                                    borderRadius:
+                                        BorderRadius.circular(
+                                      16,
+                                    ),
 
-                                height:
-                                    double.infinity,
+                                    child: SizedBox.expand(
+                                      child: FittedBox(
+                                        fit: BoxFit.cover,
 
-                                fit: BoxFit.contain,
-                              ),
+                                        child: SizedBox(
+                                          width: controller!
+                                              .value
+                                              .previewSize!
+                                              .height,
+
+                                          height: controller!
+                                              .value
+                                              .previewSize!
+                                              .width,
+
+                                          child:
+                                              CameraPreview(
+                                            controller!,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  )
+
+                                // ==================================================
+                                // SELECTED PHOTO
+                                // ==================================================
+
+                                : Image.file(
+                                    File(imagePath!),
+                                    width:
+                                        double.infinity,
+                                    height:
+                                        double.infinity,
+                                    fit: BoxFit.contain,
+                                  ),
                   ),
                 ),
               ),
@@ -577,32 +715,31 @@ class _ScannerPageState extends State<ScannerPage> {
 
                 child: Column(
                   children: [
-
                     // ==================================================
                     // CAMERA AND UPLOAD BUTTONS
                     // ==================================================
 
                     if (imagePath == null) ...[
-
-                      // ------------------------------------------------
-                      // TAKE PHOTO
-                      // ------------------------------------------------
-
                       SizedBox(
                         width: double.infinity,
                         height: 55,
 
                         child: ElevatedButton.icon(
-                          onPressed: cameraReady
-                              ? takePicture
-                              : null,
+                          onPressed:
+                              cameraReady &&
+                                      !isTakingPicture
+                                  ? takePicture
+                                  : null,
 
                           icon: const Icon(
                             Icons.camera_alt,
                           ),
 
                           label: Text(
-                            'Take Photo',
+                            isTakingPicture
+                                ? 'Taking Photo...'
+                                : 'Take Photo',
+
                             style: Theme.of(context)
                                 .textTheme
                                 .labelLarge
@@ -615,16 +752,15 @@ class _ScannerPageState extends State<ScannerPage> {
 
                       const SizedBox(height: 10),
 
-                      // ------------------------------------------------
-                      // UPLOAD IMAGE
-                      // ------------------------------------------------
-
                       SizedBox(
                         width: double.infinity,
                         height: 55,
 
                         child: OutlinedButton.icon(
-                          onPressed: pickImage,
+                          onPressed:
+                              isTakingPicture
+                                  ? null
+                                  : pickImage,
 
                           icon: const Icon(
                             Icons.photo_library,
@@ -632,6 +768,7 @@ class _ScannerPageState extends State<ScannerPage> {
 
                           label: Text(
                             'Upload Image',
+
                             style: Theme.of(context)
                                 .textTheme
                                 .labelLarge,
@@ -641,15 +778,10 @@ class _ScannerPageState extends State<ScannerPage> {
                     ],
 
                     // ==================================================
-                    // AFTER IMAGE HAS BEEN SELECTED
+                    // BUTTONS SHOWN AFTER SELECTING AN IMAGE
                     // ==================================================
 
                     if (imagePath != null) ...[
-
-                      // ------------------------------------------------
-                      // IDENTIFY FLOWER
-                      // ------------------------------------------------
-
                       SizedBox(
                         width: double.infinity,
                         height: 55,
@@ -676,10 +808,6 @@ class _ScannerPageState extends State<ScannerPage> {
 
                       const SizedBox(height: 10),
 
-                      // ------------------------------------------------
-                      // CHOOSE ANOTHER PHOTO
-                      // ------------------------------------------------
-
                       SizedBox(
                         width: double.infinity,
                         height: 55,
@@ -691,6 +819,7 @@ class _ScannerPageState extends State<ScannerPage> {
 
                           child: Text(
                             'Choose Another Photo',
+
                             style: Theme.of(context)
                                 .textTheme
                                 .labelLarge,
