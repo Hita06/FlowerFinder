@@ -439,4 +439,85 @@ void main() {
     expect(oldReorderIndex, 0);
     expect(newReorderIndex, 1);
   });
+
+  testWidgets('profile opens edit handoff from sticker action dialog', (
+    WidgetTester tester,
+  ) async {
+    final stickerBytes = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    );
+    final sticker = SavedFlowerPhoto(
+      image: MemoryImage(stickerBytes),
+      stickerId: 'editable-sticker',
+      stickerBytes: stickerBytes,
+    );
+    SavedFlowerPhoto? editedSticker;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: UserProfilePage(
+          savedFlowerPhotos: [sticker],
+          onEditSticker: (value) => editedSticker = value,
+        ),
+      ),
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('saved-sticker-editable-sticker')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Edit Sticker'));
+    await tester.pumpAndSettle();
+
+    expect(editedSticker, same(sticker));
+    expect(find.text('Your Sticker'), findsNothing);
+  });
+
+  testWidgets('sticker creation edits an existing generated sticker', (
+    WidgetTester tester,
+  ) async {
+    final stickerBytes = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    );
+    final sticker = SavedFlowerPhoto(
+      image: MemoryImage(stickerBytes),
+      label: 'Editable rose',
+      stickerId: 'editable-sticker',
+      stickerBytes: stickerBytes,
+    );
+    SavedFlowerPhoto? savedPhoto;
+    List<int>? savedBytes;
+    String? savedStickerId;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StickerCreationPage(
+          photos: [sticker],
+          initialSticker: sticker,
+          onSaved: (photo, bytes, stickerId) {
+            savedPhoto = photo;
+            savedBytes = bytes;
+            savedStickerId = stickerId;
+          },
+        ),
+      ),
+    );
+
+    expect(find.text('Edit Sticker'), findsOneWidget);
+    expect(find.text('Generate sticker'), findsNothing);
+
+    await tester.scrollUntilVisible(
+      find.text('Update sticker'),
+      180,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Update sticker'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Update sticker'));
+    await tester.pumpAndSettle();
+
+    expect(savedPhoto, same(sticker));
+    expect(savedBytes, stickerBytes);
+    expect(savedStickerId, 'editable-sticker');
+  });
 }

@@ -141,6 +141,7 @@ class UserProfilePage extends StatefulWidget {
     this.onAddStickerToDiary,
     this.onDeleteSticker,
     this.onReorderStickers,
+    this.onEditSticker,
     this.onProfileChanged,
     this.onLogout,
   });
@@ -153,6 +154,7 @@ class UserProfilePage extends StatefulWidget {
   final ValueChanged<GeneratedStickerAsset>? onAddStickerToDiary;
   final ValueChanged<SavedFlowerPhoto>? onDeleteSticker;
   final void Function(int oldIndex, int newIndex)? onReorderStickers;
+  final ValueChanged<SavedFlowerPhoto>? onEditSticker;
   final ValueChanged<UserAccount>? onProfileChanged;
   final VoidCallback? onLogout;
 
@@ -326,6 +328,9 @@ class UserProfilePageState extends State<UserProfilePage> {
         profileColor: profileColor,
         onShareSticker: widget.onShareSticker,
         onAddStickerToDiary: widget.onAddStickerToDiary,
+        onEditSticker: widget.onEditSticker == null
+            ? null
+            : () => widget.onEditSticker!(sticker),
       ),
     );
   }
@@ -668,12 +673,14 @@ class _StickerActionDialog extends StatelessWidget {
     required this.profileColor,
     required this.onShareSticker,
     required this.onAddStickerToDiary,
+    required this.onEditSticker,
   });
 
   final GeneratedStickerAsset asset;
   final ProfileColorChoice profileColor;
   final ValueChanged<GeneratedStickerAsset>? onShareSticker;
   final ValueChanged<GeneratedStickerAsset>? onAddStickerToDiary;
+  final VoidCallback? onEditSticker;
 
   @override
   Widget build(BuildContext context) {
@@ -703,6 +710,16 @@ class _StickerActionDialog extends StatelessWidget {
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
+        ),
+        OutlinedButton.icon(
+          onPressed: onEditSticker == null
+              ? null
+              : () {
+                  Navigator.pop(context);
+                  onEditSticker!();
+                },
+          icon: Icon(Icons.edit_outlined, color: profileColor.color),
+          label: const Text('Edit Sticker'),
         ),
         OutlinedButton.icon(
           onPressed: onAddStickerToDiary == null

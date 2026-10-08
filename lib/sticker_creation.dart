@@ -15,12 +15,14 @@ class StickerCreationPage extends StatefulWidget {
     required this.onSaved,
     this.loadFlowers,
     this.pickPhoto,
+    this.initialSticker,
     super.key,
   });
 
   final List<SavedFlowerPhoto> photos;
   final Future<List<SavedFlowerPhoto>> Function(String query)? loadFlowers;
   final Future<Uint8List?> Function()? pickPhoto;
+  final SavedFlowerPhoto? initialSticker;
   final void Function(
     SavedFlowerPhoto photo,
     Uint8List stickerBytes,
@@ -41,6 +43,8 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
   String? _photoError;
   int _searchRequest = 0;
   bool get _busy => _isGenerating || _pickingPhoto;
+  bool get _isEditingSavedSticker =>
+      widget.initialSticker?.stickerBytes != null;
 
   @override
   void dispose() {
@@ -151,94 +155,118 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
   @override
   void initState() {
     super.initState();
-    unawaited(_loadFlowers());
+    final initialSticker = widget.initialSticker;
+    if (initialSticker?.stickerBytes != null) {
+      _baseStickerBytes = initialSticker!.stickerBytes;
+      _stickerBytes = initialSticker.stickerBytes;
+      selectedStickerId = initialSticker.stickerId ?? selectedStickerId;
+      if (_photos.isEmpty) {
+        _photos.add(initialSticker);
+      }
+    } else {
+      unawaited(_loadFlowers());
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Create Sticker')),
+      appBar: AppBar(
+        title: Text(_isEditingSavedSticker ? 'Edit Sticker' : 'Create Sticker'),
+      ),
       body: ListView(
         key: const ValueKey("sticker-scroll"),
         padding: const EdgeInsets.all(20),
         children: [
-          const Text(
-            'Choose a flower photo',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 14),
-          OutlinedButton.icon(
-            onPressed: _busy || _loadingPhotos ? null : _pickPhoto,
-            icon: const Icon(Icons.photo_library_outlined),
-            label: Text(
-              _pickingPhoto ? 'Opening photos...' : 'Choose my own photo',
+          if (_isEditingSavedSticker) ...[
+            const Text(
+              'Edit saved sticker',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
             ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _searchController,
-            enabled: !_busy && !_loadingPhotos,
-            onSubmitted: (_) => _loadFlowers(),
-            decoration: InputDecoration(
-              labelText: 'Search flower photos',
-              hintText: 'Rose, daisy, lavender...',
-              suffixIcon: IconButton(
-                onPressed: _busy || _loadingPhotos ? null : _loadFlowers,
-                icon: const Icon(Icons.search),
-                tooltip: 'Search flowers',
+            const SizedBox(height: 8),
+            Text(
+              'Adjust the generated sticker effects, then save to update it in your Profile.',
+              style: TextStyle(color: Colors.grey.shade700),
+            ),
+          ] else ...[
+            const Text(
+              'Choose a flower photo',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 14),
+            OutlinedButton.icon(
+              onPressed: _busy || _loadingPhotos ? null : _pickPhoto,
+              icon: const Icon(Icons.photo_library_outlined),
+              label: Text(
+                _pickingPhoto ? 'Opening photos...' : 'Choose my own photo',
               ),
             ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Flower photos from Perenual',
-            style: TextStyle(fontSize: 12),
-          ),
-          if (_loadingPhotos) const LinearProgressIndicator(),
-          if (_photoError != null) Text(_photoError!),
-          const SizedBox(height: 14),
-          SizedBox(
-            height: 112,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: _photos.length,
-              separatorBuilder: (_, index) => const SizedBox(width: 12),
-              itemBuilder: (context, index) {
-                final photo = _photos[index];
-                return GestureDetector(
-                  onTap: _busy || _loadingPhotos
-                      ? null
-                      : () => setState(() {
-                          selectedPhotoIndex = index;
-                          _baseStickerBytes = null;
-                          _stickerBytes = null;
-                          _errorMessage = null;
-                        }),
-                  child: Container(
-                    width: 112,
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: selectedPhotoIndex == index
-                            ? const Color(0xff2f6b4f)
-                            : Colors.transparent,
-                        width: 3,
-                      ),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Image(
-                      image: photo.image,
-                      fit: BoxFit.cover,
-                      semanticLabel: photo.label,
-                      errorBuilder: (_, error, stack) => const Center(
-                        child: Icon(Icons.broken_image_outlined),
-                      ),
-                    ),
-                  ),
-                );
-              },
+            const SizedBox(height: 12),
+            TextField(
+              controller: _searchController,
+              enabled: !_busy && !_loadingPhotos,
+              onSubmitted: (_) => _loadFlowers(),
+              decoration: InputDecoration(
+                labelText: 'Search flower photos',
+                hintText: 'Rose, daisy, lavender...',
+                suffixIcon: IconButton(
+                  onPressed: _busy || _loadingPhotos ? null : _loadFlowers,
+                  icon: const Icon(Icons.search),
+                  tooltip: 'Search flowers',
+                ),
+              ),
             ),
-          ),
+            const SizedBox(height: 8),
+            const Text(
+              'Flower photos from Perenual',
+              style: TextStyle(fontSize: 12),
+            ),
+            if (_loadingPhotos) const LinearProgressIndicator(),
+            if (_photoError != null) Text(_photoError!),
+            const SizedBox(height: 14),
+            SizedBox(
+              height: 112,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _photos.length,
+                separatorBuilder: (_, index) => const SizedBox(width: 12),
+                itemBuilder: (context, index) {
+                  final photo = _photos[index];
+                  return GestureDetector(
+                    onTap: _busy || _loadingPhotos
+                        ? null
+                        : () => setState(() {
+                            selectedPhotoIndex = index;
+                            _baseStickerBytes = null;
+                            _stickerBytes = null;
+                            _errorMessage = null;
+                          }),
+                    child: Container(
+                      width: 112,
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: selectedPhotoIndex == index
+                              ? const Color(0xff2f6b4f)
+                              : Colors.transparent,
+                          width: 3,
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Image(
+                        image: photo.image,
+                        fit: BoxFit.cover,
+                        semanticLabel: photo.label,
+                        errorBuilder: (_, error, stack) => const Center(
+                          child: Icon(Icons.broken_image_outlined),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
           _StickerPreview(
             photo: _photos.isEmpty ? null : _photos[selectedPhotoIndex],
@@ -246,20 +274,21 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
             stickerId: selectedStickerId,
           ),
           const SizedBox(height: 18),
-          FilledButton.icon(
-            onPressed: _photos.isEmpty || _busy || _loadingPhotos
-                ? null
-                : _generateSticker,
-            icon: _isGenerating
-                ? const SizedBox.square(
-                    dimension: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.auto_awesome),
-            label: Text(
-              _isGenerating ? 'Generating sticker...' : 'Generate sticker',
+          if (!_isEditingSavedSticker)
+            FilledButton.icon(
+              onPressed: _photos.isEmpty || _busy || _loadingPhotos
+                  ? null
+                  : _generateSticker,
+              icon: _isGenerating
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.auto_awesome),
+              label: Text(
+                _isGenerating ? 'Generating sticker...' : 'Generate sticker',
+              ),
             ),
-          ),
           if (_errorMessage != null) ...[
             const SizedBox(height: 10),
             Text(
@@ -367,7 +396,9 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
                 ? null
                 : _saveSticker,
             icon: const Icon(Icons.save_outlined),
-            label: const Text('Save sticker'),
+            label: Text(
+              _isEditingSavedSticker ? 'Update sticker' : 'Save sticker',
+            ),
           ),
         ],
       ),

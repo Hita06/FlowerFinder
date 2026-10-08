@@ -185,6 +185,30 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 
+  Future<void> _openStickerEditor(SavedFlowerPhoto sticker) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (context) => StickerCreationPage(
+          photos: [sticker],
+          initialSticker: sticker,
+          onSaved: (photo, stickerBytes, stickerId) {
+            setState(() {
+              final index = _savedFlowerPhotos.indexOf(sticker);
+              if (index == -1) return;
+              _savedFlowerPhotos[index] = sticker.copyWith(
+                stickerId: stickerId,
+                stickerBytes: stickerBytes,
+                createdAt: DateTime.now(),
+              );
+              currentIndex = profileTab;
+            });
+            unawaited(_persistSavedStickers());
+          },
+        ),
+      ),
+    );
+  }
+
   void _handleShareSticker(GeneratedStickerAsset sticker) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Sticker is ready for sharing.')),
@@ -222,6 +246,7 @@ class _MainNavigationState extends State<MainNavigation> {
         onAddStickerToDiary: _handleAddStickerToDiary,
         onDeleteSticker: _deleteSavedSticker,
         onReorderStickers: _reorderSavedStickers,
+        onEditSticker: (sticker) => unawaited(_openStickerEditor(sticker)),
         onProfileChanged: (account) => unawaited(_persistSavedProfile(account)),
         onLogout: _handleLogout,
       ),
@@ -248,6 +273,7 @@ class _ProfileTab extends StatelessWidget {
     required this.onAddStickerToDiary,
     required this.onDeleteSticker,
     required this.onReorderStickers,
+    required this.onEditSticker,
     required this.onProfileChanged,
     required this.onLogout,
   });
@@ -261,6 +287,7 @@ class _ProfileTab extends StatelessWidget {
   final ValueChanged<GeneratedStickerAsset> onAddStickerToDiary;
   final ValueChanged<SavedFlowerPhoto> onDeleteSticker;
   final void Function(int oldIndex, int newIndex) onReorderStickers;
+  final ValueChanged<SavedFlowerPhoto> onEditSticker;
   final ValueChanged<UserAccount> onProfileChanged;
   final Future<void> Function() onLogout;
 
@@ -300,6 +327,7 @@ class _ProfileTab extends StatelessWidget {
             onAddStickerToDiary: onAddStickerToDiary,
             onDeleteSticker: onDeleteSticker,
             onReorderStickers: onReorderStickers,
+            onEditSticker: onEditSticker,
             onProfileChanged: onProfileChanged,
             onLogout: onLogout,
           ),
