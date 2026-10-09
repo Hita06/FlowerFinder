@@ -378,4 +378,37 @@ void main() {
     expect(savedBytes, stickerBytes);
     expect(savedStickerId, 'editable-sticker');
   });
+
+  testWidgets('manage mode opens saved sticker effects editor', (
+    WidgetTester tester,
+  ) async {
+    final stickerBytes = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    );
+    final sticker = SavedFlowerPhoto(
+      image: MemoryImage(stickerBytes),
+      label: 'Managed sticker',
+      stickerId: 'managed-sticker',
+      stickerBytes: stickerBytes,
+    );
+    SavedFlowerPhoto? editedSticker;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: UserProfilePage(
+          savedFlowerPhotos: [sticker],
+          onEditSticker: (value) => editedSticker = value,
+        ),
+      ),
+    );
+
+    await tester.tap(find.widgetWithText(TextButton, 'Manage'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Edit Effects'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Edit Effects'));
+    await tester.pumpAndSettle();
+
+    expect(editedSticker, same(sticker));
+  });
 }

@@ -165,6 +165,7 @@ class UserProfilePageState extends State<UserProfilePage> {
     email: 'user@example.com',
   );
   SavedFlowerPhoto? _selectedSticker;
+  bool _isManagingStickers = false;
 
   static UserAccount _copyAccount(UserAccount account) {
     return UserAccount(
@@ -272,6 +273,10 @@ class UserProfilePageState extends State<UserProfilePage> {
             onShareSticker: widget.onShareSticker,
             onAddStickerToDiary: widget.onAddStickerToDiary,
             onEditSticker: widget.onEditSticker,
+            isManaging: _isManagingStickers,
+            onToggleManaging: () {
+              setState(() => _isManagingStickers = !_isManagingStickers);
+            },
             onStickerSelected: (sticker) {
               setState(() => _selectedSticker = sticker);
               widget.onStickerSelected?.call(sticker);
@@ -334,6 +339,8 @@ class _StickersSection extends StatelessWidget {
     required this.onShareSticker,
     required this.onAddStickerToDiary,
     required this.onEditSticker,
+    required this.isManaging,
+    required this.onToggleManaging,
   });
 
   final List<SavedFlowerPhoto> photos;
@@ -344,6 +351,8 @@ class _StickersSection extends StatelessWidget {
   final ValueChanged<GeneratedStickerAsset>? onShareSticker;
   final ValueChanged<GeneratedStickerAsset>? onAddStickerToDiary;
   final ValueChanged<SavedFlowerPhoto>? onEditSticker;
+  final bool isManaging;
+  final VoidCallback onToggleManaging;
 
   @override
   Widget build(BuildContext context) {
@@ -353,13 +362,41 @@ class _StickersSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Your Stickers',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Your Stickers',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            if (stickers.isNotEmpty)
+              TextButton.icon(
+                onPressed: onToggleManaging,
+                icon: Icon(
+                  isManaging ? Icons.check : Icons.tune,
+                  color: profileColor.color,
+                ),
+                label: Text(isManaging ? 'Done' : 'Manage'),
+              ),
+          ],
         ),
+        if (isManaging && stickers.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(
+            'Use Edit Effects to return to custom effects and update a saved sticker.',
+            style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+          ),
+        ],
         const SizedBox(height: 14),
         if (stickers.isEmpty)
           _AddStickerTile(onTap: onCreateSticker, profileColor: profileColor)
+        else if (isManaging)
+          _ManageStickersList(
+            stickers: stickers,
+            profileColor: profileColor,
+            onViewSticker: onStickerSelected,
+            onEditSticker: onEditSticker,
+          )
         else
           GridView.builder(
             shrinkWrap: true,
@@ -386,6 +423,91 @@ class _StickersSection extends StatelessWidget {
                 onTap: () => onStickerSelected(sticker),
               );
             },
+          ),
+      ],
+    );
+  }
+}
+
+class _ManageStickersList extends StatelessWidget {
+  const _ManageStickersList({
+    required this.stickers,
+    required this.profileColor,
+    required this.onViewSticker,
+    required this.onEditSticker,
+  });
+
+  final List<SavedFlowerPhoto> stickers;
+  final ProfileColorChoice profileColor;
+  final ValueChanged<SavedFlowerPhoto> onViewSticker;
+  final ValueChanged<SavedFlowerPhoto>? onEditSticker;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        for (final entry in stickers.indexed)
+          Card(
+            key: ValueKey(
+              'manage-sticker-${entry.$2.stickerId ?? entry.$1.toString()}',
+            ),
+            margin: const EdgeInsets.only(bottom: 12),
+            color: profileColor.softColor,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  SizedBox.square(
+                    dimension: 72,
+                    child: Image.memory(
+                      entry.$2.stickerBytes!,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          entry.$2.label ?? 'Saved sticker',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Custom effects can be updated anytime.',
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: () => onViewSticker(entry.$2),
+                              icon: const Icon(Icons.visibility_outlined),
+                              label: const Text('View'),
+                            ),
+                            FilledButton.icon(
+                              onPressed: onEditSticker == null
+                                  ? null
+                                  : () => onEditSticker!(entry.$2),
+                              icon: const Icon(Icons.auto_fix_high),
+                              label: const Text('Edit Effects'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
       ],
     );
