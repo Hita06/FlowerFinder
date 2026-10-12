@@ -180,7 +180,8 @@ class UserProfilePageState extends State<UserProfilePage> {
   _ProfileItemSize _nextStickerGridSize = _ProfileItemSize.small;
   final List<_UploadedProfilePhoto> _uploadedProfilePhotos = [];
   final Map<SavedFlowerPhoto, _ProfileItemSize> _stickerGridSizes = {};
-  final Map<String, _StickerBoardPlacement> _stickerBoardPlacements = {};
+  final Map<SavedFlowerPhoto, _StickerBoardPlacement> _stickerBoardPlacements =
+      {};
 
   static UserAccount _copyAccount(UserAccount account) {
     return UserAccount(
@@ -292,8 +293,7 @@ class UserProfilePageState extends State<UserProfilePage> {
     SavedFlowerPhoto sticker,
     int index,
   ) {
-    final key = _stickerBoardKey(sticker, index);
-    return _stickerBoardPlacements[key] ??
+    return _stickerBoardPlacements[sticker] ??
         _StickerBoardPlacement.initial(index);
   }
 
@@ -304,14 +304,15 @@ class UserProfilePageState extends State<UserProfilePage> {
     Size boardSize,
   ) {
     if (boardSize.width <= 0 || boardSize.height <= 0) return;
-    final key = _stickerBoardKey(sticker, index);
     final current = _placementForSticker(sticker, index);
     final nextPosition = Offset(
       (current.position.dx + delta.dx / boardSize.width).clamp(0.0, 0.82),
       (current.position.dy + delta.dy / boardSize.height).clamp(0.0, 0.82),
     );
     setState(() {
-      _stickerBoardPlacements[key] = current.copyWith(position: nextPosition);
+      _stickerBoardPlacements[sticker] = current.copyWith(
+        position: nextPosition,
+      );
     });
   }
 
@@ -320,10 +321,9 @@ class UserProfilePageState extends State<UserProfilePage> {
     int index,
     double delta,
   ) {
-    final key = _stickerBoardKey(sticker, index);
     final current = _placementForSticker(sticker, index);
     setState(() {
-      _stickerBoardPlacements[key] = current.copyWith(
+      _stickerBoardPlacements[sticker] = current.copyWith(
         scale: (current.scale + delta).clamp(0.7, 1.8),
       );
     });
@@ -454,6 +454,10 @@ class UserProfilePageState extends State<UserProfilePage> {
               setState(() => _selectedSticker = sticker);
               widget.onStickerSelected?.call(sticker);
               _showStickerActions(sticker, profileColor);
+            },
+            onLargeStickerSelected: (sticker) {
+              setState(() => _selectedSticker = sticker);
+              widget.onStickerSelected?.call(sticker);
             },
           ),
         ],
@@ -641,10 +645,12 @@ class _StickerBoardPlacement {
   factory _StickerBoardPlacement.initial(int index) {
     const positions = [
       Offset(0.08, 0.08),
-      Offset(0.52, 0.08),
-      Offset(0.1, 0.46),
-      Offset(0.56, 0.48),
-      Offset(0.32, 0.28),
+      Offset(0.58, 0.08),
+      Offset(0.1, 0.52),
+      Offset(0.58, 0.52),
+      Offset(0.34, 0.3),
+      Offset(0.18, 0.28),
+      Offset(0.62, 0.32),
     ];
     return _StickerBoardPlacement(
       position: positions[index % positions.length],
@@ -661,10 +667,6 @@ class _StickerBoardPlacement {
       scale: scale ?? this.scale,
     );
   }
-}
-
-String _stickerBoardKey(SavedFlowerPhoto sticker, int index) {
-  return sticker.stickerId ?? '${sticker.label ?? 'sticker'}-$index';
 }
 
 class _StickerCollectionItem {
@@ -810,6 +812,7 @@ class _StickersSection extends StatelessWidget {
     required this.onMoveSticker,
     required this.onResizeSticker,
     required this.onStickerSelected,
+    required this.onLargeStickerSelected,
     required this.onShareSticker,
     required this.onAddStickerToDiary,
     required this.onDeleteSticker,
@@ -849,6 +852,7 @@ class _StickersSection extends StatelessWidget {
   final void Function(SavedFlowerPhoto sticker, int index, double delta)
   onResizeSticker;
   final ValueChanged<SavedFlowerPhoto> onStickerSelected;
+  final ValueChanged<SavedFlowerPhoto> onLargeStickerSelected;
   final ValueChanged<GeneratedStickerAsset>? onShareSticker;
   final ValueChanged<GeneratedStickerAsset>? onAddStickerToDiary;
   final ValueChanged<SavedFlowerPhoto>? onDeleteSticker;
@@ -960,7 +964,7 @@ class _StickersSection extends StatelessWidget {
             stickers: stickers,
             selectedSticker: selectedSticker,
             profileColor: profileColor,
-            onStickerSelected: onStickerSelected,
+            onStickerSelected: onLargeStickerSelected,
             onAddTap: onShowAddOptions,
             placementForSticker: placementForSticker,
             onMoveSticker: onMoveSticker,
