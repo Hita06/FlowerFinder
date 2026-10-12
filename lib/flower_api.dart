@@ -1,6 +1,5 @@
 // FlowerFinder - PlantNet API Service
 // Created by Iris
-// Updated to load the PlantNet API key securely from the .env file.
 
 import 'dart:convert';
 
@@ -8,34 +7,37 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 class FlowerApi {
-  // Sends a flower image to PlantNet for identification.
-  static Future<Map<String, dynamic>> identifyFlower(String imagePath) async {
-    // Reads the PlantNet API key from the local .env file.
+  static Future<Map<String, dynamic>> identifyFlower(
+    String imagePath,
+  ) async {
     final String? apiKey = dotenv.env['PLANTNET_API_KEY'];
 
     if (apiKey == null || apiKey.trim().isEmpty) {
       throw Exception('The PlantNet API key is missing.');
     }
 
-    // Builds the PlantNet API request address.
-    final Uri uri = Uri.https('my-api.plantnet.org', '/v2/identify/all', {
-      'api-key': apiKey.trim(),
-      'lang': 'en',
-      'nb-results': '3',
-    });
+    final Uri uri = Uri.https(
+      'my-api.plantnet.org',
+      '/v2/identify/all',
+      {
+        'api-key': apiKey.trim(),
+        'lang': 'en',
+        'nb-results': '3',
+      },
+    );
 
     try {
       final request = http.MultipartRequest('POST', uri);
 
-      // Adds the selected flower image.
-      request.files.add(await http.MultipartFile.fromPath('images', imagePath));
+      request.files.add(
+        await http.MultipartFile.fromPath('images', imagePath),
+      );
 
-      // Tells PlantNet that the image shows a flower.
       request.fields['organs'] = 'flower';
 
       final streamedResponse = await request.send();
-
-      final String responseBody = await streamedResponse.stream.bytesToString();
+      final String responseBody =
+          await streamedResponse.stream.bytesToString();
 
       if (streamedResponse.statusCode == 200) {
         final dynamic decodedResponse = jsonDecode(responseBody);
@@ -49,7 +51,10 @@ class FlowerApi {
 
       if (streamedResponse.statusCode == 401 ||
           streamedResponse.statusCode == 403) {
-        throw Exception('The PlantNet API key was not accepted.');
+        throw Exception(
+          'PlantNet rejected the request. '
+          'Status: ${streamedResponse.statusCode}',
+        );
       }
 
       if (streamedResponse.statusCode == 429) {
