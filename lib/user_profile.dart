@@ -456,7 +456,6 @@ class UserProfilePageState extends State<UserProfilePage> {
               _showStickerActions(sticker, profileColor);
             },
             onLargeStickerSelected: (sticker) {
-              setState(() => _selectedSticker = sticker);
               widget.onStickerSelected?.call(sticker);
             },
           ),
@@ -484,6 +483,10 @@ class UserProfilePageState extends State<UserProfilePage> {
             : () => widget.onEditSticker!(sticker),
       ),
     );
+
+    if (mounted && identical(_selectedSticker, sticker)) {
+      setState(() => _selectedSticker = null);
+    }
   }
 
   Future<void> _confirmDeleteSticker(
@@ -1186,7 +1189,7 @@ class _LargeStickerSquare extends StatelessWidget {
                     index: index,
                     placement: placementForSticker(stickers[index], index),
                     boardSize: boardSize,
-                    selected: identical(stickers[index], selectedSticker),
+                    selected: false,
                     profileColor: profileColor,
                     onTap: () => onStickerSelected(stickers[index]),
                     onMove: onMoveSticker,
@@ -1466,33 +1469,16 @@ class _ManageCollectionList extends StatelessWidget {
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   Text(item.isSticker ? 'Generated sticker' : 'Uploaded photo'),
-                  ChoiceChip(
-                    label: const Text('Small'),
-                    selected: item.size == _ProfileItemSize.small,
-                    onSelected: (_) => item.isSticker
+                  _ProfileItemSizeToggle(
+                    value: item.size,
+                    profileColor: profileColor,
+                    onChanged: (size) => item.isSticker
                         ? onChangeStickerGridSize(
                             item.sticker!,
                             stickers.indexOf(item.sticker!),
-                            _ProfileItemSize.small,
+                            size,
                           )
-                        : onChangeUploadedPhotoSize(
-                            item.uploadedPhoto!,
-                            _ProfileItemSize.small,
-                          ),
-                  ),
-                  ChoiceChip(
-                    label: const Text('Large'),
-                    selected: item.size == _ProfileItemSize.large,
-                    onSelected: (_) => item.isSticker
-                        ? onChangeStickerGridSize(
-                            item.sticker!,
-                            stickers.indexOf(item.sticker!),
-                            _ProfileItemSize.large,
-                          )
-                        : onChangeUploadedPhotoSize(
-                            item.uploadedPhoto!,
-                            _ProfileItemSize.large,
-                          ),
+                        : onChangeUploadedPhotoSize(item.uploadedPhoto!, size),
                   ),
                 ],
               ),
@@ -1508,6 +1494,83 @@ class _ManageCollectionList extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _ProfileItemSizeToggle extends StatelessWidget {
+  const _ProfileItemSizeToggle({
+    required this.value,
+    required this.profileColor,
+    required this.onChanged,
+  });
+
+  final _ProfileItemSize value;
+  final ProfileColorChoice profileColor;
+  final ValueChanged<_ProfileItemSize> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: profileColor.color.withValues(alpha: 0.28)),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ProfileItemSizeToggleButton(
+            label: 'Small',
+            selected: value == _ProfileItemSize.small,
+            profileColor: profileColor,
+            onTap: () => onChanged(_ProfileItemSize.small),
+          ),
+          _ProfileItemSizeToggleButton(
+            label: 'Large',
+            selected: value == _ProfileItemSize.large,
+            profileColor: profileColor,
+            onTap: () => onChanged(_ProfileItemSize.large),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileItemSizeToggleButton extends StatelessWidget {
+  const _ProfileItemSizeToggleButton({
+    required this.label,
+    required this.selected,
+    required this.profileColor,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final ProfileColorChoice profileColor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? profileColor.softColor : Colors.white,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          width: 68,
+          height: 34,
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: selected ? profileColor.color : Colors.black87,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1579,27 +1642,11 @@ class _ManageStickersList extends StatelessWidget {
                       ? 'Generated sticker'
                       : 'Saved ${_formatStickerDate(sticker.createdAt!)}',
                 ),
-                ChoiceChip(
-                  label: const Text('Small'),
-                  selected:
-                      gridSizeForSticker(sticker, index) ==
-                      _ProfileItemSize.small,
-                  onSelected: (_) => onChangeStickerGridSize(
-                    sticker,
-                    index,
-                    _ProfileItemSize.small,
-                  ),
-                ),
-                ChoiceChip(
-                  label: const Text('Large'),
-                  selected:
-                      gridSizeForSticker(sticker, index) ==
-                      _ProfileItemSize.large,
-                  onSelected: (_) => onChangeStickerGridSize(
-                    sticker,
-                    index,
-                    _ProfileItemSize.large,
-                  ),
+                _ProfileItemSizeToggle(
+                  value: gridSizeForSticker(sticker, index),
+                  profileColor: profileColor,
+                  onChanged: (size) =>
+                      onChangeStickerGridSize(sticker, index, size),
                 ),
               ],
             ),
