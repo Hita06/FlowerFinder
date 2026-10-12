@@ -57,6 +57,7 @@ class StickerStorage {
       'stickerId': photo.stickerId,
       'createdAt': photo.createdAt?.toIso8601String(),
       'stickerBytes': base64Encode(photo.stickerBytes!),
+      'profileGridSize': photo.profileGridSizeId,
     };
   }
 
@@ -71,6 +72,7 @@ class StickerStorage {
         stickerId: entry['stickerId'] as String?,
         stickerBytes: Uint8List.fromList(stickerBytes),
         createdAt: DateTime.tryParse(entry['createdAt']?.toString() ?? ''),
+        profileGridSizeId: entry['profileGridSize'] as String?,
       );
     } catch (_) {
       return null;

@@ -125,6 +125,15 @@ class _MainNavigationState extends State<MainNavigation> {
     unawaited(_persistSavedStickers());
   }
 
+  void _updateStickerGridSize(SavedFlowerPhoto sticker, String sizeId) {
+    setState(() {
+      final index = _savedFlowerPhotos.indexOf(sticker);
+      if (index == -1) return;
+      _savedFlowerPhotos[index] = sticker.copyWith(profileGridSizeId: sizeId);
+    });
+    unawaited(_persistSavedStickers());
+  }
+
   void _reorderSavedStickers(int oldIndex, int newIndex) {
     setState(() {
       if (newIndex > oldIndex) {
@@ -246,6 +255,7 @@ class _MainNavigationState extends State<MainNavigation> {
         onAddStickerToDiary: _handleAddStickerToDiary,
         onDeleteSticker: _deleteSavedSticker,
         onReorderStickers: _reorderSavedStickers,
+        onStickerGridSizeChanged: _updateStickerGridSize,
         onEditSticker: (sticker) => unawaited(_openStickerEditor(sticker)),
         onProfileChanged: (account) => unawaited(_persistSavedProfile(account)),
         onLogout: _handleLogout,
@@ -273,6 +283,7 @@ class _ProfileTab extends StatelessWidget {
     required this.onAddStickerToDiary,
     required this.onDeleteSticker,
     required this.onReorderStickers,
+    required this.onStickerGridSizeChanged,
     required this.onEditSticker,
     required this.onProfileChanged,
     required this.onLogout,
@@ -287,6 +298,8 @@ class _ProfileTab extends StatelessWidget {
   final ValueChanged<GeneratedStickerAsset> onAddStickerToDiary;
   final ValueChanged<SavedFlowerPhoto> onDeleteSticker;
   final void Function(int oldIndex, int newIndex) onReorderStickers;
+  final void Function(SavedFlowerPhoto sticker, String sizeId)
+  onStickerGridSizeChanged;
   final ValueChanged<SavedFlowerPhoto> onEditSticker;
   final ValueChanged<UserAccount> onProfileChanged;
   final Future<void> Function() onLogout;
@@ -327,6 +340,7 @@ class _ProfileTab extends StatelessWidget {
             onAddStickerToDiary: onAddStickerToDiary,
             onDeleteSticker: onDeleteSticker,
             onReorderStickers: onReorderStickers,
+            onStickerGridSizeChanged: onStickerGridSizeChanged,
             onEditSticker: onEditSticker,
             onProfileChanged: onProfileChanged,
             onLogout: onLogout,

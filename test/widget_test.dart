@@ -532,7 +532,7 @@ void main() {
     expect(find.text('Your Stickers'), findsOneWidget);
     expect(
       find.text(
-        'Show all generated stickers in one large square. Drag them and adjust their size.',
+        'Show all generated stickers in one large square. Tap Edit to move or resize.',
       ),
       findsOneWidget,
     );
@@ -567,6 +567,12 @@ void main() {
       const ValueKey('large-sticker-move-sticker'),
     );
     expect(largeSticker, findsOneWidget);
+    await tester.tap(largeSticker);
+    await tester.pump();
+    expect(find.text('Edit'), findsOneWidget);
+    await tester.tap(find.text('Edit'));
+    await tester.pump();
+    expect(find.text('Done'), findsOneWidget);
     await tester.drag(largeSticker, const Offset(24, 18));
     await tester.pump();
     expect(
