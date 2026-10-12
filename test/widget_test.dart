@@ -508,7 +508,7 @@ void main() {
     expect(find.text('Your Sticker'), findsNothing);
   });
 
-  testWidgets('profile display adds a saved sticker to the board', (
+  testWidgets('your stickers can switch to a large square display', (
     WidgetTester tester,
   ) async {
     final stickerBytes = base64Decode(
@@ -525,16 +525,24 @@ void main() {
       MaterialApp(home: UserProfilePage(savedFlowerPhotos: [sticker])),
     );
 
-    expect(find.text('Profile Display'), findsOneWidget);
-    final addStickerButton = find.widgetWithText(FilledButton, 'Add Sticker');
-    await _scrollToFinder(tester, addStickerButton);
-    await tester.tap(addStickerButton);
+    await _scrollToFinder(tester, find.text('Large square'));
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Large square'));
     await tester.pump();
 
-    expect(find.byKey(const ValueKey('profile-board-item-0')), findsOneWidget);
+    expect(find.text('Your Stickers'), findsOneWidget);
+    expect(
+      find.text(
+        'Show up to four stickers or uploaded photos inside one large square.',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('saved-sticker-board-sticker')),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('profile display uploads a gallery photo through picker boundary', (
+  testWidgets('your stickers uploads a gallery photo as its own item', (
     WidgetTester tester,
   ) async {
     final photoBytes = base64Decode(
@@ -547,15 +555,38 @@ void main() {
       ),
     );
 
-    final uploadPhotoButton = find.widgetWithText(
-      OutlinedButton,
-      'Upload Photo',
-    );
+    final uploadPhotoButton = find.widgetWithText(TextButton, 'Upload Photo');
     await _scrollToFinder(tester, uploadPhotoButton);
     await tester.tap(uploadPhotoButton);
     await tester.pump();
 
-    expect(find.byKey(const ValueKey('profile-board-item-0')), findsOneWidget);
+    expect(find.byKey(const ValueKey('uploaded-photo-0')), findsOneWidget);
+  });
+
+  testWidgets('add sticker tile asks whether to create or upload', (
+    WidgetTester tester,
+  ) async {
+    var createStickerTapped = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: UserProfilePage(
+          onCreateSticker: () => createStickerTapped = true,
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Add Sticker'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add to Your Stickers'), findsOneWidget);
+    expect(find.text('Create sticker'), findsOneWidget);
+    expect(find.text('Upload photo'), findsOneWidget);
+
+    await tester.tap(find.text('Create sticker'));
+    await tester.pumpAndSettle();
+
+    expect(createStickerTapped, isTrue);
   });
 
   testWidgets('sticker creation edits an existing generated sticker', (

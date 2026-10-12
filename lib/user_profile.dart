@@ -166,7 +166,6 @@ class UserProfilePage extends StatefulWidget {
 }
 
 class UserProfilePageState extends State<UserProfilePage> {
-  static const int _maxProfileBoardItems = 4;
   late final UserAccount _account = _copyAccount(
     widget.account ?? defaultAccount,
   );
@@ -177,7 +176,8 @@ class UserProfilePageState extends State<UserProfilePage> {
   );
   SavedFlowerPhoto? _selectedSticker;
   bool _isManagingStickers = false;
-  final List<_ProfileBoardItem> _profileBoardItems = [];
+  _StickerDisplaySize _stickerDisplaySize = _StickerDisplaySize.smallGrid;
+  final List<_UploadedProfilePhoto> _uploadedProfilePhotos = [];
 
   static UserAccount _copyAccount(UserAccount account) {
     return UserAccount(
@@ -202,7 +202,7 @@ class UserProfilePageState extends State<UserProfilePage> {
     });
   }
 
-  Future<void> _pickProfileBoardPhoto() async {
+  Future<void> _pickProfilePhoto() async {
     Uint8List? bytes;
     if (widget.pickProfileImage != null) {
       bytes = await widget.pickProfileImage!();
@@ -215,73 +215,29 @@ class UserProfilePageState extends State<UserProfilePage> {
       );
       bytes = await file?.readAsBytes();
     }
-    if (!mounted ||
-        bytes == null ||
-        _profileBoardItems.length >= _maxProfileBoardItems) {
-      return;
-    }
+    if (!mounted || bytes == null) return;
     setState(() {
-      _profileBoardItems.add(
-        _ProfileBoardItem(
+      _uploadedProfilePhotos.add(
+        _UploadedProfilePhoto(
           imageBytes: Uint8List.fromList(bytes!),
           label: 'Gallery photo',
-          position: _nextBoardPosition(),
         ),
       );
     });
   }
 
-  void _addStickerToProfileBoard() {
-    if (_profileBoardItems.length >= _maxProfileBoardItems) return;
-    final stickers = widget.savedFlowerPhotos
-        .where((photo) => photo.stickerBytes != null)
-        .toList();
-    if (stickers.isEmpty) return;
-    final nextSticker = stickers.firstWhere(
-      (sticker) =>
-          !_profileBoardItems.any((item) => item.sourceSticker == sticker),
-      orElse: () => stickers.first,
+  Future<void> _showAddStickerOptions(ProfileColorChoice profileColor) async {
+    final action = await showModalBottomSheet<_StickerAddAction>(
+      context: context,
+      builder: (context) => _AddStickerOptionsSheet(profileColor: profileColor),
     );
-    setState(() {
-      _profileBoardItems.add(
-        _ProfileBoardItem(
-          imageBytes: Uint8List.fromList(nextSticker.stickerBytes!),
-          label: nextSticker.label ?? 'Saved sticker',
-          position: _nextBoardPosition(),
-          sourceSticker: nextSticker,
-        ),
-      );
-    });
-  }
-
-  Offset _nextBoardPosition() {
-    const positions = [
-      Offset(0.18, 0.18),
-      Offset(0.62, 0.18),
-      Offset(0.18, 0.62),
-      Offset(0.62, 0.62),
-    ];
-    return positions[_profileBoardItems.length % positions.length];
-  }
-
-  void _moveProfileBoardItem(int index, Offset delta, Size boardSize) {
-    if (boardSize.width <= 0 || boardSize.height <= 0) return;
-    setState(() {
-      final item = _profileBoardItems[index];
-      final nextX = (item.position.dx + delta.dx / boardSize.width).clamp(
-        0.0,
-        0.78,
-      );
-      final nextY = (item.position.dy + delta.dy / boardSize.height).clamp(
-        0.0,
-        0.78,
-      );
-      _profileBoardItems[index] = item.copyWith(position: Offset(nextX, nextY));
-    });
-  }
-
-  void _removeProfileBoardItem(int index) {
-    setState(() => _profileBoardItems.removeAt(index));
+    if (action == null) return;
+    switch (action) {
+      case _StickerAddAction.createSticker:
+        widget.onCreateSticker?.call();
+      case _StickerAddAction.uploadPhoto:
+        await _pickProfilePhoto();
+    }
   }
 
   Future<void> _editAccount() async {
@@ -375,21 +331,18 @@ class UserProfilePageState extends State<UserProfilePage> {
             style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
           ),
           const SizedBox(height: 28),
-          _ProfileDisplayBoard(
-            items: _profileBoardItems,
-            profileColor: profileColor,
-            hasSavedStickers: stickerCount > 0,
-            onAddPhoto: _pickProfileBoardPhoto,
-            onAddSticker: _addStickerToProfileBoard,
-            onMoveItem: _moveProfileBoardItem,
-            onRemoveItem: _removeProfileBoardItem,
-          ),
-          const SizedBox(height: 28),
           _StickersSection(
             photos: widget.savedFlowerPhotos,
             selectedSticker: _selectedSticker,
             profileColor: profileColor,
+            uploadedPhotos: _uploadedProfilePhotos,
+            displaySize: _stickerDisplaySize,
+            onDisplaySizeChanged: (size) {
+              setState(() => _stickerDisplaySize = size);
+            },
             onCreateSticker: widget.onCreateSticker,
+            onUploadPhoto: _pickProfilePhoto,
+            onShowAddOptions: () => _showAddStickerOptions(profileColor),
             onShareSticker: widget.onShareSticker,
             onAddStickerToDiary: widget.onAddStickerToDiary,
             onDeleteSticker: widget.onDeleteSticker == null
@@ -552,251 +505,85 @@ class LogoutPage extends StatelessWidget {
   }
 }
 
-class _ProfileBoardItem {
-  const _ProfileBoardItem({
-    required this.imageBytes,
-    required this.label,
-    required this.position,
-    this.sourceSticker,
-  });
+enum _StickerDisplaySize { smallGrid, largeSquare }
+
+enum _StickerAddAction { createSticker, uploadPhoto }
+
+class _UploadedProfilePhoto {
+  const _UploadedProfilePhoto({required this.imageBytes, required this.label});
 
   final Uint8List imageBytes;
   final String label;
-  final Offset position;
-  final SavedFlowerPhoto? sourceSticker;
-
-  _ProfileBoardItem copyWith({Offset? position}) {
-    return _ProfileBoardItem(
-      imageBytes: imageBytes,
-      label: label,
-      position: position ?? this.position,
-      sourceSticker: sourceSticker,
-    );
-  }
 }
 
-class _ProfileDisplayBoard extends StatelessWidget {
-  const _ProfileDisplayBoard({
-    required this.items,
-    required this.profileColor,
-    required this.hasSavedStickers,
-    required this.onAddPhoto,
-    required this.onAddSticker,
-    required this.onMoveItem,
-    required this.onRemoveItem,
-  });
+class _StickerCollectionItem {
+  const _StickerCollectionItem.sticker(this.sticker)
+    : uploadedPhoto = null,
+      isSticker = true;
 
-  final List<_ProfileBoardItem> items;
+  const _StickerCollectionItem.photo(this.uploadedPhoto)
+    : sticker = null,
+      isSticker = false;
+
+  final SavedFlowerPhoto? sticker;
+  final _UploadedProfilePhoto? uploadedPhoto;
+  final bool isSticker;
+
+  Uint8List get imageBytes =>
+      isSticker ? sticker!.stickerBytes! : uploadedPhoto!.imageBytes;
+
+  String get label =>
+      isSticker ? sticker!.label ?? 'Saved sticker' : uploadedPhoto!.label;
+}
+
+class _AddStickerOptionsSheet extends StatelessWidget {
+  const _AddStickerOptionsSheet({required this.profileColor});
+
   final ProfileColorChoice profileColor;
-  final bool hasSavedStickers;
-  final VoidCallback onAddPhoto;
-  final VoidCallback onAddSticker;
-  final void Function(int index, Offset delta, Size boardSize) onMoveItem;
-  final ValueChanged<int> onRemoveItem;
 
   @override
   Widget build(BuildContext context) {
-    final canAddItem =
-        items.length < UserProfilePageState._maxProfileBoardItems;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Expanded(
-              child: Text(
-                'Profile Display',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            const Text(
+              'Add to Your Stickers',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 12),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: CircleAvatar(
+                backgroundColor: profileColor.softColor,
+                child: Icon(Icons.auto_fix_high, color: profileColor.color),
               ),
+              title: const Text('Create sticker'),
+              subtitle: const Text('Make a new generated flower sticker'),
+              onTap: () =>
+                  Navigator.pop(context, _StickerAddAction.createSticker),
             ),
-            TextButton.icon(
-              onPressed: canAddItem ? onAddPhoto : null,
-              icon: Icon(
-                Icons.photo_library_outlined,
-                color: profileColor.color,
-              ),
-              label: const Text('Add Photo'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'Place up to four stickers and gallery photos here. Drag items to arrange them.',
-          style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
-        ),
-        const SizedBox(height: 12),
-        AspectRatio(
-          aspectRatio: 1,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final boardSize = Size(
-                constraints.maxWidth,
-                constraints.maxHeight,
-              );
-              return Container(
-                decoration: BoxDecoration(
-                  color: profileColor.softColor,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: profileColor.color.withValues(alpha: 0.18),
-                    width: 2,
-                  ),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: CustomPaint(
-                        painter: _BoardGridPainter(
-                          color: profileColor.color.withValues(alpha: 0.12),
-                        ),
-                      ),
-                    ),
-                    if (items.isEmpty)
-                      Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Text(
-                            'Add up to four stickers or gallery photos to customise your profile display.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.grey.shade700),
-                          ),
-                        ),
-                      ),
-                    for (var index = 0; index < items.length; index += 1)
-                      _PositionedBoardItem(
-                        key: ValueKey('profile-board-item-$index'),
-                        item: items[index],
-                        index: index,
-                        boardSize: boardSize,
-                        profileColor: profileColor,
-                        onMoveItem: onMoveItem,
-                        onRemoveItem: onRemoveItem,
-                      ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 10,
-          runSpacing: 8,
-          children: [
-            FilledButton.icon(
-              onPressed: canAddItem && hasSavedStickers ? onAddSticker : null,
-              icon: const Icon(Icons.add_reaction_outlined),
-              label: const Text('Add Sticker'),
-            ),
-            OutlinedButton.icon(
-              onPressed: canAddItem ? onAddPhoto : null,
-              icon: const Icon(Icons.add_photo_alternate_outlined),
-              label: const Text('Upload Photo'),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _PositionedBoardItem extends StatelessWidget {
-  const _PositionedBoardItem({
-    super.key,
-    required this.item,
-    required this.index,
-    required this.boardSize,
-    required this.profileColor,
-    required this.onMoveItem,
-    required this.onRemoveItem,
-  });
-
-  final _ProfileBoardItem item;
-  final int index;
-  final Size boardSize;
-  final ProfileColorChoice profileColor;
-  final void Function(int index, Offset delta, Size boardSize) onMoveItem;
-  final ValueChanged<int> onRemoveItem;
-
-  @override
-  Widget build(BuildContext context) {
-    final itemSize = boardSize.shortestSide * 0.34;
-    return Positioned(
-      left: item.position.dx * boardSize.width,
-      top: item.position.dy * boardSize.height,
-      child: GestureDetector(
-        onPanUpdate: (details) => onMoveItem(index, details.delta, boardSize),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Container(
-              width: itemSize,
-              height: itemSize,
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.82),
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.12),
-                    blurRadius: 14,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Image.memory(item.imageBytes, fit: BoxFit.contain),
-            ),
-            Positioned(
-              right: -8,
-              top: -8,
-              child: InkWell(
-                onTap: () => onRemoveItem(index),
-                borderRadius: BorderRadius.circular(999),
-                child: Container(
-                  width: 26,
-                  height: 26,
-                  decoration: BoxDecoration(
-                    color: profileColor.color,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.close, color: Colors.white, size: 16),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: CircleAvatar(
+                backgroundColor: profileColor.softColor,
+                child: Icon(
+                  Icons.photo_library_outlined,
+                  color: profileColor.color,
                 ),
               ),
+              title: const Text('Upload photo'),
+              subtitle: const Text('Add a photo from your gallery'),
+              onTap: () =>
+                  Navigator.pop(context, _StickerAddAction.uploadPhoto),
             ),
           ],
         ),
       ),
     );
-  }
-}
-
-class _BoardGridPainter extends CustomPainter {
-  const _BoardGridPainter({required this.color});
-
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 1;
-    canvas.drawLine(
-      Offset(size.width / 2, 0),
-      Offset(size.width / 2, size.height),
-      paint,
-    );
-    canvas.drawLine(
-      Offset(0, size.height / 2),
-      Offset(size.width, size.height / 2),
-      paint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _BoardGridPainter oldDelegate) {
-    return oldDelegate.color != color;
   }
 }
 
@@ -822,9 +609,14 @@ class _ProfileStat extends StatelessWidget {
 class _StickersSection extends StatelessWidget {
   const _StickersSection({
     required this.photos,
+    required this.uploadedPhotos,
     required this.selectedSticker,
     required this.profileColor,
+    required this.displaySize,
+    required this.onDisplaySizeChanged,
     required this.onCreateSticker,
+    required this.onUploadPhoto,
+    required this.onShowAddOptions,
     required this.onStickerSelected,
     required this.onShareSticker,
     required this.onAddStickerToDiary,
@@ -835,9 +627,14 @@ class _StickersSection extends StatelessWidget {
   });
 
   final List<SavedFlowerPhoto> photos;
+  final List<_UploadedProfilePhoto> uploadedPhotos;
   final SavedFlowerPhoto? selectedSticker;
   final ProfileColorChoice profileColor;
+  final _StickerDisplaySize displaySize;
+  final ValueChanged<_StickerDisplaySize> onDisplaySizeChanged;
   final VoidCallback? onCreateSticker;
+  final VoidCallback onUploadPhoto;
+  final VoidCallback onShowAddOptions;
   final ValueChanged<SavedFlowerPhoto> onStickerSelected;
   final ValueChanged<GeneratedStickerAsset>? onShareSticker;
   final ValueChanged<GeneratedStickerAsset>? onAddStickerToDiary;
@@ -851,6 +648,10 @@ class _StickersSection extends StatelessWidget {
     final stickers = photos
         .where((photo) => photo.stickerBytes != null)
         .toList();
+    final collectionItems = <_StickerCollectionItem>[
+      ...stickers.map(_StickerCollectionItem.sticker),
+      ...uploadedPhotos.map(_StickerCollectionItem.photo),
+    ];
     final canManage =
         stickers.isNotEmpty &&
         (onDeleteSticker != null || onReorderStickers != null);
@@ -866,6 +667,14 @@ class _StickersSection extends StatelessWidget {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
               ),
             ),
+            TextButton.icon(
+              onPressed: onUploadPhoto,
+              icon: Icon(
+                Icons.photo_library_outlined,
+                color: profileColor.color,
+              ),
+              label: const Text('Upload Photo'),
+            ),
             if (canManage)
               TextButton.icon(
                 onPressed: onToggleManaging,
@@ -877,54 +686,280 @@ class _StickersSection extends StatelessWidget {
               ),
           ],
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text(
+              'Display size:',
+              style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+            ),
+            ChoiceChip(
+              label: const Text('Small grid'),
+              selected: displaySize == _StickerDisplaySize.smallGrid,
+              onSelected: (_) =>
+                  onDisplaySizeChanged(_StickerDisplaySize.smallGrid),
+            ),
+            ChoiceChip(
+              label: const Text('Large square'),
+              selected: displaySize == _StickerDisplaySize.largeSquare,
+              onSelected: (_) =>
+                  onDisplaySizeChanged(_StickerDisplaySize.largeSquare),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
         if (isManaging && stickers.isNotEmpty)
           Text(
             'Drag to rearrange your saved stickers, or delete stickers you no longer want.',
             style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+          )
+        else
+          Text(
+            displaySize == _StickerDisplaySize.largeSquare
+                ? 'Show up to four stickers or uploaded photos inside one large square.'
+                : 'Show saved stickers and uploaded photos as small squares.',
+            style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
           ),
         const SizedBox(height: 14),
-        if (stickers.isEmpty)
-          _AddStickerTile(onTap: onCreateSticker, profileColor: profileColor)
-        else if (isManaging)
+        if (isManaging && stickers.isNotEmpty)
           _ManageStickersList(
             stickers: stickers,
             profileColor: profileColor,
             onDeleteSticker: onDeleteSticker,
             onReorderStickers: onReorderStickers,
           )
+        else if (displaySize == _StickerDisplaySize.largeSquare)
+          _LargeStickerSquare(
+            items: collectionItems,
+            selectedSticker: selectedSticker,
+            profileColor: profileColor,
+            onStickerSelected: onStickerSelected,
+            onAddTap: onShowAddOptions,
+          )
         else
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-            ),
-            itemCount: stickers.length + 1,
-            itemBuilder: (context, index) {
-              if (index == stickers.length) {
-                return _AddStickerTile(
-                  onTap: onCreateSticker,
-                  profileColor: profileColor,
-                );
-              }
-              final sticker = stickers[index];
-              return _StickerTile(
-                key: ValueKey(
-                  'saved-sticker-${sticker.stickerId ?? index.toString()}',
-                ),
-                sticker: sticker,
-                selected: identical(sticker, selectedSticker),
-                profileColor: profileColor,
-                onTap: () => onStickerSelected(sticker),
-              );
-            },
+          _SmallStickerGrid(
+            items: collectionItems,
+            selectedSticker: selectedSticker,
+            profileColor: profileColor,
+            onStickerSelected: onStickerSelected,
+            onAddTap: onShowAddOptions,
           ),
       ],
     );
   }
+}
+
+class _SmallStickerGrid extends StatelessWidget {
+  const _SmallStickerGrid({
+    required this.items,
+    required this.selectedSticker,
+    required this.profileColor,
+    required this.onStickerSelected,
+    required this.onAddTap,
+  });
+
+  final List<_StickerCollectionItem> items;
+  final SavedFlowerPhoto? selectedSticker;
+  final ProfileColorChoice profileColor;
+  final ValueChanged<SavedFlowerPhoto> onStickerSelected;
+  final VoidCallback onAddTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return _AddStickerTile(onTap: onAddTap, profileColor: profileColor);
+    }
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+      ),
+      itemCount: items.length + 1,
+      itemBuilder: (context, index) {
+        if (index == items.length) {
+          return _AddStickerTile(onTap: onAddTap, profileColor: profileColor);
+        }
+        final item = items[index];
+        return _CollectionTile(
+          key: ValueKey(_collectionItemKey(item, index)),
+          item: item,
+          selected:
+              item.sticker != null && identical(item.sticker, selectedSticker),
+          profileColor: profileColor,
+          onTap: item.sticker == null
+              ? null
+              : () => onStickerSelected(item.sticker!),
+        );
+      },
+    );
+  }
+}
+
+class _LargeStickerSquare extends StatelessWidget {
+  const _LargeStickerSquare({
+    required this.items,
+    required this.selectedSticker,
+    required this.profileColor,
+    required this.onStickerSelected,
+    required this.onAddTap,
+  });
+
+  final List<_StickerCollectionItem> items;
+  final SavedFlowerPhoto? selectedSticker;
+  final ProfileColorChoice profileColor;
+  final ValueChanged<SavedFlowerPhoto> onStickerSelected;
+  final VoidCallback onAddTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final visibleItems = items.take(4).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AspectRatio(
+          aspectRatio: 1,
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: profileColor.softColor,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: profileColor.color.withValues(alpha: 0.16),
+                width: 2,
+              ),
+            ),
+            child: GridView.builder(
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+              ),
+              itemCount: 4,
+              itemBuilder: (context, index) {
+                if (index >= visibleItems.length) {
+                  return _LargeSquarePlaceholder(
+                    profileColor: profileColor,
+                    onTap: onAddTap,
+                  );
+                }
+                final item = visibleItems[index];
+                return _CollectionTile(
+                  key: ValueKey(_collectionItemKey(item, index)),
+                  item: item,
+                  selected:
+                      item.sticker != null &&
+                      identical(item.sticker, selectedSticker),
+                  profileColor: profileColor,
+                  onTap: item.sticker == null
+                      ? null
+                      : () => onStickerSelected(item.sticker!),
+                );
+              },
+            ),
+          ),
+        ),
+        if (items.length > 4) ...[
+          const SizedBox(height: 8),
+          Text(
+            '+${items.length - 4} more shown in Small grid',
+            style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _LargeSquarePlaceholder extends StatelessWidget {
+  const _LargeSquarePlaceholder({
+    required this.profileColor,
+    required this.onTap,
+  });
+
+  final ProfileColorChoice profileColor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(18),
+    child: Ink(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: profileColor.color.withValues(alpha: 0.14)),
+      ),
+      child: Icon(Icons.add, color: profileColor.color, size: 30),
+    ),
+  );
+}
+
+class _CollectionTile extends StatelessWidget {
+  const _CollectionTile({
+    super.key,
+    required this.item,
+    required this.selected,
+    required this.profileColor,
+    required this.onTap,
+  });
+
+  final _StickerCollectionItem item;
+  final bool selected;
+  final ProfileColorChoice profileColor;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(18),
+    child: Ink(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: item.isSticker
+            ? profileColor.softColor
+            : Colors.white.withValues(alpha: 0.78),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: selected ? profileColor.color : Colors.transparent,
+          width: 3,
+        ),
+      ),
+      child: Stack(
+        children: [
+          Center(child: Image.memory(item.imageBytes, fit: BoxFit.contain)),
+          if (!item.isSticker)
+            Align(
+              alignment: Alignment.topLeft,
+              child: Icon(
+                Icons.photo_library_outlined,
+                color: profileColor.color,
+                size: 18,
+              ),
+            ),
+          if (selected)
+            Align(
+              alignment: Alignment.topRight,
+              child: Icon(Icons.check_circle, color: profileColor.color),
+            ),
+        ],
+      ),
+    ),
+  );
+}
+
+String _collectionItemKey(_StickerCollectionItem item, int index) {
+  if (item.sticker != null) {
+    return 'saved-sticker-${item.sticker!.stickerId ?? index.toString()}';
+  }
+  return 'uploaded-photo-$index';
 }
 
 class _ManageStickersList extends StatelessWidget {
@@ -1089,50 +1124,6 @@ class _StickerActionDialog extends StatelessWidget {
       ],
     );
   }
-}
-
-class _StickerTile extends StatelessWidget {
-  const _StickerTile({
-    super.key,
-    required this.sticker,
-    required this.selected,
-    required this.profileColor,
-    required this.onTap,
-  });
-
-  final SavedFlowerPhoto sticker;
-  final bool selected;
-  final ProfileColorChoice profileColor;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => InkWell(
-    onTap: onTap,
-    borderRadius: BorderRadius.circular(14),
-    child: Ink(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: profileColor.softColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: selected ? profileColor.color : Colors.transparent,
-          width: 3,
-        ),
-      ),
-      child: Stack(
-        children: [
-          Center(
-            child: Image.memory(sticker.stickerBytes!, fit: BoxFit.contain),
-          ),
-          if (selected)
-            Align(
-              alignment: Alignment.topRight,
-              child: Icon(Icons.check_circle, color: profileColor.color),
-            ),
-        ],
-      ),
-    ),
-  );
 }
 
 class _AddStickerTile extends StatelessWidget {
