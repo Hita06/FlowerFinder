@@ -1,0 +1,53 @@
+PODS:
+  - camera_avfoundation (0.0.1):
+    - Flutter
+  - Flutter (1.0.0)
+  - flutter_onnxruntime (0.0.1):
+    - Flutter
+    - onnxruntime-objc (= 1.23.0)
+  - flutter_sticker_maker (0.1.0):
+    - Flutter
+  - image_picker_ios (0.0.1):
+    - Flutter
+  - onnxruntime-c (1.23.0)
+  - onnxruntime-objc (1.23.0):
+    - onnxruntime-objc/Core (= 1.23.0)
+  - onnxruntime-objc/Core (1.23.0):
+    - onnxruntime-c (= 1.23.0)
+
+DEPENDENCIES:
+  - camera_avfoundation (from `.symlinks/plugins/camera_avfoundation/darwin`)
+  - Flutter (from `Flutter`)
+  - flutter_onnxruntime (from `.symlinks/plugins/flutter_onnxruntime/ios`)
+  - flutter_sticker_maker (from `.symlinks/plugins/flutter_sticker_maker/ios`)
+  - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
+
+SPEC REPOS:
+  trunk:
+    - onnxruntime-c
+    - onnxruntime-objc
+
+EXTERNAL SOURCES:
+  camera_avfoundation:
+    :path: ".symlinks/plugins/camera_avfoundation/darwin"
+  Flutter:
+    :path: Flutter
+  flutter_onnxruntime:
+    :path: ".symlinks/plugins/flutter_onnxruntime/ios"
+  flutter_sticker_maker:
+    :path: ".symlinks/plugins/flutter_sticker_maker/ios"
+  image_picker_ios:
+    :path: ".symlinks/plugins/image_picker_ios/ios"
+
+SPEC CHECKSUMS:
+  camera_avfoundation: 968a9a5323c79a99c166ad9d7866bfd2047b5a9b
+  Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
+  flutter_onnxruntime: 5c16abbb94ec57759a244095eb62cab0eaab312c
+  flutter_sticker_maker: 7f9cc505f6c2b5951829beb38a5da57b77e50102
+  image_picker_ios: e0ece4aa2a75771a7de3fa735d26d90817041326
+  onnxruntime-c: 3174c63a963d9abbc2bf9627e3d622819c0ed5f7
+  onnxruntime-objc: 1254d12f8160e562e7693ff17f5aa3dd17dc409e
+
+PODFILE CHECKSUM: caff213b0e9416be8d9bdb8ac7f3e4327ad5b87e
+
+COCOAPODS: 1.17.0

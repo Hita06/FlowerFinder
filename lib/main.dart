@@ -1,39 +1,72 @@
 // FlowerFinder Application
-// Created by the FlowerFinder team
-// This file starts the app and loads the private API configuration.
+// Includes the shared navigation, Firebase and environment configuration.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-import 'flower_search_page.dart';
+import 'firebase_options.dart';
+import 'login_page.dart';
+import 'main_navigation.dart';
+import 'theme.dart';
 
-// Loads the local environment file before starting FlowerFinder.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await dotenv.load(fileName: '.env');
 
-  runApp(const MyApp());
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  runApp(const FlowerFinderApp());
 }
 
-// Creates the main FlowerFinder application.
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class FlowerFinderApp extends StatelessWidget {
+  const FlowerFinderApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'FlowerFinder',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: mainGreen,
-        ),
-        useMaterial3: true,
-      ),
+      title: 'Flower Finder',
+      theme: AppTheme.lightTheme,
+      home: const AuthGate(),
+    );
+  }
+}
 
-      // Opens the G9 Flower Search and Filter page.
-      home: const FlowerSearchPage(),
+// ============================================================
+// AUTH GATE
+// ============================================================
+
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        // Firebase is checking the user's login status
+        if (snapshot.connectionState ==
+            ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        // User is logged in
+        if (snapshot.hasData) {
+          return const MainNavigation();
+        }
+
+        // User is NOT logged in
+        return const LoginPage();
+      },
     );
   }
 }
