@@ -179,7 +179,7 @@ class UserProfilePageState extends State<UserProfilePage> {
   _StickerDisplaySize _stickerDisplaySize = _StickerDisplaySize.smallGrid;
   _ProfileItemSize _nextStickerGridSize = _ProfileItemSize.small;
   final List<_UploadedProfilePhoto> _uploadedProfilePhotos = [];
-  final Map<String, _ProfileItemSize> _stickerGridSizes = {};
+  final Map<SavedFlowerPhoto, _ProfileItemSize> _stickerGridSizes = {};
   final Map<String, _StickerBoardPlacement> _stickerBoardPlacements = {};
 
   static UserAccount _copyAccount(UserAccount account) {
@@ -208,20 +208,17 @@ class UserProfilePageState extends State<UserProfilePage> {
 
   void _applyPendingStickerSize(List<SavedFlowerPhoto> oldPhotos) {
     if (_nextStickerGridSize == _ProfileItemSize.small) return;
-    final oldStickerKeys = <String>{
-      for (var index = 0; index < oldPhotos.length; index += 1)
-        if (oldPhotos[index].stickerBytes != null)
-          _stickerBoardKey(oldPhotos[index], index),
-    };
-    for (var index = 0; index < widget.savedFlowerPhotos.length; index += 1) {
-      final sticker = widget.savedFlowerPhotos[index];
+    final oldStickers = oldPhotos
+        .where((photo) => photo.stickerBytes != null)
+        .toSet();
+    for (final sticker in widget.savedFlowerPhotos) {
       if (sticker.stickerBytes == null) continue;
-      final key = _stickerBoardKey(sticker, index);
-      if (oldStickerKeys.contains(key) || _stickerGridSizes.containsKey(key)) {
+      if (oldStickers.contains(sticker) ||
+          _stickerGridSizes.containsKey(sticker)) {
         continue;
       }
       setState(() {
-        _stickerGridSizes[key] = _nextStickerGridSize;
+        _stickerGridSizes[sticker] = _nextStickerGridSize;
         _nextStickerGridSize = _ProfileItemSize.small;
       });
       return;
@@ -269,8 +266,7 @@ class UserProfilePageState extends State<UserProfilePage> {
   }
 
   _ProfileItemSize _gridSizeForSticker(SavedFlowerPhoto sticker, int index) {
-    final key = _stickerBoardKey(sticker, index);
-    return _stickerGridSizes[key] ?? _ProfileItemSize.small;
+    return _stickerGridSizes[sticker] ?? _ProfileItemSize.small;
   }
 
   void _setStickerGridSize(
@@ -278,8 +274,7 @@ class UserProfilePageState extends State<UserProfilePage> {
     int index,
     _ProfileItemSize size,
   ) {
-    final key = _stickerBoardKey(sticker, index);
-    setState(() => _stickerGridSizes[key] = size);
+    setState(() => _stickerGridSizes[sticker] = size);
   }
 
   void _setUploadedPhotoSize(
@@ -1016,7 +1011,7 @@ class _SmallStickerGrid extends StatelessWidget {
 
         Widget buildEntry(Object? entry, double width, double height) {
           if (entry == null) {
-            return _GridPlaceholderTile(width: width, height: height);
+            return SizedBox(width: width, height: height);
           }
           if (entry is _AddGridEntry) {
             return SizedBox(
@@ -1121,25 +1116,6 @@ class _SmallStickerGrid extends StatelessWidget {
 
 class _AddGridEntry {
   const _AddGridEntry();
-}
-
-class _GridPlaceholderTile extends StatelessWidget {
-  const _GridPlaceholderTile({required this.width, required this.height});
-
-  final double width;
-  final double height;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    width: width,
-    height: height,
-    child: DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.grey.shade300.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(24),
-      ),
-    ),
-  );
 }
 
 class _LargeStickerSquare extends StatelessWidget {
