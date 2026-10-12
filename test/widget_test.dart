@@ -532,14 +532,49 @@ void main() {
     expect(find.text('Your Stickers'), findsOneWidget);
     expect(
       find.text(
-        'Show up to four stickers or uploaded photos inside one large square.',
+        'Show all generated stickers in one large square. Drag them and adjust their size.',
       ),
       findsOneWidget,
     );
     expect(
-      find.byKey(const ValueKey('saved-sticker-board-sticker')),
+      find.byKey(const ValueKey('large-sticker-board-sticker')),
       findsOneWidget,
     );
+  });
+
+  testWidgets('large square lets stickers move and resize', (
+    WidgetTester tester,
+  ) async {
+    final stickerBytes = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    );
+    final sticker = SavedFlowerPhoto(
+      image: MemoryImage(stickerBytes),
+      label: 'Move sticker',
+      stickerId: 'move-sticker',
+      stickerBytes: stickerBytes,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(home: UserProfilePage(savedFlowerPhotos: [sticker])),
+    );
+
+    await _scrollToFinder(tester, find.text('Large square'));
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Large square'));
+    await tester.pump();
+
+    final largeSticker = find.byKey(
+      const ValueKey('large-sticker-move-sticker'),
+    );
+    expect(largeSticker, findsOneWidget);
+    await tester.drag(largeSticker, const Offset(24, 18));
+    await tester.pump();
+    await tester.tap(
+      find.descendant(of: largeSticker, matching: find.byIcon(Icons.add)),
+    );
+    await tester.pump();
+
+    expect(largeSticker, findsOneWidget);
   });
 
   testWidgets('your stickers uploads a gallery photo as its own item', (
@@ -555,10 +590,10 @@ void main() {
       ),
     );
 
-    final uploadPhotoButton = find.widgetWithText(TextButton, 'Upload Photo');
-    await _scrollToFinder(tester, uploadPhotoButton);
-    await tester.tap(uploadPhotoButton);
-    await tester.pump();
+    await tester.tap(find.text('Add Sticker'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Upload photo'));
+    await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('uploaded-photo-0')), findsOneWidget);
   });
