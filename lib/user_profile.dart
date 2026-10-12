@@ -1277,9 +1277,9 @@ class _MovableStickerBoardItemState extends State<_MovableStickerBoardItem> {
               widget.boardSize,
             );
           }
-          final nextScale = (_startScale * details.scale).clamp(0.7, 2.0);
+          final nextScale = (_startScale * details.scale).clamp(0.55, 2.4);
           final scaleDelta = nextScale - widget.placement.scale;
-          if (scaleDelta.abs() > 0.01) {
+          if (scaleDelta.abs() > 0.005) {
             widget.onResize(widget.sticker, widget.index, scaleDelta);
           }
         },
@@ -1353,35 +1353,36 @@ class _VariableCollectionTile extends StatelessWidget {
       width: width,
       height: height,
       child: Ink(
-        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: item.isSticker
-              ? profileColor.softColor
-              : Colors.white.withValues(alpha: 0.78),
+          color: item.isSticker ? profileColor.softColor : null,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: selected ? profileColor.color : Colors.transparent,
             width: 3,
           ),
         ),
-        child: Stack(
-          children: [
-            Center(child: Image.memory(item.imageBytes, fit: BoxFit.contain)),
-            if (!item.isSticker)
-              Align(
-                alignment: Alignment.topLeft,
-                child: Icon(
-                  Icons.photo_library_outlined,
-                  color: profileColor.color,
-                  size: 18,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: item.isSticker
+                    ? Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Image.memory(
+                          item.imageBytes,
+                          fit: BoxFit.contain,
+                        ),
+                      )
+                    : Image.memory(item.imageBytes, fit: BoxFit.cover),
+              ),
+              if (selected)
+                Align(
+                  alignment: Alignment.topRight,
+                  child: Icon(Icons.check_circle, color: profileColor.color),
                 ),
-              ),
-            if (selected)
-              Align(
-                alignment: Alignment.topRight,
-                child: Icon(Icons.check_circle, color: profileColor.color),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     ),
