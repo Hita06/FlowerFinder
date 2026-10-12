@@ -383,7 +383,7 @@ class _StickersSection extends StatelessWidget {
         if (isManaging && stickers.isNotEmpty) ...[
           const SizedBox(height: 4),
           Text(
-            'Use Edit Effects to return to custom effects and update a saved sticker.',
+            'Use Edit to return to custom effects and update a saved sticker.',
             style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
           ),
         ],
@@ -498,7 +498,7 @@ class _ManageStickersList extends StatelessWidget {
                                   ? null
                                   : () => onEditSticker!(entry.$2),
                               icon: const Icon(Icons.auto_fix_high),
-                              label: const Text('Edit Effects'),
+                              label: const Text('Edit'),
                             ),
                           ],
                         ),

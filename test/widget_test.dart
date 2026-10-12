@@ -405,8 +405,8 @@ void main() {
     await tester.tap(find.widgetWithText(TextButton, 'Manage'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Edit Effects'), findsOneWidget);
-    await tester.tap(find.widgetWithText(FilledButton, 'Edit Effects'));
+    expect(find.text('Edit'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Edit'));
     await tester.pumpAndSettle();
 
     expect(editedSticker, same(sticker));
