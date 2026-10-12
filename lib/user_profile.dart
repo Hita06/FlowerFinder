@@ -194,6 +194,7 @@ class UserProfilePageState extends State<UserProfilePage> {
   @override
   void didUpdateWidget(covariant UserProfilePage oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _applyPendingStickerSize(oldWidget.savedFlowerPhotos);
     final account = widget.account;
     if (account == null || identical(account, oldWidget.account)) return;
     setState(() {
@@ -203,6 +204,28 @@ class UserProfilePageState extends State<UserProfilePage> {
         ..email = account.email
         ..profileColorId = account.profileColorId;
     });
+  }
+
+  void _applyPendingStickerSize(List<SavedFlowerPhoto> oldPhotos) {
+    if (_nextStickerGridSize == _ProfileItemSize.small) return;
+    final oldStickerKeys = <String>{
+      for (var index = 0; index < oldPhotos.length; index += 1)
+        if (oldPhotos[index].stickerBytes != null)
+          _stickerBoardKey(oldPhotos[index], index),
+    };
+    for (var index = 0; index < widget.savedFlowerPhotos.length; index += 1) {
+      final sticker = widget.savedFlowerPhotos[index];
+      if (sticker.stickerBytes == null) continue;
+      final key = _stickerBoardKey(sticker, index);
+      if (oldStickerKeys.contains(key) || _stickerGridSizes.containsKey(key)) {
+        continue;
+      }
+      setState(() {
+        _stickerGridSizes[key] = _nextStickerGridSize;
+        _nextStickerGridSize = _ProfileItemSize.small;
+      });
+      return;
+    }
   }
 
   Future<void> _pickProfilePhoto(_ProfileItemSize size) async {
@@ -247,7 +270,7 @@ class UserProfilePageState extends State<UserProfilePage> {
 
   _ProfileItemSize _gridSizeForSticker(SavedFlowerPhoto sticker, int index) {
     final key = _stickerBoardKey(sticker, index);
-    return _stickerGridSizes[key] ?? _nextStickerGridSize;
+    return _stickerGridSizes[key] ?? _ProfileItemSize.small;
   }
 
   void _setStickerGridSize(
