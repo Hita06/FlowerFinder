@@ -15,6 +15,19 @@ Future<void> _openProfileTab(WidgetTester tester) async {
   await tester.pump();
 }
 
+Future<void> _scrollToFinder(WidgetTester tester, Finder finder) async {
+  if (finder.evaluate().isNotEmpty) {
+    await tester.ensureVisible(finder);
+  } else {
+    await tester.scrollUntilVisible(
+      finder,
+      260,
+      scrollable: find.byType(Scrollable).first,
+    );
+  }
+  await tester.pump(const Duration(milliseconds: 300));
+}
+
 void main() {
   setUpAll(() {
     GoogleFonts.config.allowRuntimeFetching = false;
@@ -35,8 +48,9 @@ void main() {
       findsOneWidget,
     );
     expect(find.byType(UserProfilePage), findsOneWidget);
+    await _scrollToFinder(tester, find.text('Your Stickers'));
     expect(find.text('Your Stickers'), findsOneWidget);
-    expect(find.text('Add Sticker'), findsOneWidget);
+    expect(find.text('Add Sticker'), findsWidgets);
   });
 
   testWidgets('profile opens sticker creation', (WidgetTester tester) async {
@@ -209,12 +223,13 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
+    await _scrollToFinder(tester, find.text('Your Stickers'));
     expect(find.text('Your Stickers'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('saved-sticker-colour_change')),
       findsOneWidget,
     );
-    expect(find.text('Add Sticker'), findsOneWidget);
+    expect(find.text('Add Sticker'), findsWidgets);
   });
 
   testWidgets('profile selects a saved sticker for future upload', (
@@ -241,7 +256,11 @@ void main() {
         ),
       ),
     );
-    await tester.tap(find.byKey(const ValueKey('saved-sticker-saved-sticker')));
+    final savedStickerFinder = find.byKey(
+      const ValueKey('saved-sticker-saved-sticker'),
+    );
+    await _scrollToFinder(tester, savedStickerFinder);
+    await tester.tap(savedStickerFinder);
     await tester.pump();
 
     expect(selectedSticker?.stickerBytes, isNotNull);
@@ -271,7 +290,11 @@ void main() {
         ),
       ),
     );
-    await tester.tap(find.byKey(const ValueKey('saved-sticker-colour_change')));
+    final savedStickerFinder = find.byKey(
+      const ValueKey('saved-sticker-colour_change'),
+    );
+    await _scrollToFinder(tester, savedStickerFinder);
+    await tester.tap(savedStickerFinder);
     await tester.pump();
 
     expect(find.text('Your Sticker'), findsOneWidget);
@@ -312,9 +335,11 @@ void main() {
         ),
       ),
     );
-    await tester.tap(
-      find.byKey(const ValueKey('saved-sticker-colour_variation')),
+    final savedStickerFinder = find.byKey(
+      const ValueKey('saved-sticker-colour_variation'),
     );
+    await _scrollToFinder(tester, savedStickerFinder);
+    await tester.tap(savedStickerFinder);
     await tester.pump();
     expect(find.text('Your Sticker'), findsOneWidget);
     expect(diarySticker, isNull);
@@ -342,7 +367,11 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(home: UserProfilePage(savedFlowerPhotos: [sticker])),
     );
-    await tester.tap(find.byKey(const ValueKey('saved-sticker-safe-sticker')));
+    final savedStickerFinder = find.byKey(
+      const ValueKey('saved-sticker-safe-sticker'),
+    );
+    await _scrollToFinder(tester, savedStickerFinder);
+    await tester.tap(savedStickerFinder);
     await tester.pump();
 
     expect(find.text('Your Sticker'), findsOneWidget);
@@ -379,7 +408,9 @@ void main() {
       ),
     );
 
-    await tester.tap(find.widgetWithText(TextButton, 'Manage'));
+    final manageButton = find.widgetWithText(TextButton, 'Manage');
+    await _scrollToFinder(tester, manageButton);
+    await tester.tap(manageButton);
     await tester.pumpAndSettle();
     expect(find.text('Delete rose'), findsOneWidget);
 
@@ -428,7 +459,9 @@ void main() {
       ),
     );
 
-    await tester.tap(find.widgetWithText(TextButton, 'Manage'));
+    final manageButton = find.widgetWithText(TextButton, 'Manage');
+    await _scrollToFinder(tester, manageButton);
+    await tester.tap(manageButton);
     await tester.pumpAndSettle();
 
     final list = tester.widget<ReorderableListView>(
@@ -462,15 +495,67 @@ void main() {
       ),
     );
 
-    await tester.tap(
-      find.byKey(const ValueKey('saved-sticker-editable-sticker')),
+    final savedStickerFinder = find.byKey(
+      const ValueKey('saved-sticker-editable-sticker'),
     );
+    await _scrollToFinder(tester, savedStickerFinder);
+    await tester.tap(savedStickerFinder);
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(OutlinedButton, 'Edit Sticker'));
     await tester.pumpAndSettle();
 
     expect(editedSticker, same(sticker));
     expect(find.text('Your Sticker'), findsNothing);
+  });
+
+  testWidgets('profile display adds a saved sticker to the board', (
+    WidgetTester tester,
+  ) async {
+    final stickerBytes = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    );
+    final sticker = SavedFlowerPhoto(
+      image: MemoryImage(stickerBytes),
+      label: 'Board sticker',
+      stickerId: 'board-sticker',
+      stickerBytes: stickerBytes,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(home: UserProfilePage(savedFlowerPhotos: [sticker])),
+    );
+
+    expect(find.text('Profile Display'), findsOneWidget);
+    final addStickerButton = find.widgetWithText(FilledButton, 'Add Sticker');
+    await _scrollToFinder(tester, addStickerButton);
+    await tester.tap(addStickerButton);
+    await tester.pump();
+
+    expect(find.byKey(const ValueKey('profile-board-item-0')), findsOneWidget);
+  });
+
+  testWidgets('profile display uploads a gallery photo through picker boundary', (
+    WidgetTester tester,
+  ) async {
+    final photoBytes = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: UserProfilePage(pickProfileImage: () async => photoBytes),
+      ),
+    );
+
+    final uploadPhotoButton = find.widgetWithText(
+      OutlinedButton,
+      'Upload Photo',
+    );
+    await _scrollToFinder(tester, uploadPhotoButton);
+    await tester.tap(uploadPhotoButton);
+    await tester.pump();
+
+    expect(find.byKey(const ValueKey('profile-board-item-0')), findsOneWidget);
   });
 
   testWidgets('sticker creation edits an existing generated sticker', (

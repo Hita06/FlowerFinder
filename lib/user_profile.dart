@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 class UserAccount {
   UserAccount({
@@ -144,6 +145,7 @@ class UserProfilePage extends StatefulWidget {
     this.onEditSticker,
     this.onProfileChanged,
     this.onLogout,
+    this.pickProfileImage,
   });
 
   final UserAccount? account;
@@ -157,12 +159,14 @@ class UserProfilePage extends StatefulWidget {
   final ValueChanged<SavedFlowerPhoto>? onEditSticker;
   final ValueChanged<UserAccount>? onProfileChanged;
   final VoidCallback? onLogout;
+  final Future<Uint8List?> Function()? pickProfileImage;
 
   @override
   State<UserProfilePage> createState() => UserProfilePageState();
 }
 
 class UserProfilePageState extends State<UserProfilePage> {
+  static const int _maxProfileBoardItems = 4;
   late final UserAccount _account = _copyAccount(
     widget.account ?? defaultAccount,
   );
@@ -173,6 +177,7 @@ class UserProfilePageState extends State<UserProfilePage> {
   );
   SavedFlowerPhoto? _selectedSticker;
   bool _isManagingStickers = false;
+  final List<_ProfileBoardItem> _profileBoardItems = [];
 
   static UserAccount _copyAccount(UserAccount account) {
     return UserAccount(
@@ -195,6 +200,88 @@ class UserProfilePageState extends State<UserProfilePage> {
         ..email = account.email
         ..profileColorId = account.profileColorId;
     });
+  }
+
+  Future<void> _pickProfileBoardPhoto() async {
+    Uint8List? bytes;
+    if (widget.pickProfileImage != null) {
+      bytes = await widget.pickProfileImage!();
+    } else {
+      final file = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 2048,
+        maxHeight: 2048,
+        requestFullMetadata: false,
+      );
+      bytes = await file?.readAsBytes();
+    }
+    if (!mounted ||
+        bytes == null ||
+        _profileBoardItems.length >= _maxProfileBoardItems) {
+      return;
+    }
+    setState(() {
+      _profileBoardItems.add(
+        _ProfileBoardItem(
+          imageBytes: Uint8List.fromList(bytes!),
+          label: 'Gallery photo',
+          position: _nextBoardPosition(),
+        ),
+      );
+    });
+  }
+
+  void _addStickerToProfileBoard() {
+    if (_profileBoardItems.length >= _maxProfileBoardItems) return;
+    final stickers = widget.savedFlowerPhotos
+        .where((photo) => photo.stickerBytes != null)
+        .toList();
+    if (stickers.isEmpty) return;
+    final nextSticker = stickers.firstWhere(
+      (sticker) =>
+          !_profileBoardItems.any((item) => item.sourceSticker == sticker),
+      orElse: () => stickers.first,
+    );
+    setState(() {
+      _profileBoardItems.add(
+        _ProfileBoardItem(
+          imageBytes: Uint8List.fromList(nextSticker.stickerBytes!),
+          label: nextSticker.label ?? 'Saved sticker',
+          position: _nextBoardPosition(),
+          sourceSticker: nextSticker,
+        ),
+      );
+    });
+  }
+
+  Offset _nextBoardPosition() {
+    const positions = [
+      Offset(0.18, 0.18),
+      Offset(0.62, 0.18),
+      Offset(0.18, 0.62),
+      Offset(0.62, 0.62),
+    ];
+    return positions[_profileBoardItems.length % positions.length];
+  }
+
+  void _moveProfileBoardItem(int index, Offset delta, Size boardSize) {
+    if (boardSize.width <= 0 || boardSize.height <= 0) return;
+    setState(() {
+      final item = _profileBoardItems[index];
+      final nextX = (item.position.dx + delta.dx / boardSize.width).clamp(
+        0.0,
+        0.78,
+      );
+      final nextY = (item.position.dy + delta.dy / boardSize.height).clamp(
+        0.0,
+        0.78,
+      );
+      _profileBoardItems[index] = item.copyWith(position: Offset(nextX, nextY));
+    });
+  }
+
+  void _removeProfileBoardItem(int index) {
+    setState(() => _profileBoardItems.removeAt(index));
   }
 
   Future<void> _editAccount() async {
@@ -286,6 +373,16 @@ class UserProfilePageState extends State<UserProfilePage> {
           Text(
             _account.email,
             style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+          ),
+          const SizedBox(height: 28),
+          _ProfileDisplayBoard(
+            items: _profileBoardItems,
+            profileColor: profileColor,
+            hasSavedStickers: stickerCount > 0,
+            onAddPhoto: _pickProfileBoardPhoto,
+            onAddSticker: _addStickerToProfileBoard,
+            onMoveItem: _moveProfileBoardItem,
+            onRemoveItem: _removeProfileBoardItem,
           ),
           const SizedBox(height: 28),
           _StickersSection(
@@ -452,6 +549,254 @@ class LogoutPage extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _ProfileBoardItem {
+  const _ProfileBoardItem({
+    required this.imageBytes,
+    required this.label,
+    required this.position,
+    this.sourceSticker,
+  });
+
+  final Uint8List imageBytes;
+  final String label;
+  final Offset position;
+  final SavedFlowerPhoto? sourceSticker;
+
+  _ProfileBoardItem copyWith({Offset? position}) {
+    return _ProfileBoardItem(
+      imageBytes: imageBytes,
+      label: label,
+      position: position ?? this.position,
+      sourceSticker: sourceSticker,
+    );
+  }
+}
+
+class _ProfileDisplayBoard extends StatelessWidget {
+  const _ProfileDisplayBoard({
+    required this.items,
+    required this.profileColor,
+    required this.hasSavedStickers,
+    required this.onAddPhoto,
+    required this.onAddSticker,
+    required this.onMoveItem,
+    required this.onRemoveItem,
+  });
+
+  final List<_ProfileBoardItem> items;
+  final ProfileColorChoice profileColor;
+  final bool hasSavedStickers;
+  final VoidCallback onAddPhoto;
+  final VoidCallback onAddSticker;
+  final void Function(int index, Offset delta, Size boardSize) onMoveItem;
+  final ValueChanged<int> onRemoveItem;
+
+  @override
+  Widget build(BuildContext context) {
+    final canAddItem =
+        items.length < UserProfilePageState._maxProfileBoardItems;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Profile Display',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              ),
+            ),
+            TextButton.icon(
+              onPressed: canAddItem ? onAddPhoto : null,
+              icon: Icon(
+                Icons.photo_library_outlined,
+                color: profileColor.color,
+              ),
+              label: const Text('Add Photo'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Place up to four stickers and gallery photos here. Drag items to arrange them.',
+          style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+        ),
+        const SizedBox(height: 12),
+        AspectRatio(
+          aspectRatio: 1,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final boardSize = Size(
+                constraints.maxWidth,
+                constraints.maxHeight,
+              );
+              return Container(
+                decoration: BoxDecoration(
+                  color: profileColor.softColor,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: profileColor.color.withValues(alpha: 0.18),
+                    width: 2,
+                  ),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: CustomPaint(
+                        painter: _BoardGridPainter(
+                          color: profileColor.color.withValues(alpha: 0.12),
+                        ),
+                      ),
+                    ),
+                    if (items.isEmpty)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(
+                            'Add up to four stickers or gallery photos to customise your profile display.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.grey.shade700),
+                          ),
+                        ),
+                      ),
+                    for (var index = 0; index < items.length; index += 1)
+                      _PositionedBoardItem(
+                        key: ValueKey('profile-board-item-$index'),
+                        item: items[index],
+                        index: index,
+                        boardSize: boardSize,
+                        profileColor: profileColor,
+                        onMoveItem: onMoveItem,
+                        onRemoveItem: onRemoveItem,
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 10,
+          runSpacing: 8,
+          children: [
+            FilledButton.icon(
+              onPressed: canAddItem && hasSavedStickers ? onAddSticker : null,
+              icon: const Icon(Icons.add_reaction_outlined),
+              label: const Text('Add Sticker'),
+            ),
+            OutlinedButton.icon(
+              onPressed: canAddItem ? onAddPhoto : null,
+              icon: const Icon(Icons.add_photo_alternate_outlined),
+              label: const Text('Upload Photo'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _PositionedBoardItem extends StatelessWidget {
+  const _PositionedBoardItem({
+    super.key,
+    required this.item,
+    required this.index,
+    required this.boardSize,
+    required this.profileColor,
+    required this.onMoveItem,
+    required this.onRemoveItem,
+  });
+
+  final _ProfileBoardItem item;
+  final int index;
+  final Size boardSize;
+  final ProfileColorChoice profileColor;
+  final void Function(int index, Offset delta, Size boardSize) onMoveItem;
+  final ValueChanged<int> onRemoveItem;
+
+  @override
+  Widget build(BuildContext context) {
+    final itemSize = boardSize.shortestSide * 0.34;
+    return Positioned(
+      left: item.position.dx * boardSize.width,
+      top: item.position.dy * boardSize.height,
+      child: GestureDetector(
+        onPanUpdate: (details) => onMoveItem(index, details.delta, boardSize),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: itemSize,
+              height: itemSize,
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.82),
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 14,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Image.memory(item.imageBytes, fit: BoxFit.contain),
+            ),
+            Positioned(
+              right: -8,
+              top: -8,
+              child: InkWell(
+                onTap: () => onRemoveItem(index),
+                borderRadius: BorderRadius.circular(999),
+                child: Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    color: profileColor.color,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close, color: Colors.white, size: 16),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BoardGridPainter extends CustomPainter {
+  const _BoardGridPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1;
+    canvas.drawLine(
+      Offset(size.width / 2, 0),
+      Offset(size.width / 2, size.height),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(0, size.height / 2),
+      Offset(size.width, size.height / 2),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _BoardGridPainter oldDelegate) {
+    return oldDelegate.color != color;
   }
 }
 
