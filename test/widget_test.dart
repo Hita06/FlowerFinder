@@ -569,11 +569,10 @@ void main() {
     expect(largeSticker, findsOneWidget);
     await tester.drag(largeSticker, const Offset(24, 18));
     await tester.pump();
-    await tester.tap(
-      find.descendant(of: largeSticker, matching: find.byIcon(Icons.add)),
+    expect(
+      find.descendant(of: largeSticker, matching: find.byType(Image)),
+      findsOneWidget,
     );
-    await tester.pump();
-
     expect(largeSticker, findsOneWidget);
   });
 

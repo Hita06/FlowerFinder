@@ -894,6 +894,8 @@ class _SmallStickerGrid extends StatelessWidget {
             height: smallWidth,
             child: _AddStickerTile(onTap: onAddTap, profileColor: profileColor),
           ),
+          _GridPlaceholderTile(width: smallWidth, height: smallWidth),
+          _GridPlaceholderTile(width: smallWidth, height: smallWidth),
         ];
         return Wrap(spacing: gap, runSpacing: gap, children: tiles);
       },
@@ -991,7 +993,7 @@ class _LargeStickerSquare extends StatelessWidget {
   }
 }
 
-class _MovableStickerBoardItem extends StatelessWidget {
+class _MovableStickerBoardItem extends StatefulWidget {
   const _MovableStickerBoardItem({
     super.key,
     required this.sticker,
@@ -1023,60 +1025,58 @@ class _MovableStickerBoardItem extends StatelessWidget {
   onResize;
 
   @override
+  State<_MovableStickerBoardItem> createState() =>
+      _MovableStickerBoardItemState();
+}
+
+class _MovableStickerBoardItemState extends State<_MovableStickerBoardItem> {
+  double _startScale = 1;
+  Offset _lastFocalPoint = Offset.zero;
+
+  @override
   Widget build(BuildContext context) {
-    final itemSize = boardSize.shortestSide * 0.26 * placement.scale;
+    final itemSize =
+        widget.boardSize.shortestSide * 0.28 * widget.placement.scale;
     return Positioned(
-      left: placement.position.dx * boardSize.width,
-      top: placement.position.dy * boardSize.height,
+      left: widget.placement.position.dx * widget.boardSize.width,
+      top: widget.placement.position.dy * widget.boardSize.height,
       child: GestureDetector(
-        onTap: onTap,
-        onPanUpdate: (details) =>
-            onMove(sticker, index, details.delta, boardSize),
-        child: SizedBox(
-          width: itemSize + 28,
-          height: itemSize + 34,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Positioned(
-                left: 0,
-                top: 12,
-                child: Container(
-                  width: itemSize,
-                  height: itemSize,
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.55),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: selected ? profileColor.color : Colors.transparent,
-                      width: 3,
-                    ),
-                  ),
-                  child: Image.memory(
-                    sticker.stickerBytes!,
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              ),
-              Positioned(
-                right: 0,
-                top: 0,
-                child: Column(
-                  children: [
-                    _StickerSizeButton(
-                      icon: Icons.add,
-                      onTap: () => onResize(sticker, index, 0.12),
-                    ),
-                    const SizedBox(height: 4),
-                    _StickerSizeButton(
-                      icon: Icons.remove,
-                      onTap: () => onResize(sticker, index, -0.12),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+        behavior: HitTestBehavior.translucent,
+        onTap: widget.onTap,
+        onScaleStart: (details) {
+          _startScale = widget.placement.scale;
+          _lastFocalPoint = details.focalPoint;
+        },
+        onScaleUpdate: (details) {
+          final moveDelta = details.focalPoint - _lastFocalPoint;
+          _lastFocalPoint = details.focalPoint;
+          if (moveDelta.distance > 0) {
+            widget.onMove(
+              widget.sticker,
+              widget.index,
+              moveDelta,
+              widget.boardSize,
+            );
+          }
+          final nextScale = (_startScale * details.scale).clamp(0.7, 2.0);
+          final scaleDelta = nextScale - widget.placement.scale;
+          if (scaleDelta.abs() > 0.01) {
+            widget.onResize(widget.sticker, widget.index, scaleDelta);
+          }
+        },
+        child: Container(
+          width: itemSize,
+          height: itemSize,
+          padding: const EdgeInsets.all(2),
+          decoration: BoxDecoration(
+            border: widget.selected
+                ? Border.all(color: widget.profileColor.color, width: 2)
+                : null,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Image.memory(
+            widget.sticker.stickerBytes!,
+            fit: BoxFit.contain,
           ),
         ),
       ),
@@ -1084,24 +1084,21 @@ class _MovableStickerBoardItem extends StatelessWidget {
   }
 }
 
-class _StickerSizeButton extends StatelessWidget {
-  const _StickerSizeButton({required this.icon, required this.onTap});
+class _GridPlaceholderTile extends StatelessWidget {
+  const _GridPlaceholderTile({required this.width, required this.height});
 
-  final IconData icon;
-  final VoidCallback onTap;
+  final double width;
+  final double height;
 
   @override
-  Widget build(BuildContext context) => InkWell(
-    onTap: onTap,
-    borderRadius: BorderRadius.circular(999),
-    child: Ink(
-      width: 24,
-      height: 24,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
+  Widget build(BuildContext context) => SizedBox(
+    width: width,
+    height: height,
+    child: DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.grey.shade300.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(24),
       ),
-      child: Icon(icon, size: 16),
     ),
   );
 }
