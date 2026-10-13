@@ -244,6 +244,18 @@ class _DiaryPageState extends State<DiaryPage> {
               actions: [
                 TextButton(
                   onPressed: () {
+                    flowerNameController.clear();
+                    locationController.clear();
+                    notesController.clear();
+
+                    setDialogState(() {
+                      selectedSticker = '🌸';
+                    });
+                  },
+                  child: const Text('Clear'),
+                ),
+                TextButton(
+                  onPressed: () {
                     Navigator.pop(dialogContext);
                   },
                   child: const Text('Cancel'),
