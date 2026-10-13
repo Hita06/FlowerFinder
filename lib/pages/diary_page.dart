@@ -6,12 +6,14 @@ class DiaryEntry {
     required this.location,
     required this.notes,
     required this.date,
+    required this.sticker,
   });
 
   String flowerName;
   String location;
   String notes;
   DateTime date;
+  String sticker;
 }
 
 class DiaryPage extends StatefulWidget {
@@ -30,12 +32,14 @@ class _DiaryPageState extends State<DiaryPage> {
       location: 'Near campus',
       notes: 'A bright purple orchid growing beside the walking path.',
       date: DateTime(2026, 9, 14),
+      sticker: '🌸',
     ),
     DiaryEntry(
       flowerName: 'Sunflower',
       location: 'Community garden',
       notes: 'A tall sunflower facing towards the afternoon sunlight.',
       date: DateTime(2026, 9, 12),
+      sticker: '🌻',
     ),
   ];
 
@@ -196,6 +200,7 @@ class _DiaryPageState extends State<DiaryPage> {
             location: location,
             notes: notes,
             date: DateTime.now(),
+            sticker: '🌸',
           ),
         );
       } else {
