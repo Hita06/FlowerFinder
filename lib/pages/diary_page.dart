@@ -358,13 +358,33 @@ class _DiaryPageState extends State<DiaryPage> {
       return;
     }
 
+    final deletedIndex = _entries.indexOf(entry);
+
     setState(() {
       _entries.remove(entry);
     });
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Diary entry deleted')));
+    ScaffoldMessenger.of(context).clearSnackBars();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${entry.flowerName} deleted'),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () {
+            if (!mounted) {
+              return;
+            }
+
+            setState(() {
+              final restoreIndex = deletedIndex.clamp(0, _entries.length);
+
+              _entries.insert(restoreIndex, entry);
+            });
+          },
+        ),
+      ),
+    );
   }
 
   Future<void> _showEntryDetails(DiaryEntry entry) async {
@@ -599,6 +619,7 @@ class _DiaryPageState extends State<DiaryPage> {
         },
         backgroundColor: const Color(0xFF3F6B45),
         foregroundColor: Colors.white,
+        tooltip: 'Create a new diary entry',
         icon: const Icon(Icons.add),
         label: const Text('Add Entry'),
       ),
