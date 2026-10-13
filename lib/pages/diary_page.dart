@@ -629,7 +629,6 @@ class _DiaryPageState extends State<DiaryPage> {
               const SizedBox(height: 16),
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: const Color(0xFFE0E8DF)),
                 ),
