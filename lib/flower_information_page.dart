@@ -1,8 +1,12 @@
 // FlowerFinder G5 - Flower Information Page
 // Created by Hita
+// G10 sharing integration added by Erin.
 // This page displays additional information about an identified flower.
 
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
+
+import 'services/flower_share_service.dart';
 
 // Colours used to match the shared FlowerFinder theme.
 const Color mainGreen = Color(0xFF5BC68D);
@@ -13,16 +17,6 @@ const Color pinkAccent = Color(0xFFF7A8C4);
 
 // Creates the Flower Information page.
 class FlowerInformationPage extends StatelessWidget {
-  // Stores the information received for the identified flower.
-  final String flowerName;
-  final String scientificName;
-  final String description;
-  final String flowerType;
-  final String flowerColour;
-  final String season;
-  final String careTips;
-
-  // Requires flower information when this page is opened.
   const FlowerInformationPage({
     super.key,
     required this.flowerName,
@@ -34,12 +28,75 @@ class FlowerInformationPage extends StatelessWidget {
     required this.careTips,
   });
 
+  // Stores the information received for the identified flower.
+  final String flowerName;
+  final String scientificName;
+  final String description;
+  final String flowerType;
+  final String flowerColour;
+  final String season;
+  final String careTips;
+
+  static const FlowerShareService _shareService = FlowerShareService();
+
+  Future<void> _shareFlower(BuildContext context) async {
+    try {
+      final result = await _shareService.shareFlower(
+        flowerName: flowerName,
+        scientificName: scientificName,
+        description: description,
+        flowerType: flowerType,
+        flowerColour: flowerColour,
+        season: season,
+        careTips: careTips,
+      );
+
+      if (!context.mounted) {
+        return;
+      }
+
+      if (result.status == ShareResultStatus.success) {
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(
+            const SnackBar(
+              content: Text('Flower information shared successfully'),
+            ),
+          );
+      } else if (result.status == ShareResultStatus.dismissed) {
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(const SnackBar(content: Text('Sharing cancelled')));
+      } else {
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(
+            const SnackBar(
+              content: Text('Sharing is not available on this device'),
+            ),
+          );
+      }
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Unable to share this flower information'),
+          ),
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: creamBackground,
 
-      // Displays the page title.
+      // Displays the page title and sharing action.
       appBar: AppBar(
         title: const Text(
           'Flower Information',
@@ -49,6 +106,15 @@ class FlowerInformationPage extends StatelessWidget {
         backgroundColor: mainGreen,
         foregroundColor: Colors.black,
         elevation: 0,
+        actions: [
+          IconButton(
+            onPressed: () {
+              _shareFlower(context);
+            },
+            tooltip: 'Share flower information',
+            icon: const Icon(Icons.share),
+          ),
+        ],
       ),
 
       // Allows the user to scroll through the flower information.
@@ -255,6 +321,31 @@ class FlowerInformationPage extends StatelessWidget {
             ),
 
             const SizedBox(height: 25),
+
+            // Provides another clearly visible sharing action.
+            SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: FilledButton.icon(
+                onPressed: () {
+                  _shareFlower(context);
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: darkGreen,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                icon: const Icon(Icons.share),
+                label: const Text(
+                  'Share Flower Information',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
           ],
         ),
       ),
