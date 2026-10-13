@@ -1,9 +1,10 @@
 // FlowerFinder G5 - Flower Information Page
 // Created by Hita
 // G10 sharing integration added by Erin.
-// This page displays additional information about an identified flower.
+// This page displays and shares information about an identified flower.
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'services/flower_share_service.dart';
@@ -39,6 +40,24 @@ class FlowerInformationPage extends StatelessWidget {
 
   static const FlowerShareService _shareService = FlowerShareService();
 
+  String _buildShareText() {
+    return _shareService.buildFlowerShareText(
+      flowerName: flowerName,
+      scientificName: scientificName,
+      description: description,
+      flowerType: flowerType,
+      flowerColour: flowerColour,
+      season: season,
+      careTips: careTips,
+    );
+  }
+
+  void _showMessage(BuildContext context, String message) {
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
   Future<void> _shareFlower(BuildContext context) async {
     try {
       final result = await _shareService.shareFlower(
@@ -56,38 +75,116 @@ class FlowerInformationPage extends StatelessWidget {
       }
 
       if (result.status == ShareResultStatus.success) {
-        ScaffoldMessenger.of(context)
-          ..clearSnackBars()
-          ..showSnackBar(
-            const SnackBar(
-              content: Text('Flower information shared successfully'),
-            ),
-          );
+        _showMessage(context, 'Flower information shared successfully');
       } else if (result.status == ShareResultStatus.dismissed) {
-        ScaffoldMessenger.of(context)
-          ..clearSnackBars()
-          ..showSnackBar(const SnackBar(content: Text('Sharing cancelled')));
+        _showMessage(context, 'Sharing cancelled');
       } else {
-        ScaffoldMessenger.of(context)
-          ..clearSnackBars()
-          ..showSnackBar(
-            const SnackBar(
-              content: Text('Sharing is not available on this device'),
-            ),
-          );
+        _showMessage(context, 'Sharing is not available on this device');
       }
     } catch (error) {
       if (!context.mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(context)
-        ..clearSnackBars()
-        ..showSnackBar(
-          const SnackBar(
-            content: Text('Unable to share this flower information'),
+      _showMessage(context, 'Unable to share this flower information');
+    }
+  }
+
+  Future<void> _copyFlowerInformation(
+    BuildContext context,
+    String shareText,
+  ) async {
+    try {
+      await Clipboard.setData(ClipboardData(text: shareText));
+
+      if (!context.mounted) {
+        return;
+      }
+
+      _showMessage(context, 'Flower information copied to clipboard');
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+
+      _showMessage(context, 'Unable to copy flower information');
+    }
+  }
+
+  Future<void> _showSharePreview(BuildContext context) async {
+    final shareText = _buildShareText();
+
+    final selectedAction = await showDialog<_SharePreviewAction>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.share_outlined, color: darkGreen),
+              SizedBox(width: 12),
+              Expanded(child: Text('Share Flower')),
+            ],
           ),
+          content: SizedBox(
+            width: 420,
+            child: SingleChildScrollView(
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: lightGreen,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: mainGreen),
+                ),
+                child: SelectableText(
+                  shareText,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    height: 1.5,
+                    color: Color(0xFF333333),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton.icon(
+              onPressed: () {
+                Navigator.pop(dialogContext, _SharePreviewAction.copy);
+              },
+              icon: const Icon(Icons.copy_outlined),
+              label: const Text('Copy'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, _SharePreviewAction.cancel);
+              },
+              child: const Text('Cancel'),
+            ),
+            FilledButton.icon(
+              onPressed: () {
+                Navigator.pop(dialogContext, _SharePreviewAction.share);
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: darkGreen,
+                foregroundColor: Colors.white,
+              ),
+              icon: const Icon(Icons.share),
+              label: const Text('Continue'),
+            ),
+          ],
         );
+      },
+    );
+
+    if (!context.mounted) {
+      return;
+    }
+
+    if (selectedAction == _SharePreviewAction.copy) {
+      await _copyFlowerInformation(context, shareText);
+    } else if (selectedAction == _SharePreviewAction.share) {
+      await _shareFlower(context);
     }
   }
 
@@ -109,7 +206,7 @@ class FlowerInformationPage extends StatelessWidget {
         actions: [
           IconButton(
             onPressed: () {
-              _shareFlower(context);
+              _showSharePreview(context);
             },
             tooltip: 'Share flower information',
             icon: const Icon(Icons.share),
@@ -322,13 +419,13 @@ class FlowerInformationPage extends StatelessWidget {
 
             const SizedBox(height: 25),
 
-            // Provides another clearly visible sharing action.
+            // Opens a preview before sharing.
             SizedBox(
               width: double.infinity,
               height: 54,
               child: FilledButton.icon(
                 onPressed: () {
-                  _shareFlower(context);
+                  _showSharePreview(context);
                 },
                 style: FilledButton.styleFrom(
                   backgroundColor: darkGreen,
@@ -352,3 +449,5 @@ class FlowerInformationPage extends StatelessWidget {
     );
   }
 }
+
+enum _SharePreviewAction { copy, cancel, share }
