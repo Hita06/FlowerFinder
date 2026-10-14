@@ -177,23 +177,23 @@ void main() {
     );
   });
 
-  test('fire advanced effect adds orange glow around sticker', () async {
+  test('pink glitter advanced effect decorates sticker surface', () async {
     final stickerBytes = await _transparentPngWithFlowerBounds(
       canvasSize: 24,
       flowerBounds: const Rect.fromLTWH(6, 6, 12, 12),
     );
 
-    final fireBytes = await applyStickerEffects(
+    final glitterBytes = await applyStickerEffects(
       stickerBytes,
-      advancedEffect: AdvancedStickerEffect.fire,
+      advancedEffect: AdvancedStickerEffect.pinkGlitter,
     );
     final original = await _decodeRawRgba(stickerBytes);
-    final fire = await _decodeRawRgba(fireBytes);
+    final glitter = await _decodeRawRgba(glitterBytes);
 
-    expect(fire.width, greaterThan(original.width));
-    expect(fire.height, greaterThan(original.height));
+    expect(glitter.width, original.width);
+    expect(glitter.height, original.height);
     expect(
-      _hasVisibleOrangePixel(fire.pixels, fire.width, fire.height),
+      _hasVisibleMagentaPixel(glitter.pixels, glitter.width, glitter.height),
       isTrue,
     );
   });
@@ -243,7 +243,7 @@ bool _hasVisibleWhitePixel(Uint8List pixels, int width, int height) {
   return false;
 }
 
-bool _hasVisibleOrangePixel(Uint8List pixels, int width, int height) {
+bool _hasVisibleMagentaPixel(Uint8List pixels, int width, int height) {
   for (var y = 0; y < height; y += 1) {
     for (var x = 0; x < width; x += 1) {
       final index = (y * width + x) * 4;
@@ -251,7 +251,7 @@ bool _hasVisibleOrangePixel(Uint8List pixels, int width, int height) {
       final green = pixels[index + 1];
       final blue = pixels[index + 2];
       final alpha = pixels[index + 3];
-      if (alpha > 20 && red > 180 && green > 70 && blue < 90) return true;
+      if (alpha > 20 && red > 150 && blue > 100 && green < 90) return true;
     }
   }
   return false;

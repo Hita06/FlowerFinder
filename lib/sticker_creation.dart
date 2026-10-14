@@ -11,7 +11,7 @@ import 'user_profile.dart';
 
 enum AdvancedStickerEffect {
   none('None'),
-  fire('Fire');
+  pinkGlitter('Pink Glitter');
 
   const AdvancedStickerEffect(this.label);
 
@@ -682,10 +682,7 @@ Future<Uint8List> applyStickerEffects(
                   ? dropShadowDx.abs()
                   : dropShadowDy.abs())
         : 0;
-    final fireEnabled = advancedEffect == AdvancedStickerEffect.fire;
-    final fireGlowRadius = fireEnabled ? 22 : 0;
-    final fireMargin = fireEnabled ? 34 : 0;
-    final margin = outlineRadius + shadowMargin + fireMargin;
+    final margin = outlineRadius + shadowMargin;
     final outputWidth = image.width + margin * 2;
     final outputHeight = image.height + margin * 2;
     final recorder = ui.PictureRecorder();
@@ -708,61 +705,6 @@ Future<Uint8List> applyStickerEffects(
         sigmaX: dropShadowBlur.toDouble(),
         sigmaY: dropShadowBlur.toDouble(),
       );
-    final fireOuterGlowPaint = Paint()
-      ..isAntiAlias = true
-      ..filterQuality = FilterQuality.high
-      ..colorFilter = ColorFilter.mode(
-        Colors.deepOrange.withValues(alpha: 0.58),
-        BlendMode.srcIn,
-      )
-      ..imageFilter = ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12);
-    final fireInnerGlowPaint = Paint()
-      ..isAntiAlias = true
-      ..filterQuality = FilterQuality.high
-      ..colorFilter = ColorFilter.mode(
-        Colors.orangeAccent.withValues(alpha: 0.46),
-        BlendMode.srcIn,
-      )
-      ..imageFilter = ui.ImageFilter.blur(sigmaX: 5, sigmaY: 5);
-    final burnEdgePaint = Paint()
-      ..isAntiAlias = true
-      ..filterQuality = FilterQuality.high
-      ..colorFilter = ColorFilter.mode(
-        const Color(0xff3d1608).withValues(alpha: 0.36),
-        BlendMode.srcATop,
-      );
-    final emberPaint = Paint()
-      ..isAntiAlias = true
-      ..color = Colors.orangeAccent.withValues(alpha: 0.9);
-
-    if (fireEnabled) {
-      canvas.drawImage(
-        image,
-        Offset(margin.toDouble(), (margin + 2).toDouble()),
-        fireOuterGlowPaint,
-      );
-      for (var dy = -fireGlowRadius; dy <= fireGlowRadius; dy += 6) {
-        for (var dx = -fireGlowRadius; dx <= fireGlowRadius; dx += 6) {
-          if (dx * dx + dy * dy > fireGlowRadius * fireGlowRadius) continue;
-          if (dy > 10) continue;
-          canvas.drawImage(
-            image,
-            Offset((margin + dx).toDouble(), (margin + dy).toDouble()),
-            fireInnerGlowPaint,
-          );
-        }
-      }
-      final emberOffsets = <Offset>[
-        Offset(outputWidth * 0.24, outputHeight * 0.16),
-        Offset(outputWidth * 0.36, outputHeight * 0.10),
-        Offset(outputWidth * 0.58, outputHeight * 0.13),
-        Offset(outputWidth * 0.72, outputHeight * 0.22),
-        Offset(outputWidth * 0.66, outputHeight * 0.08),
-      ];
-      for (var i = 0; i < emberOffsets.length; i += 1) {
-        canvas.drawCircle(emberOffsets[i], i.isEven ? 2.6 : 1.8, emberPaint);
-      }
-    }
 
     if (dropShadow) {
       canvas.drawImage(
@@ -792,23 +734,11 @@ Future<Uint8List> applyStickerEffects(
       Offset(margin.toDouble(), margin.toDouble()),
       originalPaint,
     );
-    if (fireEnabled) {
-      for (final offset in const [
-        Offset(-3, -2),
-        Offset(3, -2),
-        Offset(-2, 3),
-        Offset(2, 3),
-      ]) {
-        canvas.drawImage(
-          image,
-          Offset(margin + offset.dx, margin + offset.dy),
-          burnEdgePaint,
-        );
-      }
-      canvas.drawImage(
+    if (advancedEffect == AdvancedStickerEffect.pinkGlitter) {
+      await _drawPinkGlitterSurface(
+        canvas,
         image,
         Offset(margin.toDouble(), margin.toDouble()),
-        originalPaint,
       );
     }
 
@@ -823,6 +753,122 @@ Future<Uint8List> applyStickerEffects(
   } catch (_) {
     return stickerBytes;
   }
+}
+
+Future<void> _drawPinkGlitterSurface(
+  Canvas canvas,
+  ui.Image image,
+  Offset origin,
+) async {
+  final bounds = Rect.fromLTWH(
+    origin.dx,
+    origin.dy,
+    image.width.toDouble(),
+    image.height.toDouble(),
+  );
+  final glitterPaint = Paint()
+    ..isAntiAlias = true
+    ..color = const Color(0xffc0187a).withValues(alpha: 0.82);
+  final deepGlitterPaint = Paint()
+    ..isAntiAlias = true
+    ..color = const Color(0xff7b0b4f).withValues(alpha: 0.58);
+  final gemPaint = Paint()
+    ..isAntiAlias = true
+    ..color = const Color(0xffff7bd5).withValues(alpha: 0.9);
+  final shinePaint = Paint()
+    ..isAntiAlias = true
+    ..strokeWidth = 1.7
+    ..strokeCap = StrokeCap.round
+    ..color = Colors.white.withValues(alpha: 0.95);
+  final maskPaint = Paint()
+    ..isAntiAlias = true
+    ..filterQuality = FilterQuality.high
+    ..blendMode = BlendMode.dstIn;
+
+  canvas.saveLayer(bounds, Paint());
+  final glitterPoints = <Offset>[
+    const Offset(0.18, 0.22),
+    const Offset(0.28, 0.34),
+    const Offset(0.42, 0.18),
+    const Offset(0.55, 0.30),
+    const Offset(0.70, 0.20),
+    const Offset(0.82, 0.38),
+    const Offset(0.22, 0.52),
+    const Offset(0.36, 0.64),
+    const Offset(0.50, 0.48),
+    const Offset(0.64, 0.62),
+    const Offset(0.78, 0.55),
+    const Offset(0.18, 0.78),
+    const Offset(0.46, 0.82),
+    const Offset(0.68, 0.78),
+    const Offset(0.84, 0.74),
+  ];
+  for (var i = 0; i < glitterPoints.length; i += 1) {
+    final point = Offset(
+      origin.dx + glitterPoints[i].dx * image.width,
+      origin.dy + glitterPoints[i].dy * image.height,
+    );
+    final radius = switch (i % 4) {
+      0 => 2.2,
+      1 => 1.4,
+      2 => 2.8,
+      _ => 1.8,
+    };
+    canvas.drawCircle(
+      point,
+      radius,
+      i.isEven ? glitterPaint : deepGlitterPaint,
+    );
+  }
+
+  final gemCenters = <Offset>[
+    const Offset(0.30, 0.24),
+    const Offset(0.58, 0.22),
+    const Offset(0.74, 0.44),
+    const Offset(0.42, 0.58),
+    const Offset(0.62, 0.72),
+  ];
+  for (final centerFraction in gemCenters) {
+    final center = Offset(
+      origin.dx + centerFraction.dx * image.width,
+      origin.dy + centerFraction.dy * image.height,
+    );
+    final path = Path()
+      ..moveTo(center.dx, center.dy - 4)
+      ..lineTo(center.dx + 4, center.dy)
+      ..lineTo(center.dx, center.dy + 4)
+      ..lineTo(center.dx - 4, center.dy)
+      ..close();
+    canvas.drawPath(path, gemPaint);
+  }
+
+  final sparkleCenters = <Offset>[
+    const Offset(0.25, 0.40),
+    const Offset(0.52, 0.36),
+    const Offset(0.72, 0.28),
+    const Offset(0.60, 0.58),
+    const Offset(0.36, 0.76),
+  ];
+  for (final centerFraction in sparkleCenters) {
+    final center = Offset(
+      origin.dx + centerFraction.dx * image.width,
+      origin.dy + centerFraction.dy * image.height,
+    );
+    canvas
+      ..drawLine(
+        Offset(center.dx - 6, center.dy),
+        Offset(center.dx + 6, center.dy),
+        shinePaint,
+      )
+      ..drawLine(
+        Offset(center.dx, center.dy - 6),
+        Offset(center.dx, center.dy + 6),
+        shinePaint,
+      );
+  }
+
+  canvas.drawImage(image, origin, maskPaint);
+  canvas.restore();
 }
 
 Future<ui.Image> _drawInnerShadow(ui.Image image) async {
