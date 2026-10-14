@@ -194,7 +194,9 @@ void main() {
     expect(find.text('Colour Variation'), findsOneWidget);
     expect(find.text('Bubble Border'), findsOneWidget);
     expect(find.text('Advanced effects'), findsOneWidget);
-    expect(find.text('Pink Glitter'), findsOneWidget);
+    expect(find.text('Bright Glitter'), findsOneWidget);
+    expect(find.text('3D Bubble'), findsOneWidget);
+    expect(find.text('Rainbow Prism'), findsOneWidget);
     final saveButton = tester.widget<FilledButton>(
       find.widgetWithText(FilledButton, 'Save sticker'),
     );

@@ -177,10 +177,10 @@ void main() {
     );
   });
 
-  test('pink glitter advanced effect decorates sticker surface', () async {
+  test('bright glitter advanced effect decorates sticker surface', () async {
     final stickerBytes = await _transparentPngWithFlowerBounds(
-      canvasSize: 24,
-      flowerBounds: const Rect.fromLTWH(6, 6, 12, 12),
+      canvasSize: 48,
+      flowerBounds: const Rect.fromLTWH(8, 8, 32, 32),
     );
 
     final glitterBytes = await applyStickerEffects(
@@ -194,6 +194,48 @@ void main() {
     expect(glitter.height, original.height);
     expect(
       _hasVisibleMagentaPixel(glitter.pixels, glitter.width, glitter.height),
+      isTrue,
+    );
+  });
+
+  test('3d bubble advanced effect adds bright surface highlights', () async {
+    final stickerBytes = await _transparentPngWithFlowerBounds(
+      canvasSize: 48,
+      flowerBounds: const Rect.fromLTWH(8, 8, 32, 32),
+    );
+
+    final bubbleBytes = await applyStickerEffects(
+      stickerBytes,
+      advancedEffect: AdvancedStickerEffect.bubble3d,
+    );
+    final original = await _decodeRawRgba(stickerBytes);
+    final bubble = await _decodeRawRgba(bubbleBytes);
+
+    expect(bubble.width, original.width);
+    expect(bubble.height, original.height);
+    expect(
+      _hasVisiblePaleBluePixel(bubble.pixels, bubble.width, bubble.height),
+      isTrue,
+    );
+  });
+
+  test('rainbow prism advanced effect adds rainbow surface colour', () async {
+    final stickerBytes = await _transparentPngWithFlowerBounds(
+      canvasSize: 48,
+      flowerBounds: const Rect.fromLTWH(8, 8, 32, 32),
+    );
+
+    final rainbowBytes = await applyStickerEffects(
+      stickerBytes,
+      advancedEffect: AdvancedStickerEffect.rainbowPrism,
+    );
+    final original = await _decodeRawRgba(stickerBytes);
+    final rainbow = await _decodeRawRgba(rainbowBytes);
+
+    expect(rainbow.width, original.width);
+    expect(rainbow.height, original.height);
+    expect(
+      _hasVisibleCyanPixel(rainbow.pixels, rainbow.width, rainbow.height),
       isTrue,
     );
   });
@@ -252,6 +294,34 @@ bool _hasVisibleMagentaPixel(Uint8List pixels, int width, int height) {
       final blue = pixels[index + 2];
       final alpha = pixels[index + 3];
       if (alpha > 20 && red > 150 && blue > 100 && green < 90) return true;
+    }
+  }
+  return false;
+}
+
+bool _hasVisiblePaleBluePixel(Uint8List pixels, int width, int height) {
+  for (var y = 0; y < height; y += 1) {
+    for (var x = 0; x < width; x += 1) {
+      final index = (y * width + x) * 4;
+      final red = pixels[index];
+      final green = pixels[index + 1];
+      final blue = pixels[index + 2];
+      final alpha = pixels[index + 3];
+      if (alpha > 20 && blue > 180 && green > 150 && red > 120) return true;
+    }
+  }
+  return false;
+}
+
+bool _hasVisibleCyanPixel(Uint8List pixels, int width, int height) {
+  for (var y = 0; y < height; y += 1) {
+    for (var x = 0; x < width; x += 1) {
+      final index = (y * width + x) * 4;
+      final red = pixels[index];
+      final green = pixels[index + 1];
+      final blue = pixels[index + 2];
+      final alpha = pixels[index + 3];
+      if (alpha > 20 && blue > 130 && green > 130 && red < 130) return true;
     }
   }
   return false;

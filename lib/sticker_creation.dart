@@ -11,7 +11,9 @@ import 'user_profile.dart';
 
 enum AdvancedStickerEffect {
   none('None'),
-  pinkGlitter('Pink Glitter');
+  pinkGlitter('Bright Glitter'),
+  bubble3d('3D Bubble'),
+  rainbowPrism('Rainbow Prism');
 
   const AdvancedStickerEffect(this.label);
 
@@ -734,12 +736,27 @@ Future<Uint8List> applyStickerEffects(
       Offset(margin.toDouble(), margin.toDouble()),
       originalPaint,
     );
-    if (advancedEffect == AdvancedStickerEffect.pinkGlitter) {
-      await _drawPinkGlitterSurface(
-        canvas,
-        image,
-        Offset(margin.toDouble(), margin.toDouble()),
-      );
+    switch (advancedEffect) {
+      case AdvancedStickerEffect.none:
+        break;
+      case AdvancedStickerEffect.pinkGlitter:
+        await _drawBrightGlitterSurface(
+          canvas,
+          image,
+          Offset(margin.toDouble(), margin.toDouble()),
+        );
+      case AdvancedStickerEffect.bubble3d:
+        await _drawBubble3dSurface(
+          canvas,
+          image,
+          Offset(margin.toDouble(), margin.toDouble()),
+        );
+      case AdvancedStickerEffect.rainbowPrism:
+        await _drawRainbowPrismSurface(
+          canvas,
+          image,
+          Offset(margin.toDouble(), margin.toDouble()),
+        );
     }
 
     final renderedImage = await recorder.endRecording().toImage(
@@ -755,10 +772,226 @@ Future<Uint8List> applyStickerEffects(
   }
 }
 
-Future<void> _drawPinkGlitterSurface(
+Future<void> _drawBrightGlitterSurface(
   Canvas canvas,
   ui.Image image,
   Offset origin,
+) async {
+  await _drawMaskedSurface(canvas, image, origin, (canvas, bounds) {
+    final baseWashPaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xffff3fc6), Color(0xff8a0470), Color(0xffff9de3)],
+      ).createShader(bounds)
+      ..blendMode = BlendMode.srcATop;
+    canvas.drawRect(bounds, baseWashPaint);
+
+    final glitterPaint = Paint()
+      ..isAntiAlias = true
+      ..color = const Color(0xffff3fc6).withValues(alpha: 0.95);
+    final deepGlitterPaint = Paint()
+      ..isAntiAlias = true
+      ..color = const Color(0xff6e0057).withValues(alpha: 0.78);
+    final gemPaint = Paint()
+      ..isAntiAlias = true
+      ..color = const Color(0xffffb6f1).withValues(alpha: 0.98);
+    final shinePaint = Paint()
+      ..isAntiAlias = true
+      ..strokeWidth = 2.4
+      ..strokeCap = StrokeCap.round
+      ..color = Colors.white.withValues(alpha: 0.98);
+
+    for (var row = 0; row < 7; row += 1) {
+      for (var col = 0; col < 7; col += 1) {
+        final x =
+            bounds.left +
+            (col + 0.45 + (row.isEven ? 0.12 : -0.08)) * bounds.width / 7.4;
+        final y = bounds.top + (row + 0.4) * bounds.height / 7.5;
+        final radius = 1.8 + ((row + col) % 3) * 1.1;
+        canvas.drawCircle(
+          Offset(x, y),
+          radius,
+          (row + col).isEven ? glitterPaint : deepGlitterPaint,
+        );
+      }
+    }
+
+    final gemCenters = <Offset>[
+      const Offset(0.22, 0.26),
+      const Offset(0.40, 0.42),
+      const Offset(0.62, 0.24),
+      const Offset(0.78, 0.52),
+      const Offset(0.30, 0.72),
+      const Offset(0.58, 0.78),
+    ];
+    for (final centerFraction in gemCenters) {
+      final center = Offset(
+        bounds.left + centerFraction.dx * bounds.width,
+        bounds.top + centerFraction.dy * bounds.height,
+      );
+      final path = Path()
+        ..moveTo(center.dx, center.dy - 6)
+        ..lineTo(center.dx + 6, center.dy)
+        ..lineTo(center.dx, center.dy + 6)
+        ..lineTo(center.dx - 6, center.dy)
+        ..close();
+      canvas.drawPath(path, gemPaint);
+    }
+
+    for (final centerFraction in const <Offset>[
+      Offset(0.18, 0.48),
+      Offset(0.36, 0.22),
+      Offset(0.52, 0.54),
+      Offset(0.70, 0.34),
+      Offset(0.82, 0.72),
+    ]) {
+      _drawSparkle(
+        canvas,
+        Offset(
+          bounds.left + centerFraction.dx * bounds.width,
+          bounds.top + centerFraction.dy * bounds.height,
+        ),
+        9,
+        shinePaint,
+      );
+    }
+  });
+}
+
+Future<void> _drawBubble3dSurface(
+  Canvas canvas,
+  ui.Image image,
+  Offset origin,
+) async {
+  await _drawMaskedSurface(canvas, image, origin, (canvas, bounds) {
+    final bubblePaint = Paint()
+      ..shader = RadialGradient(
+        center: const Alignment(-0.45, -0.55),
+        radius: 1.08,
+        colors: [
+          Colors.white.withValues(alpha: 0.72),
+          const Color(0xffbfefff).withValues(alpha: 0.42),
+          const Color(0xff67b7ff).withValues(alpha: 0.36),
+          const Color(0xff6f4cff).withValues(alpha: 0.26),
+        ],
+        stops: const [0.0, 0.34, 0.68, 1.0],
+      ).createShader(bounds)
+      ..blendMode = BlendMode.srcATop;
+    canvas.drawRect(bounds, bubblePaint);
+
+    final rimPaint = Paint()
+      ..isAntiAlias = true
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4
+      ..color = Colors.white.withValues(alpha: 0.52);
+    final blueRimPaint = Paint()
+      ..isAntiAlias = true
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..color = const Color(0xff7bdcff).withValues(alpha: 0.54);
+    canvas.drawOval(bounds.deflate(bounds.shortestSide * 0.08), blueRimPaint);
+    canvas.drawOval(bounds.deflate(bounds.shortestSide * 0.16), rimPaint);
+
+    final highlightPaint = Paint()
+      ..isAntiAlias = true
+      ..color = Colors.white.withValues(alpha: 0.86);
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(
+          bounds.left + bounds.width * 0.32,
+          bounds.top + bounds.height * 0.28,
+        ),
+        width: bounds.width * 0.24,
+        height: bounds.height * 0.11,
+      ),
+      highlightPaint,
+    );
+    canvas.drawCircle(
+      Offset(
+        bounds.left + bounds.width * 0.68,
+        bounds.top + bounds.height * 0.66,
+      ),
+      bounds.shortestSide * 0.055,
+      Paint()..color = Colors.white.withValues(alpha: 0.56),
+    );
+  });
+}
+
+Future<void> _drawRainbowPrismSurface(
+  Canvas canvas,
+  ui.Image image,
+  Offset origin,
+) async {
+  await _drawMaskedSurface(canvas, image, origin, (canvas, bounds) {
+    final prismPaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Color(0x88ff004c),
+          Color(0x88ffae00),
+          Color(0x88fff700),
+          Color(0x8800d26a),
+          Color(0x88007bff),
+          Color(0x889b00ff),
+        ],
+      ).createShader(bounds)
+      ..blendMode = BlendMode.srcATop;
+    canvas.drawRect(bounds, prismPaint);
+
+    final streakPaint = Paint()
+      ..isAntiAlias = true
+      ..strokeWidth = 5
+      ..strokeCap = StrokeCap.round
+      ..blendMode = BlendMode.plus;
+    final colors = <Color>[
+      Colors.pinkAccent,
+      Colors.orangeAccent,
+      Colors.yellowAccent,
+      Colors.greenAccent,
+      Colors.cyanAccent,
+      Colors.purpleAccent,
+    ];
+    for (var i = 0; i < colors.length; i += 1) {
+      streakPaint.color = colors[i].withValues(alpha: 0.58);
+      final y = bounds.top + bounds.height * (0.14 + i * 0.13);
+      canvas.drawLine(
+        Offset(bounds.left + bounds.width * 0.08, y),
+        Offset(bounds.right - bounds.width * 0.08, y + bounds.height * 0.22),
+        streakPaint,
+      );
+    }
+
+    final shinePaint = Paint()
+      ..isAntiAlias = true
+      ..strokeWidth = 2.2
+      ..strokeCap = StrokeCap.round
+      ..color = Colors.white.withValues(alpha: 0.9);
+    for (final centerFraction in const <Offset>[
+      Offset(0.26, 0.22),
+      Offset(0.54, 0.36),
+      Offset(0.78, 0.58),
+      Offset(0.38, 0.74),
+    ]) {
+      _drawSparkle(
+        canvas,
+        Offset(
+          bounds.left + centerFraction.dx * bounds.width,
+          bounds.top + centerFraction.dy * bounds.height,
+        ),
+        8,
+        shinePaint,
+      );
+    }
+  });
+}
+
+Future<void> _drawMaskedSurface(
+  Canvas canvas,
+  ui.Image image,
+  Offset origin,
+  void Function(Canvas canvas, Rect bounds) drawSurface,
 ) async {
   final bounds = Rect.fromLTWH(
     origin.dx,
@@ -766,109 +999,41 @@ Future<void> _drawPinkGlitterSurface(
     image.width.toDouble(),
     image.height.toDouble(),
   );
-  final glitterPaint = Paint()
-    ..isAntiAlias = true
-    ..color = const Color(0xffc0187a).withValues(alpha: 0.82);
-  final deepGlitterPaint = Paint()
-    ..isAntiAlias = true
-    ..color = const Color(0xff7b0b4f).withValues(alpha: 0.58);
-  final gemPaint = Paint()
-    ..isAntiAlias = true
-    ..color = const Color(0xffff7bd5).withValues(alpha: 0.9);
-  final shinePaint = Paint()
-    ..isAntiAlias = true
-    ..strokeWidth = 1.7
-    ..strokeCap = StrokeCap.round
-    ..color = Colors.white.withValues(alpha: 0.95);
-  final maskPaint = Paint()
-    ..isAntiAlias = true
-    ..filterQuality = FilterQuality.high
-    ..blendMode = BlendMode.dstIn;
-
   canvas.saveLayer(bounds, Paint());
-  final glitterPoints = <Offset>[
-    const Offset(0.18, 0.22),
-    const Offset(0.28, 0.34),
-    const Offset(0.42, 0.18),
-    const Offset(0.55, 0.30),
-    const Offset(0.70, 0.20),
-    const Offset(0.82, 0.38),
-    const Offset(0.22, 0.52),
-    const Offset(0.36, 0.64),
-    const Offset(0.50, 0.48),
-    const Offset(0.64, 0.62),
-    const Offset(0.78, 0.55),
-    const Offset(0.18, 0.78),
-    const Offset(0.46, 0.82),
-    const Offset(0.68, 0.78),
-    const Offset(0.84, 0.74),
-  ];
-  for (var i = 0; i < glitterPoints.length; i += 1) {
-    final point = Offset(
-      origin.dx + glitterPoints[i].dx * image.width,
-      origin.dy + glitterPoints[i].dy * image.height,
-    );
-    final radius = switch (i % 4) {
-      0 => 2.2,
-      1 => 1.4,
-      2 => 2.8,
-      _ => 1.8,
-    };
-    canvas.drawCircle(
-      point,
-      radius,
-      i.isEven ? glitterPaint : deepGlitterPaint,
-    );
-  }
-
-  final gemCenters = <Offset>[
-    const Offset(0.30, 0.24),
-    const Offset(0.58, 0.22),
-    const Offset(0.74, 0.44),
-    const Offset(0.42, 0.58),
-    const Offset(0.62, 0.72),
-  ];
-  for (final centerFraction in gemCenters) {
-    final center = Offset(
-      origin.dx + centerFraction.dx * image.width,
-      origin.dy + centerFraction.dy * image.height,
-    );
-    final path = Path()
-      ..moveTo(center.dx, center.dy - 4)
-      ..lineTo(center.dx + 4, center.dy)
-      ..lineTo(center.dx, center.dy + 4)
-      ..lineTo(center.dx - 4, center.dy)
-      ..close();
-    canvas.drawPath(path, gemPaint);
-  }
-
-  final sparkleCenters = <Offset>[
-    const Offset(0.25, 0.40),
-    const Offset(0.52, 0.36),
-    const Offset(0.72, 0.28),
-    const Offset(0.60, 0.58),
-    const Offset(0.36, 0.76),
-  ];
-  for (final centerFraction in sparkleCenters) {
-    final center = Offset(
-      origin.dx + centerFraction.dx * image.width,
-      origin.dy + centerFraction.dy * image.height,
-    );
-    canvas
-      ..drawLine(
-        Offset(center.dx - 6, center.dy),
-        Offset(center.dx + 6, center.dy),
-        shinePaint,
-      )
-      ..drawLine(
-        Offset(center.dx, center.dy - 6),
-        Offset(center.dx, center.dy + 6),
-        shinePaint,
-      );
-  }
-
-  canvas.drawImage(image, origin, maskPaint);
+  drawSurface(canvas, bounds);
+  canvas.drawImage(
+    image,
+    origin,
+    Paint()
+      ..isAntiAlias = true
+      ..filterQuality = FilterQuality.high
+      ..blendMode = BlendMode.dstIn,
+  );
   canvas.restore();
+}
+
+void _drawSparkle(Canvas canvas, Offset center, double radius, Paint paint) {
+  canvas
+    ..drawLine(
+      Offset(center.dx - radius, center.dy),
+      Offset(center.dx + radius, center.dy),
+      paint,
+    )
+    ..drawLine(
+      Offset(center.dx, center.dy - radius),
+      Offset(center.dx, center.dy + radius),
+      paint,
+    )
+    ..drawLine(
+      Offset(center.dx - radius * 0.55, center.dy - radius * 0.55),
+      Offset(center.dx + radius * 0.55, center.dy + radius * 0.55),
+      paint,
+    )
+    ..drawLine(
+      Offset(center.dx - radius * 0.55, center.dy + radius * 0.55),
+      Offset(center.dx + radius * 0.55, center.dy - radius * 0.55),
+      paint,
+    );
 }
 
 Future<ui.Image> _drawInnerShadow(ui.Image image) async {
