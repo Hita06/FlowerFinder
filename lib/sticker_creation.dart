@@ -779,72 +779,89 @@ Future<void> _drawBrightGlitterSurface(
 ) async {
   await _drawMaskedSurface(canvas, image, origin, (canvas, bounds) {
     final baseWashPaint = Paint()
-      ..shader = const LinearGradient(
+      ..shader = LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [Color(0xffff3fc6), Color(0xff8a0470), Color(0xffff9de3)],
+        colors: [
+          const Color(0xffff10b8).withValues(alpha: 0.72),
+          const Color(0xff780053).withValues(alpha: 0.84),
+          const Color(0xffff86dd).withValues(alpha: 0.76),
+        ],
+        stops: const [0.0, 0.52, 1.0],
       ).createShader(bounds)
       ..blendMode = BlendMode.srcATop;
     canvas.drawRect(bounds, baseWashPaint);
 
-    final glitterPaint = Paint()
-      ..isAntiAlias = true
-      ..color = const Color(0xffff3fc6).withValues(alpha: 0.95);
-    final deepGlitterPaint = Paint()
-      ..isAntiAlias = true
-      ..color = const Color(0xff6e0057).withValues(alpha: 0.78);
-    final gemPaint = Paint()
-      ..isAntiAlias = true
-      ..color = const Color(0xffffb6f1).withValues(alpha: 0.98);
-    final shinePaint = Paint()
-      ..isAntiAlias = true
-      ..strokeWidth = 2.4
-      ..strokeCap = StrokeCap.round
-      ..color = Colors.white.withValues(alpha: 0.98);
+    final glitterColors = <Color>[
+      const Color(0xffff2fc4),
+      const Color(0xffff79df),
+      const Color(0xfffff1fb),
+      const Color(0xffb00087),
+      const Color(0xff00e5ff),
+      const Color(0xfffff56a),
+    ];
 
-    for (var row = 0; row < 7; row += 1) {
-      for (var col = 0; col < 7; col += 1) {
+    for (var row = 0; row < 12; row += 1) {
+      for (var col = 0; col < 12; col += 1) {
         final x =
             bounds.left +
-            (col + 0.45 + (row.isEven ? 0.12 : -0.08)) * bounds.width / 7.4;
-        final y = bounds.top + (row + 0.4) * bounds.height / 7.5;
-        final radius = 1.8 + ((row + col) % 3) * 1.1;
+            (col + 0.35 + (row.isEven ? 0.16 : -0.08)) * bounds.width / 12.2;
+        final y =
+            bounds.top +
+            (row + 0.32 + (col.isEven ? 0.08 : -0.04)) * bounds.height / 12.3;
+        final radius = 1.2 + ((row * 3 + col * 5) % 5) * 0.72;
         canvas.drawCircle(
           Offset(x, y),
           radius,
-          (row + col).isEven ? glitterPaint : deepGlitterPaint,
+          Paint()
+            ..isAntiAlias = true
+            ..color = glitterColors[(row + col) % glitterColors.length]
+                .withValues(alpha: 0.86),
         );
       }
     }
 
-    final gemCenters = <Offset>[
-      const Offset(0.22, 0.26),
-      const Offset(0.40, 0.42),
-      const Offset(0.62, 0.24),
-      const Offset(0.78, 0.52),
-      const Offset(0.30, 0.72),
-      const Offset(0.58, 0.78),
-    ];
-    for (final centerFraction in gemCenters) {
+    for (var i = 0; i < 28; i += 1) {
+      final fx = ((i * 37) % 97) / 96.0;
+      final fy = ((i * 53 + 11) % 101) / 100.0;
       final center = Offset(
-        bounds.left + centerFraction.dx * bounds.width,
-        bounds.top + centerFraction.dy * bounds.height,
+        bounds.left + fx * bounds.width,
+        bounds.top + fy * bounds.height,
       );
+      final size = bounds.shortestSide * (0.018 + (i % 4) * 0.006);
       final path = Path()
-        ..moveTo(center.dx, center.dy - 6)
-        ..lineTo(center.dx + 6, center.dy)
-        ..lineTo(center.dx, center.dy + 6)
-        ..lineTo(center.dx - 6, center.dy)
+        ..moveTo(center.dx, center.dy - size)
+        ..lineTo(center.dx + size * 0.76, center.dy)
+        ..lineTo(center.dx, center.dy + size)
+        ..lineTo(center.dx - size * 0.76, center.dy)
         ..close();
-      canvas.drawPath(path, gemPaint);
+      canvas.drawPath(
+        path,
+        Paint()
+          ..isAntiAlias = true
+          ..shader = RadialGradient(
+            colors: [
+              Colors.white.withValues(alpha: 0.98),
+              glitterColors[i % glitterColors.length].withValues(alpha: 0.9),
+            ],
+          ).createShader(Rect.fromCircle(center: center, radius: size)),
+      );
     }
 
+    final shinePaint = Paint()
+      ..isAntiAlias = true
+      ..strokeWidth = 2.8
+      ..strokeCap = StrokeCap.round
+      ..color = Colors.white.withValues(alpha: 0.98)
+      ..blendMode = BlendMode.plus;
     for (final centerFraction in const <Offset>[
-      Offset(0.18, 0.48),
-      Offset(0.36, 0.22),
-      Offset(0.52, 0.54),
-      Offset(0.70, 0.34),
-      Offset(0.82, 0.72),
+      Offset(0.16, 0.28),
+      Offset(0.30, 0.58),
+      Offset(0.44, 0.20),
+      Offset(0.56, 0.46),
+      Offset(0.72, 0.30),
+      Offset(0.84, 0.68),
+      Offset(0.38, 0.82),
     ]) {
       _drawSparkle(
         canvas,
@@ -852,7 +869,7 @@ Future<void> _drawBrightGlitterSurface(
           bounds.left + centerFraction.dx * bounds.width,
           bounds.top + centerFraction.dy * bounds.height,
         ),
-        9,
+        10,
         shinePaint,
       );
     }
@@ -865,56 +882,119 @@ Future<void> _drawBubble3dSurface(
   Offset origin,
 ) async {
   await _drawMaskedSurface(canvas, image, origin, (canvas, bounds) {
-    final bubblePaint = Paint()
+    final glassBodyPaint = Paint()
       ..shader = RadialGradient(
-        center: const Alignment(-0.45, -0.55),
-        radius: 1.08,
+        center: const Alignment(-0.58, -0.62),
+        radius: 1.18,
         colors: [
-          Colors.white.withValues(alpha: 0.72),
-          const Color(0xffbfefff).withValues(alpha: 0.42),
-          const Color(0xff67b7ff).withValues(alpha: 0.36),
-          const Color(0xff6f4cff).withValues(alpha: 0.26),
+          Colors.white.withValues(alpha: 0.82),
+          const Color(0xffeffcff).withValues(alpha: 0.58),
+          const Color(0xff8ce8ff).withValues(alpha: 0.46),
+          const Color(0xff8d65ff).withValues(alpha: 0.34),
+          const Color(0xff2457ff).withValues(alpha: 0.22),
         ],
-        stops: const [0.0, 0.34, 0.68, 1.0],
+        stops: const [0.0, 0.22, 0.50, 0.78, 1.0],
       ).createShader(bounds)
       ..blendMode = BlendMode.srcATop;
-    canvas.drawRect(bounds, bubblePaint);
+    canvas.drawRect(bounds, glassBodyPaint);
+
+    final lowerShadowPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Colors.transparent,
+          const Color(0xff1672ff).withValues(alpha: 0.36),
+          const Color(0xff4c189e).withValues(alpha: 0.42),
+        ],
+        stops: const [0.42, 0.76, 1.0],
+      ).createShader(bounds)
+      ..blendMode = BlendMode.srcATop;
+    canvas.drawRect(bounds, lowerShadowPaint);
 
     final rimPaint = Paint()
       ..isAntiAlias = true
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 4
-      ..color = Colors.white.withValues(alpha: 0.52);
-    final blueRimPaint = Paint()
+      ..strokeWidth = bounds.shortestSide * 0.07
+      ..color = Colors.white.withValues(alpha: 0.70)
+      ..blendMode = BlendMode.plus;
+    final cyanRimPaint = Paint()
       ..isAntiAlias = true
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3
-      ..color = const Color(0xff7bdcff).withValues(alpha: 0.54);
-    canvas.drawOval(bounds.deflate(bounds.shortestSide * 0.08), blueRimPaint);
-    canvas.drawOval(bounds.deflate(bounds.shortestSide * 0.16), rimPaint);
-
-    final highlightPaint = Paint()
+      ..strokeWidth = bounds.shortestSide * 0.045
+      ..color = const Color(0xff6effff).withValues(alpha: 0.58)
+      ..blendMode = BlendMode.plus;
+    final purpleRimPaint = Paint()
       ..isAntiAlias = true
-      ..color = Colors.white.withValues(alpha: 0.86);
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = bounds.shortestSide * 0.035
+      ..color = const Color(0xffff8dff).withValues(alpha: 0.36)
+      ..blendMode = BlendMode.plus;
+
+    canvas.drawOval(bounds.deflate(bounds.shortestSide * 0.08), rimPaint);
+    canvas.drawOval(bounds.deflate(bounds.shortestSide * 0.13), cyanRimPaint);
+    canvas.drawOval(bounds.deflate(bounds.shortestSide * 0.22), purpleRimPaint);
+
+    final mainHighlightPaint = Paint()
+      ..isAntiAlias = true
+      ..color = Colors.white.withValues(alpha: 0.94)
+      ..blendMode = BlendMode.plus;
     canvas.drawOval(
       Rect.fromCenter(
         center: Offset(
-          bounds.left + bounds.width * 0.32,
-          bounds.top + bounds.height * 0.28,
+          bounds.left + bounds.width * 0.30,
+          bounds.top + bounds.height * 0.24,
         ),
-        width: bounds.width * 0.24,
-        height: bounds.height * 0.11,
+        width: bounds.width * 0.34,
+        height: bounds.height * 0.12,
       ),
-      highlightPaint,
+      mainHighlightPaint,
     );
-    canvas.drawCircle(
-      Offset(
-        bounds.left + bounds.width * 0.68,
-        bounds.top + bounds.height * 0.66,
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(
+          bounds.left + bounds.width * 0.22,
+          bounds.top + bounds.height * 0.40,
+        ),
+        width: bounds.width * 0.16,
+        height: bounds.height * 0.07,
       ),
-      bounds.shortestSide * 0.055,
-      Paint()..color = Colors.white.withValues(alpha: 0.56),
+      Paint()
+        ..isAntiAlias = true
+        ..color = Colors.white.withValues(alpha: 0.78)
+        ..blendMode = BlendMode.plus,
     );
+
+    final bubbleSpecs = <(Offset, double)>[
+      (const Offset(0.62, 0.28), 0.054),
+      (const Offset(0.74, 0.44), 0.036),
+      (const Offset(0.58, 0.70), 0.048),
+      (const Offset(0.36, 0.68), 0.030),
+      (const Offset(0.82, 0.76), 0.040),
+    ];
+    for (final spec in bubbleSpecs) {
+      final center = Offset(
+        bounds.left + spec.$1.dx * bounds.width,
+        bounds.top + spec.$1.dy * bounds.height,
+      );
+      final radius = bounds.shortestSide * spec.$2;
+      final bubbleBounds = Rect.fromCircle(center: center, radius: radius);
+      canvas.drawCircle(
+        center,
+        radius,
+        Paint()
+          ..isAntiAlias = true
+          ..shader = RadialGradient(
+            center: const Alignment(-0.45, -0.55),
+            colors: [
+              Colors.white.withValues(alpha: 0.88),
+              const Color(0xffcaffff).withValues(alpha: 0.42),
+              const Color(0xff5f7cff).withValues(alpha: 0.26),
+            ],
+          ).createShader(bubbleBounds)
+          ..blendMode = BlendMode.plus,
+      );
+    }
   });
 }
 
@@ -924,55 +1004,70 @@ Future<void> _drawRainbowPrismSurface(
   Offset origin,
 ) async {
   await _drawMaskedSurface(canvas, image, origin, (canvas, bounds) {
-    final prismPaint = Paint()
-      ..shader = const LinearGradient(
+    final foilBasePaint = Paint()
+      ..shader = LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          Color(0x88ff004c),
-          Color(0x88ffae00),
-          Color(0x88fff700),
-          Color(0x8800d26a),
-          Color(0x88007bff),
-          Color(0x889b00ff),
+          Colors.white.withValues(alpha: 0.22),
+          const Color(0xff00f5ff).withValues(alpha: 0.30),
+          const Color(0xfffff15a).withValues(alpha: 0.26),
+          const Color(0xffff4bce).withValues(alpha: 0.30),
+          Colors.white.withValues(alpha: 0.18),
         ],
+        stops: const [0.0, 0.26, 0.48, 0.72, 1.0],
       ).createShader(bounds)
-      ..blendMode = BlendMode.srcATop;
-    canvas.drawRect(bounds, prismPaint);
-
-    final streakPaint = Paint()
-      ..isAntiAlias = true
-      ..strokeWidth = 5
-      ..strokeCap = StrokeCap.round
       ..blendMode = BlendMode.plus;
-    final colors = <Color>[
-      Colors.pinkAccent,
-      Colors.orangeAccent,
-      Colors.yellowAccent,
-      Colors.greenAccent,
-      Colors.cyanAccent,
-      Colors.purpleAccent,
+    canvas.drawRect(bounds, foilBasePaint);
+
+    final prismColors = <Color>[
+      const Color(0xff00f5ff),
+      const Color(0xff2dff73),
+      const Color(0xffffff37),
+      const Color(0xffff7a00),
+      const Color(0xffff39d0),
+      const Color(0xff7c4dff),
+      Colors.white,
     ];
-    for (var i = 0; i < colors.length; i += 1) {
-      streakPaint.color = colors[i].withValues(alpha: 0.58);
-      final y = bounds.top + bounds.height * (0.14 + i * 0.13);
-      canvas.drawLine(
-        Offset(bounds.left + bounds.width * 0.08, y),
-        Offset(bounds.right - bounds.width * 0.08, y + bounds.height * 0.22),
-        streakPaint,
+
+    for (var i = 0; i < 24; i += 1) {
+      final fx = ((i * 29 + 7) % 101) / 100.0;
+      final fy = ((i * 43 + 13) % 103) / 102.0;
+      final center = Offset(
+        bounds.left + fx * bounds.width,
+        bounds.top + fy * bounds.height,
+      );
+      final w = bounds.shortestSide * (0.045 + (i % 4) * 0.012);
+      final h = bounds.shortestSide * (0.014 + (i % 3) * 0.007);
+      final path = Path()
+        ..moveTo(center.dx - w * 0.55, center.dy - h)
+        ..lineTo(center.dx + w * 0.45, center.dy - h * 0.35)
+        ..lineTo(center.dx + w * 0.55, center.dy + h)
+        ..lineTo(center.dx - w * 0.45, center.dy + h * 0.35)
+        ..close();
+      canvas.drawPath(
+        path,
+        Paint()
+          ..isAntiAlias = true
+          ..color = prismColors[i % prismColors.length].withValues(alpha: 0.72)
+          ..blendMode = BlendMode.plus,
       );
     }
 
-    final shinePaint = Paint()
+    final sparklePaint = Paint()
       ..isAntiAlias = true
-      ..strokeWidth = 2.2
+      ..strokeWidth = 2.6
       ..strokeCap = StrokeCap.round
-      ..color = Colors.white.withValues(alpha: 0.9);
+      ..color = Colors.white.withValues(alpha: 0.98)
+      ..blendMode = BlendMode.plus;
     for (final centerFraction in const <Offset>[
-      Offset(0.26, 0.22),
-      Offset(0.54, 0.36),
-      Offset(0.78, 0.58),
-      Offset(0.38, 0.74),
+      Offset(0.16, 0.32),
+      Offset(0.28, 0.58),
+      Offset(0.40, 0.20),
+      Offset(0.52, 0.48),
+      Offset(0.64, 0.72),
+      Offset(0.76, 0.36),
+      Offset(0.88, 0.62),
     ]) {
       _drawSparkle(
         canvas,
@@ -980,8 +1075,25 @@ Future<void> _drawRainbowPrismSurface(
           bounds.left + centerFraction.dx * bounds.width,
           bounds.top + centerFraction.dy * bounds.height,
         ),
-        8,
-        shinePaint,
+        9,
+        sparklePaint,
+      );
+    }
+
+    for (var i = 0; i < 72; i += 1) {
+      final fx = ((i * 17 + 5) % 113) / 112.0;
+      final fy = ((i * 31 + 19) % 109) / 108.0;
+      final radius = bounds.shortestSide * (0.006 + (i % 4) * 0.004);
+      canvas.drawCircle(
+        Offset(
+          bounds.left + fx * bounds.width,
+          bounds.top + fy * bounds.height,
+        ),
+        radius,
+        Paint()
+          ..isAntiAlias = true
+          ..color = prismColors[i % prismColors.length].withValues(alpha: 0.86)
+          ..blendMode = BlendMode.plus,
       );
     }
   });
