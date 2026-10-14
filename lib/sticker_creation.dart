@@ -12,7 +12,6 @@ import 'user_profile.dart';
 enum AdvancedStickerEffect {
   none('None'),
   pinkGlitter('Bright Glitter'),
-  bubble3d('3D Bubble'),
   rainbowPrism('Rainbow Prism');
 
   const AdvancedStickerEffect(this.label);
@@ -137,7 +136,8 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
     }
   }
 
-  String selectedStickerId = 'colour_change';
+  Color _selectedStickerColour = StickerColourWheel.defaultColour;
+  String? _preservedStickerId;
   Uint8List? _baseStickerBytes;
   Uint8List? _stickerBytes;
   bool _whiteOutlineEnabled = false;
@@ -149,20 +149,9 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
   bool _isGenerating = false;
   String? _errorMessage;
 
-  static const stickers = {
-    'colour_change': (
-      'Colour Change',
-      'A brighter colour treatment for the generated flower sticker.',
-    ),
-    'colour_variation': (
-      'Colour Variation',
-      'A softer, subtly different flower colour treatment.',
-    ),
-    'bubble_border': (
-      'Bubble Border',
-      'Keep this option available while its border treatment is refined.',
-    ),
-  };
+  String get selectedStickerId =>
+      _preservedStickerId ??
+      StickerColourWheel.encodeStickerId(_selectedStickerColour);
 
   @override
   void initState() {
@@ -171,7 +160,12 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
     if (initialSticker?.stickerBytes != null) {
       _baseStickerBytes = initialSticker!.stickerBytes;
       _stickerBytes = initialSticker.stickerBytes;
-      selectedStickerId = initialSticker.stickerId ?? selectedStickerId;
+      _selectedStickerColour = StickerColourWheel.colourFromStickerId(
+        initialSticker.stickerId,
+      );
+      if (!StickerColourWheel.isColourStickerId(initialSticker.stickerId)) {
+        _preservedStickerId = initialSticker.stickerId;
+      }
       if (_photos.isEmpty) {
         _photos.add(initialSticker);
       }
@@ -283,7 +277,7 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
           _StickerPreview(
             photo: _photos.isEmpty ? null : _photos[selectedPhotoIndex],
             stickerBytes: _stickerBytes,
-            stickerId: selectedStickerId,
+            stickerColour: _selectedStickerColour,
           ),
           const SizedBox(height: 18),
           if (!_isEditingSavedSticker)
@@ -416,20 +410,25 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
           ),
           const SizedBox(height: 28),
           const Text(
-            'Choose a sticker style',
+            'Choose sticker colour',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
           ),
+          const SizedBox(height: 8),
+          Text(
+            'Pick a colour from the wheel to tint the final sticker PNG.',
+            style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+          ),
           const SizedBox(height: 14),
-          ...stickers.entries.map(
-            (entry) => ListTile(
-              onTap: () => setState(() => selectedStickerId = entry.key),
-              leading: _StyleSwatch(stickerId: entry.key),
-              title: Text(entry.value.$1),
-              subtitle: Text(entry.value.$2),
-              trailing: selectedStickerId == entry.key
-                  ? const Icon(Icons.check_circle, color: Color(0xff2f6b4f))
-                  : const Icon(Icons.radio_button_unchecked),
-            ),
+          StickerColourWheel(
+            selectedColour: _selectedStickerColour,
+            enabled: _baseStickerBytes != null && !_busy,
+            onColourSelected: (colour) {
+              setState(() {
+                _selectedStickerColour = colour;
+                _preservedStickerId = null;
+              });
+              unawaited(_refreshStickerEffects());
+            },
           ),
           const SizedBox(height: 24),
           FilledButton.icon(
@@ -473,6 +472,7 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
               dropShadow: _dropShadowEnabled,
               dropShadowStrength: _dropShadowStrength,
               advancedEffect: _advancedEffect,
+              stickerTintColor: _selectedStickerColour,
             );
       if (!mounted) return;
       setState(() {
@@ -501,6 +501,7 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
       dropShadow: _dropShadowEnabled,
       dropShadowStrength: _dropShadowStrength,
       advancedEffect: _advancedEffect,
+      stickerTintColor: _selectedStickerColour,
     );
     if (!mounted) return;
     setState(() => _stickerBytes = renderedStickerBytes);
@@ -657,11 +658,13 @@ Future<Uint8List> applyStickerEffects(
   bool dropShadow = false,
   double dropShadowStrength = 0.6,
   AdvancedStickerEffect advancedEffect = AdvancedStickerEffect.none,
+  Color? stickerTintColor,
 }) async {
   if (!whiteOutline &&
       !innerShadow &&
       !dropShadow &&
-      advancedEffect == AdvancedStickerEffect.none) {
+      advancedEffect == AdvancedStickerEffect.none &&
+      stickerTintColor == null) {
     return stickerBytes;
   }
   try {
@@ -736,17 +739,19 @@ Future<Uint8List> applyStickerEffects(
       Offset(margin.toDouble(), margin.toDouble()),
       originalPaint,
     );
+    if (stickerTintColor != null) {
+      await _drawColourTintSurface(
+        canvas,
+        image,
+        Offset(margin.toDouble(), margin.toDouble()),
+        stickerTintColor,
+      );
+    }
     switch (advancedEffect) {
       case AdvancedStickerEffect.none:
         break;
       case AdvancedStickerEffect.pinkGlitter:
         await _drawBrightGlitterSurface(
-          canvas,
-          image,
-          Offset(margin.toDouble(), margin.toDouble()),
-        );
-      case AdvancedStickerEffect.bubble3d:
-        await _drawBubble3dSurface(
           canvas,
           image,
           Offset(margin.toDouble(), margin.toDouble()),
@@ -770,6 +775,42 @@ Future<Uint8List> applyStickerEffects(
   } catch (_) {
     return stickerBytes;
   }
+}
+
+Future<void> _drawColourTintSurface(
+  Canvas canvas,
+  ui.Image image,
+  Offset origin,
+  Color colour,
+) async {
+  await _drawMaskedSurface(canvas, image, origin, (canvas, bounds) {
+    final tintPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          colour.withValues(alpha: 0.86),
+          Color.lerp(colour, Colors.white, 0.32)!.withValues(alpha: 0.72),
+          Color.lerp(colour, Colors.black, 0.10)!.withValues(alpha: 0.78),
+        ],
+        stops: const [0.0, 0.46, 1.0],
+      ).createShader(bounds)
+      ..blendMode = BlendMode.srcOver;
+    canvas.drawRect(bounds, tintPaint);
+
+    final glowPaint = Paint()
+      ..shader = RadialGradient(
+        center: const Alignment(-0.45, -0.55),
+        radius: 1.05,
+        colors: [
+          Colors.white.withValues(alpha: 0.34),
+          colour.withValues(alpha: 0.16),
+          Colors.transparent,
+        ],
+      ).createShader(bounds)
+      ..blendMode = BlendMode.plus;
+    canvas.drawRect(bounds, glowPaint);
+  });
 }
 
 Future<void> _drawBrightGlitterSurface(
@@ -882,140 +923,6 @@ Future<void> _drawBrightGlitterSurface(
         sparklePaint,
       );
     }
-  });
-}
-
-Future<void> _drawBubble3dSurface(
-  Canvas canvas,
-  ui.Image image,
-  Offset origin,
-) async {
-  await _drawMaskedSurface(canvas, image, origin, (canvas, bounds) {
-    final gelPaint = Paint()
-      ..shader = RadialGradient(
-        center: const Alignment(-0.62, -0.70),
-        radius: 1.28,
-        colors: [
-          Colors.white.withValues(alpha: 0.94),
-          const Color(0xffeefcff).withValues(alpha: 0.72),
-          const Color(0xff9ff2ff).withValues(alpha: 0.50),
-          const Color(0xffffa8ef).withValues(alpha: 0.34),
-          const Color(0xff5a72ff).withValues(alpha: 0.34),
-        ],
-        stops: const [0.0, 0.20, 0.47, 0.72, 1.0],
-      ).createShader(bounds)
-      ..blendMode = BlendMode.srcATop;
-    canvas.drawRect(bounds, gelPaint);
-
-    final bottomDepthPaint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          Colors.transparent,
-          const Color(0xff4fe6ff).withValues(alpha: 0.30),
-          const Color(0xff3150db).withValues(alpha: 0.46),
-          const Color(0xff6e29a8).withValues(alpha: 0.34),
-        ],
-        stops: const [0.38, 0.62, 0.84, 1.0],
-      ).createShader(bounds)
-      ..blendMode = BlendMode.srcATop;
-    canvas.drawRect(bounds, bottomDepthPaint);
-
-    for (var i = 0; i < 13; i += 1) {
-      final center = Offset(
-        bounds.left + (((i * 41 + 12) % 113) / 112.0) * bounds.width,
-        bounds.top + (((i * 29 + 21) % 109) / 108.0) * bounds.height,
-      );
-      final radius = bounds.shortestSide * (0.032 + (i % 4) * 0.011);
-      final bubbleRect = Rect.fromCircle(center: center, radius: radius);
-      canvas.drawCircle(
-        center,
-        radius,
-        Paint()
-          ..isAntiAlias = true
-          ..shader = RadialGradient(
-            center: const Alignment(-0.55, -0.65),
-            colors: [
-              Colors.white.withValues(alpha: 0.90),
-              const Color(0xffdfffff).withValues(alpha: 0.38),
-              const Color(0xff5b85ff).withValues(alpha: 0.18),
-              Colors.transparent,
-            ],
-            stops: const [0.0, 0.34, 0.72, 1.0],
-          ).createShader(bubbleRect)
-          ..blendMode = BlendMode.plus,
-      );
-    }
-
-    final thickEdgePaint = Paint()
-      ..isAntiAlias = true
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = bounds.shortestSide * 0.085
-      ..shader = LinearGradient(
-        colors: [
-          Colors.white.withValues(alpha: 0.90),
-          const Color(0xff82ffff).withValues(alpha: 0.68),
-          const Color(0xffffb6ff).withValues(alpha: 0.46),
-        ],
-      ).createShader(bounds)
-      ..blendMode = BlendMode.plus;
-    final innerEdgePaint = Paint()
-      ..isAntiAlias = true
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = bounds.shortestSide * 0.040
-      ..color = Colors.white.withValues(alpha: 0.66)
-      ..blendMode = BlendMode.plus;
-
-    canvas.drawOval(
-      bounds.deflate(bounds.shortestSide * 0.075),
-      thickEdgePaint,
-    );
-    canvas.drawOval(bounds.deflate(bounds.shortestSide * 0.19), innerEdgePaint);
-
-    final highlightPaint = Paint()
-      ..isAntiAlias = true
-      ..color = Colors.white.withValues(alpha: 0.98)
-      ..blendMode = BlendMode.plus;
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(
-          bounds.left + bounds.width * 0.30,
-          bounds.top + bounds.height * 0.22,
-        ),
-        width: bounds.width * 0.40,
-        height: bounds.height * 0.105,
-      ),
-      highlightPaint,
-    );
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(
-          bounds.left + bounds.width * 0.22,
-          bounds.top + bounds.height * 0.38,
-        ),
-        width: bounds.width * 0.18,
-        height: bounds.height * 0.065,
-      ),
-      Paint()
-        ..isAntiAlias = true
-        ..color = Colors.white.withValues(alpha: 0.76)
-        ..blendMode = BlendMode.plus,
-    );
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(
-          bounds.left + bounds.width * 0.62,
-          bounds.top + bounds.height * 0.18,
-        ),
-        width: bounds.width * 0.12,
-        height: bounds.height * 0.045,
-      ),
-      Paint()
-        ..isAntiAlias = true
-        ..color = Colors.white.withValues(alpha: 0.64)
-        ..blendMode = BlendMode.plus,
-    );
   });
 }
 
@@ -1229,12 +1136,12 @@ class _StickerPreview extends StatelessWidget {
   const _StickerPreview({
     required this.photo,
     required this.stickerBytes,
-    required this.stickerId,
+    required this.stickerColour,
   });
 
   final SavedFlowerPhoto? photo;
   final Uint8List? stickerBytes;
-  final String stickerId;
+  final Color stickerColour;
 
   @override
   Widget build(BuildContext context) {
@@ -1245,94 +1152,182 @@ class _StickerPreview extends StatelessWidget {
       );
     }
     final image = stickerBytes == null
-        ? Image(
-            image: photo!.image,
-            fit: BoxFit.contain,
-            errorBuilder: (_, error, stack) => const Center(
-              child: Text('Photo unavailable. Please choose another.'),
-            ),
+        ? Stack(
+            fit: StackFit.expand,
+            children: [
+              Image(
+                image: photo!.image,
+                fit: BoxFit.contain,
+                errorBuilder: (_, error, stack) => const Center(
+                  child: Text('Photo unavailable. Please choose another.'),
+                ),
+              ),
+              IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: stickerColour.withValues(alpha: 0.16),
+                  ),
+                ),
+              ),
+            ],
           )
         : Image.memory(stickerBytes!, fit: BoxFit.contain);
-    if (stickerId == 'bubble_border' || stickerBytes == null) {
-      return SizedBox(height: 220, child: image);
-    }
-    return SizedBox(
-      height: 220,
-      child: ColorFiltered(
-        colorFilter: ColorFilter.matrix(
-          stickerId == 'colour_change'
-              ? _colourChangeMatrix
-              : _colourVariationMatrix,
+    return SizedBox(height: 220, child: image);
+  }
+}
+
+class StickerColourWheel extends StatelessWidget {
+  const StickerColourWheel({
+    required this.selectedColour,
+    required this.enabled,
+    required this.onColourSelected,
+    super.key,
+  });
+
+  static const defaultColour = Color(0xffff6fb5);
+
+  static const colours = <Color>[
+    Color(0xffff6fb5),
+    Color(0xffff3b6b),
+    Color(0xffff8a00),
+    Color(0xffffd84d),
+    Color(0xff5be36b),
+    Color(0xff1fc9a8),
+    Color(0xff45c7ff),
+    Color(0xff4978ff),
+    Color(0xff9b5cff),
+    Color(0xffff62e2),
+  ];
+
+  final Color selectedColour;
+  final bool enabled;
+  final ValueChanged<Color> onColourSelected;
+
+  static String encodeStickerId(Color colour) =>
+      'colour_${colour.toARGB32().toRadixString(16).padLeft(8, '0')}';
+
+  static bool isColourStickerId(String? stickerId) =>
+      stickerId != null &&
+      (stickerId == 'colour_change' ||
+          stickerId == 'colour_variation' ||
+          stickerId == 'bubble_border' ||
+          stickerId.startsWith('colour_'));
+
+  static Color colourFromStickerId(String? stickerId) {
+    if (stickerId == null) return defaultColour;
+    if (stickerId == 'colour_change') return const Color(0xffd6eaa9);
+    if (stickerId == 'colour_variation') return const Color(0xff9cc7ff);
+    if (stickerId == 'bubble_border') return const Color(0xffc8f7ff);
+    if (!stickerId.startsWith('colour_')) return defaultColour;
+    final value = int.tryParse(stickerId.substring(7), radix: 16);
+    return value == null ? defaultColour : Color(value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Center(
+          child: SizedBox.square(
+            dimension: 188,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: 88,
+                  height: 88,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: selectedColour,
+                    boxShadow: [
+                      BoxShadow(
+                        color: selectedColour.withValues(alpha: 0.36),
+                        blurRadius: 18,
+                        spreadRadius: 3,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.brush, color: Colors.white),
+                ),
+                for (var i = 0; i < colours.length; i += 1)
+                  Transform.translate(
+                    offset: Offset.fromDirection(
+                      -1.5708 + (i / colours.length) * 6.28318,
+                      74,
+                    ),
+                    child: _ColourWheelButton(
+                      colour: colours[i],
+                      selected:
+                          colours[i].toARGB32() == selectedColour.toARGB32(),
+                      enabled: enabled,
+                      onTap: () => onColourSelected(colours[i]),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
-        child: image,
-      ),
+        const SizedBox(height: 8),
+        Center(
+          child: Text(
+            enabled
+                ? 'Selected colour is applied to the sticker preview and saved PNG.'
+                : 'Generate a sticker first, then choose a colour.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+          ),
+        ),
+      ],
     );
   }
 }
 
-class _StyleSwatch extends StatelessWidget {
-  const _StyleSwatch({required this.stickerId});
+class _ColourWheelButton extends StatelessWidget {
+  const _ColourWheelButton({
+    required this.colour,
+    required this.selected,
+    required this.enabled,
+    required this.onTap,
+  });
 
-  final String stickerId;
+  final Color colour;
+  final bool selected;
+  final bool enabled;
+  final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: 42,
-    height: 42,
-    decoration: BoxDecoration(
-      color: stickerId == 'colour_change'
-          ? const Color(0xffd6eaa9)
-          : const Color(0xffd9e7f3),
-      border: stickerId == 'bubble_border'
-          ? Border.all(color: const Color(0xff6c9274), width: 3)
-          : null,
-      borderRadius: BorderRadius.circular(12),
-    ),
-  );
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Sticker colour',
+      selected: selected,
+      child: GestureDetector(
+        onTap: enabled ? onTap : null,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          width: selected ? 46 : 40,
+          height: selected ? 46 : 40,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: colour.withValues(alpha: enabled ? 1 : 0.34),
+            border: Border.all(
+              color: selected ? const Color(0xff2f6b4f) : Colors.white,
+              width: selected ? 4 : 2,
+            ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: colour.withValues(alpha: 0.48),
+                      blurRadius: 12,
+                      spreadRadius: 2,
+                    ),
+                  ]
+                : null,
+          ),
+          child: selected ? const Icon(Icons.check, color: Colors.white) : null,
+        ),
+      ),
+    );
+  }
 }
-
-const _colourChangeMatrix = <double>[
-  1.18,
-  0,
-  0,
-  0,
-  8,
-  0,
-  1.08,
-  0,
-  0,
-  8,
-  0,
-  0,
-  .82,
-  0,
-  0,
-  0,
-  0,
-  0,
-  1,
-  0,
-];
-
-const _colourVariationMatrix = <double>[
-  .92,
-  0,
-  0,
-  0,
-  8,
-  0,
-  1.02,
-  0,
-  0,
-  4,
-  0,
-  0,
-  1.12,
-  0,
-  8,
-  0,
-  0,
-  0,
-  1,
-  0,
-];

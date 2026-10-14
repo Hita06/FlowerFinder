@@ -171,7 +171,7 @@ void main() {
     expect(usernameField.enabled, isFalse);
   });
 
-  testWidgets('sticker creation keeps all existing styles', (
+  testWidgets('sticker creation exposes colour wheel and advanced effects', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const MaterialApp(home: MainNavigation()));
@@ -190,12 +190,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Colour Change'), findsOneWidget);
-    expect(find.text('Colour Variation'), findsOneWidget);
-    expect(find.text('Bubble Border'), findsOneWidget);
+    expect(find.text('Choose sticker colour'), findsOneWidget);
     expect(find.text('Advanced effects'), findsOneWidget);
     expect(find.text('Bright Glitter'), findsOneWidget);
-    expect(find.text('3D Bubble'), findsOneWidget);
+    expect(find.text('3D Bubble'), findsNothing);
     expect(find.text('Rainbow Prism'), findsOneWidget);
     final saveButton = tester.widget<FilledButton>(
       find.widgetWithText(FilledButton, 'Save sticker'),

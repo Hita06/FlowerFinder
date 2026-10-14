@@ -198,23 +198,20 @@ void main() {
     );
   });
 
-  test('3d bubble advanced effect adds bright surface highlights', () async {
+  test('colour wheel tint is exported into sticker PNG', () async {
     final stickerBytes = await _transparentPngWithFlowerBounds(
       canvasSize: 48,
       flowerBounds: const Rect.fromLTWH(8, 8, 32, 32),
     );
 
-    final bubbleBytes = await applyStickerEffects(
+    final tintedBytes = await applyStickerEffects(
       stickerBytes,
-      advancedEffect: AdvancedStickerEffect.bubble3d,
+      stickerTintColor: const Color(0xff45c7ff),
     );
-    final original = await _decodeRawRgba(stickerBytes);
-    final bubble = await _decodeRawRgba(bubbleBytes);
+    final tinted = await _decodeRawRgba(tintedBytes);
 
-    expect(bubble.width, original.width);
-    expect(bubble.height, original.height);
     expect(
-      _hasVisiblePaleBluePixel(bubble.pixels, bubble.width, bubble.height),
+      _hasVisibleCyanPixel(tinted.pixels, tinted.width, tinted.height),
       isTrue,
     );
   });
@@ -294,20 +291,6 @@ bool _hasVisibleMagentaPixel(Uint8List pixels, int width, int height) {
       final blue = pixels[index + 2];
       final alpha = pixels[index + 3];
       if (alpha > 20 && red > 150 && blue > 100 && green < 90) return true;
-    }
-  }
-  return false;
-}
-
-bool _hasVisiblePaleBluePixel(Uint8List pixels, int width, int height) {
-  for (var y = 0; y < height; y += 1) {
-    for (var x = 0; x < width; x += 1) {
-      final index = (y * width + x) * 4;
-      final red = pixels[index];
-      final green = pixels[index + 1];
-      final blue = pixels[index + 2];
-      final alpha = pixels[index + 3];
-      if (alpha > 20 && blue > 180 && green > 150 && red > 120) return true;
     }
   }
   return false;
