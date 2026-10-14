@@ -18,11 +18,11 @@ FlowerFinder is a Flutter mobile application for COMP602. The app helps users id
 | --- | --- |
 | G3 User Profile | Linda |
 | G6 Sticker Creation | Linda |
-| Scanner / Flower Identification | Team member-owned feature |
-| Flower Search / Flower Information | Team member-owned feature |
-| Diary | Team member-owned feature |
-| Sharing | Team member-owned feature |
-| Authentication / Login | Team member-owned feature |
+| Scanner / Flower Identification | Iris |
+| Flower Search / Flower Information | Hita |
+| Diary | Erin |
+| Sharing | Erin |
+| Authentication / Login | Iris |
 
 Update this table with the final team member names before submission if required by the course.
 
