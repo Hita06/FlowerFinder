@@ -177,6 +177,26 @@ void main() {
     );
   });
 
+  test('fire advanced effect adds orange glow around sticker', () async {
+    final stickerBytes = await _transparentPngWithFlowerBounds(
+      canvasSize: 24,
+      flowerBounds: const Rect.fromLTWH(6, 6, 12, 12),
+    );
+
+    final fireBytes = await applyStickerEffects(
+      stickerBytes,
+      advancedEffect: AdvancedStickerEffect.fire,
+    );
+    final original = await _decodeRawRgba(stickerBytes);
+    final fire = await _decodeRawRgba(fireBytes);
+
+    expect(fire.width, greaterThan(original.width));
+    expect(fire.height, greaterThan(original.height));
+    expect(
+      _hasVisibleOrangePixel(fire.pixels, fire.width, fire.height),
+      isTrue,
+    );
+  });
   test('generated sticker transparent padding is cropped', () async {
     final stickerBytes = await _transparentPngWithFlowerBounds(
       canvasSize: 100,
@@ -218,6 +238,20 @@ bool _hasVisibleWhitePixel(Uint8List pixels, int width, int height) {
           pixels[index + 1] == 255 &&
           pixels[index + 2] == 255;
       if (isWhite && pixels[index + 3] > 0) return true;
+    }
+  }
+  return false;
+}
+
+bool _hasVisibleOrangePixel(Uint8List pixels, int width, int height) {
+  for (var y = 0; y < height; y += 1) {
+    for (var x = 0; x < width; x += 1) {
+      final index = (y * width + x) * 4;
+      final red = pixels[index];
+      final green = pixels[index + 1];
+      final blue = pixels[index + 2];
+      final alpha = pixels[index + 3];
+      if (alpha > 20 && red > 180 && green > 70 && blue < 90) return true;
     }
   }
   return false;

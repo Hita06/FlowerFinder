@@ -9,6 +9,15 @@ import 'package:flutter_sticker_maker/flutter_sticker_maker.dart';
 
 import 'user_profile.dart';
 
+enum AdvancedStickerEffect {
+  none('None'),
+  fire('Fire');
+
+  const AdvancedStickerEffect(this.label);
+
+  final String label;
+}
+
 class StickerCreationPage extends StatefulWidget {
   const StickerCreationPage({
     required this.photos,
@@ -134,6 +143,7 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
   bool _innerShadowEnabled = false;
   bool _dropShadowEnabled = false;
   double _dropShadowStrength = 0.6;
+  AdvancedStickerEffect _advancedEffect = AdvancedStickerEffect.none;
   bool _isGenerating = false;
   String? _errorMessage;
 
@@ -373,6 +383,35 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
             icon: const Icon(Icons.auto_fix_high),
             label: const Text('Use classic sticker preset'),
           ),
+          const SizedBox(height: 24),
+          const Text(
+            'Advanced effects',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Add a themed effect directly onto the saved PNG sticker.',
+            style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: AdvancedStickerEffect.values
+                .map(
+                  (effect) => ChoiceChip(
+                    label: Text(effect.label),
+                    selected: _advancedEffect == effect,
+                    onSelected: _baseStickerBytes == null || _busy
+                        ? null
+                        : (_) {
+                            setState(() => _advancedEffect = effect);
+                            unawaited(_refreshStickerEffects());
+                          },
+                  ),
+                )
+                .toList(),
+          ),
           const SizedBox(height: 28),
           const Text(
             'Choose a sticker style',
@@ -431,6 +470,7 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
               innerShadow: _innerShadowEnabled,
               dropShadow: _dropShadowEnabled,
               dropShadowStrength: _dropShadowStrength,
+              advancedEffect: _advancedEffect,
             );
       if (!mounted) return;
       setState(() {
@@ -458,6 +498,7 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
       innerShadow: _innerShadowEnabled,
       dropShadow: _dropShadowEnabled,
       dropShadowStrength: _dropShadowStrength,
+      advancedEffect: _advancedEffect,
     );
     if (!mounted) return;
     setState(() => _stickerBytes = renderedStickerBytes);
@@ -470,6 +511,7 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
       _innerShadowEnabled = false;
       _dropShadowEnabled = true;
       _dropShadowStrength = 0.75;
+      _advancedEffect = AdvancedStickerEffect.none;
     });
     unawaited(_refreshStickerEffects());
   }
@@ -612,8 +654,14 @@ Future<Uint8List> applyStickerEffects(
   bool innerShadow = false,
   bool dropShadow = false,
   double dropShadowStrength = 0.6,
+  AdvancedStickerEffect advancedEffect = AdvancedStickerEffect.none,
 }) async {
-  if (!whiteOutline && !innerShadow && !dropShadow) return stickerBytes;
+  if (!whiteOutline &&
+      !innerShadow &&
+      !dropShadow &&
+      advancedEffect == AdvancedStickerEffect.none) {
+    return stickerBytes;
+  }
   try {
     final codec = await ui.instantiateImageCodec(stickerBytes);
     final frame = await codec.getNextFrame();
@@ -634,7 +682,10 @@ Future<Uint8List> applyStickerEffects(
                   ? dropShadowDx.abs()
                   : dropShadowDy.abs())
         : 0;
-    final margin = outlineRadius + shadowMargin;
+    final fireEnabled = advancedEffect == AdvancedStickerEffect.fire;
+    final fireGlowRadius = fireEnabled ? 22 : 0;
+    final fireMargin = fireEnabled ? 34 : 0;
+    final margin = outlineRadius + shadowMargin + fireMargin;
     final outputWidth = image.width + margin * 2;
     final outputHeight = image.height + margin * 2;
     final recorder = ui.PictureRecorder();
@@ -657,6 +708,61 @@ Future<Uint8List> applyStickerEffects(
         sigmaX: dropShadowBlur.toDouble(),
         sigmaY: dropShadowBlur.toDouble(),
       );
+    final fireOuterGlowPaint = Paint()
+      ..isAntiAlias = true
+      ..filterQuality = FilterQuality.high
+      ..colorFilter = ColorFilter.mode(
+        Colors.deepOrange.withValues(alpha: 0.58),
+        BlendMode.srcIn,
+      )
+      ..imageFilter = ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12);
+    final fireInnerGlowPaint = Paint()
+      ..isAntiAlias = true
+      ..filterQuality = FilterQuality.high
+      ..colorFilter = ColorFilter.mode(
+        Colors.orangeAccent.withValues(alpha: 0.46),
+        BlendMode.srcIn,
+      )
+      ..imageFilter = ui.ImageFilter.blur(sigmaX: 5, sigmaY: 5);
+    final burnEdgePaint = Paint()
+      ..isAntiAlias = true
+      ..filterQuality = FilterQuality.high
+      ..colorFilter = ColorFilter.mode(
+        const Color(0xff3d1608).withValues(alpha: 0.36),
+        BlendMode.srcATop,
+      );
+    final emberPaint = Paint()
+      ..isAntiAlias = true
+      ..color = Colors.orangeAccent.withValues(alpha: 0.9);
+
+    if (fireEnabled) {
+      canvas.drawImage(
+        image,
+        Offset(margin.toDouble(), (margin + 2).toDouble()),
+        fireOuterGlowPaint,
+      );
+      for (var dy = -fireGlowRadius; dy <= fireGlowRadius; dy += 6) {
+        for (var dx = -fireGlowRadius; dx <= fireGlowRadius; dx += 6) {
+          if (dx * dx + dy * dy > fireGlowRadius * fireGlowRadius) continue;
+          if (dy > 10) continue;
+          canvas.drawImage(
+            image,
+            Offset((margin + dx).toDouble(), (margin + dy).toDouble()),
+            fireInnerGlowPaint,
+          );
+        }
+      }
+      final emberOffsets = <Offset>[
+        Offset(outputWidth * 0.24, outputHeight * 0.16),
+        Offset(outputWidth * 0.36, outputHeight * 0.10),
+        Offset(outputWidth * 0.58, outputHeight * 0.13),
+        Offset(outputWidth * 0.72, outputHeight * 0.22),
+        Offset(outputWidth * 0.66, outputHeight * 0.08),
+      ];
+      for (var i = 0; i < emberOffsets.length; i += 1) {
+        canvas.drawCircle(emberOffsets[i], i.isEven ? 2.6 : 1.8, emberPaint);
+      }
+    }
 
     if (dropShadow) {
       canvas.drawImage(
@@ -686,6 +792,25 @@ Future<Uint8List> applyStickerEffects(
       Offset(margin.toDouble(), margin.toDouble()),
       originalPaint,
     );
+    if (fireEnabled) {
+      for (final offset in const [
+        Offset(-3, -2),
+        Offset(3, -2),
+        Offset(-2, 3),
+        Offset(2, 3),
+      ]) {
+        canvas.drawImage(
+          image,
+          Offset(margin + offset.dx, margin + offset.dy),
+          burnEdgePaint,
+        );
+      }
+      canvas.drawImage(
+        image,
+        Offset(margin.toDouble(), margin.toDouble()),
+        originalPaint,
+      );
+    }
 
     final renderedImage = await recorder.endRecording().toImage(
       outputWidth,
