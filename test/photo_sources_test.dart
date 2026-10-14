@@ -208,10 +208,16 @@ void main() {
       stickerBytes,
       stickerTintColor: const Color(0xff45c7ff),
     );
+    final original = await _decodeRawRgba(stickerBytes);
     final tinted = await _decodeRawRgba(tintedBytes);
 
     expect(
-      _hasVisibleCyanPixel(tinted.pixels, tinted.width, tinted.height),
+      _hasVisibleTintShift(
+        original.pixels,
+        tinted.pixels,
+        tinted.width,
+        tinted.height,
+      ),
       isTrue,
     );
   });
@@ -305,6 +311,30 @@ bool _hasVisibleCyanPixel(Uint8List pixels, int width, int height) {
       final blue = pixels[index + 2];
       final alpha = pixels[index + 3];
       if (alpha > 20 && blue > 130 && green > 130 && red < 130) return true;
+    }
+  }
+  return false;
+}
+
+bool _hasVisibleTintShift(
+  Uint8List originalPixels,
+  Uint8List tintedPixels,
+  int width,
+  int height,
+) {
+  for (var y = 0; y < height; y += 1) {
+    for (var x = 0; x < width; x += 1) {
+      final index = (y * width + x) * 4;
+      final originalRed = originalPixels[index];
+      final originalBlue = originalPixels[index + 2];
+      final tintedRed = tintedPixels[index];
+      final tintedBlue = tintedPixels[index + 2];
+      final alpha = tintedPixels[index + 3];
+      if (alpha > 20 &&
+          tintedBlue > originalBlue + 8 &&
+          tintedRed < originalRed - 8) {
+        return true;
+      }
     }
   }
   return false;

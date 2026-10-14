@@ -789,9 +789,9 @@ Future<void> _drawColourTintSurface(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          colour.withValues(alpha: 0.86),
-          Color.lerp(colour, Colors.white, 0.32)!.withValues(alpha: 0.72),
-          Color.lerp(colour, Colors.black, 0.10)!.withValues(alpha: 0.78),
+          colour.withValues(alpha: 0.28),
+          Color.lerp(colour, Colors.white, 0.42)!.withValues(alpha: 0.20),
+          Color.lerp(colour, Colors.black, 0.12)!.withValues(alpha: 0.24),
         ],
         stops: const [0.0, 0.46, 1.0],
       ).createShader(bounds)
@@ -803,8 +803,8 @@ Future<void> _drawColourTintSurface(
         center: const Alignment(-0.45, -0.55),
         radius: 1.05,
         colors: [
-          Colors.white.withValues(alpha: 0.34),
-          colour.withValues(alpha: 0.16),
+          Colors.white.withValues(alpha: 0.14),
+          colour.withValues(alpha: 0.08),
           Colors.transparent,
         ],
       ).createShader(bounds)
