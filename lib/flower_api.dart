@@ -1,69 +1,124 @@
+
 // FlowerFinder - PlantNet API Service
-// Created by Iris
-// Updated to load the PlantNet API key securely from the .env file.
+// Sends flower images through the secure backend proxy.
 
 import 'dart:convert';
+import 'dart:io';
 
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
 class FlowerApi {
-  // Sends a flower image to PlantNet for identification.
-  static Future<Map<String, dynamic>> identifyFlower(String imagePath) async {
-    // Reads the PlantNet API key from the local .env file.
-    final String? apiKey = dotenv.env['PLANTNET_API_KEY'];
+  // Public Cloudflare Worker URL.
+  // No ADB reverse forwarding is needed for backend access.
+  static const String _backendUrl =
+      'https://flowerfinder-plantnet-proxy.flowerfinder.workers.dev/identify';
 
-    if (apiKey == null || apiKey.trim().isEmpty) {
-      throw Exception('The PlantNet API key is missing.');
+  // Sends a flower image to the backend for identification.
+  static Future<Map<String, dynamic>> identifyFlower(
+    String imagePath,
+  ) async {
+    // Get the currently signed-in Firebase user.
+    final User? user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      throw Exception(
+        'Please sign in before identifying a flower.',
+      );
     }
 
-    // Builds the PlantNet API request address.
-    final Uri uri = Uri.https('my-api.plantnet.org', '/v2/identify/all', {
-      'api-key': apiKey.trim(),
-      'lang': 'en',
-      'nb-results': '3',
-    });
+    // Get the Firebase ID token for backend authentication.
+    final String? idToken = await user.getIdToken();
+
+    if (idToken == null || idToken.isEmpty) {
+      throw Exception(
+        'Could not verify your login. Please sign in again.',
+      );
+    }
+
+    // Confirm that the selected image exists.
+    final File imageFile = File(imagePath);
+
+    if (!await imageFile.exists()) {
+      throw Exception(
+        'The selected image could not be found.',
+      );
+    }
 
     try {
-      final request = http.MultipartRequest('POST', uri);
+      // Create a multipart request to the public backend.
+      final http.MultipartRequest request =
+          http.MultipartRequest(
+        'POST',
+        Uri.parse(_backendUrl),
+      );
 
-      // Adds the selected flower image.
-      request.files.add(await http.MultipartFile.fromPath('images', imagePath));
+      // Authenticate the request using Firebase.
+      request.headers['Authorization'] = 'Bearer $idToken';
 
-      // Tells PlantNet that the image shows a flower.
-      request.fields['organs'] = 'flower';
+      // Upload the image using the field name expected by the backend.
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'image',
+          imagePath,
+        ),
+      );
 
-      final streamedResponse = await request.send();
+      final http.StreamedResponse streamedResponse =
+          await request.send();
 
-      final String responseBody = await streamedResponse.stream.bytesToString();
+      final String responseBody =
+          await streamedResponse.stream.bytesToString();
+
+      final dynamic decodedResponse =
+          jsonDecode(responseBody);
 
       if (streamedResponse.statusCode == 200) {
-        final dynamic decodedResponse = jsonDecode(responseBody);
-
         if (decodedResponse is! Map<String, dynamic>) {
-          throw const FormatException('Unexpected PlantNet response.');
+          throw const FormatException(
+            'Unexpected PlantNet response.',
+          );
         }
 
         return decodedResponse;
       }
 
-      if (streamedResponse.statusCode == 401 ||
-          streamedResponse.statusCode == 403) {
-        throw Exception('The PlantNet API key was not accepted.');
+      if (streamedResponse.statusCode == 401) {
+        throw Exception(
+          'Your login could not be verified. '
+          'Please sign in again.',
+        );
       }
 
       if (streamedResponse.statusCode == 429) {
-        throw Exception('The PlantNet request limit has been reached.');
+        throw Exception(
+          'Too many requests. Please try again later.',
+        );
+      }
+
+      if (decodedResponse is Map<String, dynamic> &&
+          decodedResponse['error'] is String) {
+        throw Exception(
+          decodedResponse['error'] as String,
+        );
       }
 
       throw Exception(
-        'Flower identification failed. '
-        'Status: ${streamedResponse.statusCode}',
+        'Flower identification failed '
+        '(status ${streamedResponse.statusCode}).',
+      );
+    } on SocketException {
+      throw Exception(
+        'Could not connect to the flower identification server.',
       );
     } on http.ClientException {
-      throw Exception('A network connection to PlantNet could not be made.');
+      throw Exception(
+        'Could not connect to the flower identification server.',
+      );
     } on FormatException {
-      throw Exception('PlantNet returned information in an unexpected format.');
+      throw Exception(
+        'The server returned information in an unexpected format.',
+      );
     }
   }
 }
