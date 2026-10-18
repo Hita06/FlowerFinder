@@ -1,10 +1,7 @@
 name: flowerfinderscanner
 description: "A new Flutter project."
-# The following line prevents the package from being accidentally published to
-# pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none'
 
-# The following defines the version and build number for your application.
 version: 1.0.0+1
 
 environment:
@@ -31,10 +28,15 @@ dependencies:
   google_fonts: ^8.2.1
   path_provider: ^2.1.6
   flutter_dotenv: ^6.0.1
+
+  # Watering reminders
   flutter_local_notifications: ^22.3.2
   timezone: ^0.11.2
   flutter_timezone: ^5.1.1
   shared_preferences: ^2.5.6
+
+  # Flower sharing
+  share_plus: ^13.3.1
 
 dev_dependencies:
   flutter_test:

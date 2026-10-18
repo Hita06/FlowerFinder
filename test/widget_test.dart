@@ -2,13 +2,12 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:google_fonts/google_fonts.dart';
 
+import 'package:flowerfinderscanner/homepage.dart';
 import 'package:flowerfinderscanner/main_navigation.dart';
-import 'package:flowerfinderscanner/scanner_page.dart';
 import 'package:flowerfinderscanner/sticker_creation.dart';
 import 'package:flowerfinderscanner/user_profile.dart';
-
-import 'package:google_fonts/google_fonts.dart';
 
 Future<void> _openProfileTab(WidgetTester tester) async {
   await tester.tap(find.byKey(const ValueKey('nav-profile')));
@@ -20,12 +19,11 @@ void main() {
     GoogleFonts.config.allowRuntimeFetching = false;
   });
 
-  testWidgets('profile tab opens the profile page', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('profile tab opens the profile page', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: MainNavigation()));
 
-    expect(find.byType(ScannerPage), findsOneWidget);
+    // The app opens on Home before navigating to Profile.
+    expect(find.byType(HomePage), findsOneWidget);
     expect(find.text('Add Sticker'), findsNothing);
 
     await _openProfileTab(tester);
@@ -39,7 +37,7 @@ void main() {
     expect(find.text('Add Sticker'), findsOneWidget);
   });
 
-  testWidgets('profile opens sticker creation', (WidgetTester tester) async {
+  testWidgets('profile opens sticker creation', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: MainNavigation()));
     await _openProfileTab(tester);
 
@@ -50,10 +48,12 @@ void main() {
     expect(find.text('Add Sticker'), findsOneWidget);
     expect(find.byTooltip('Create sticker'), findsOneWidget);
     expect(find.byTooltip('Edit profile details'), findsOneWidget);
+
     await tester.tap(find.byTooltip('Create sticker'));
     await tester.pumpAndSettle();
 
     expect(find.text('Create Sticker'), findsOneWidget);
+
     await tester.scrollUntilVisible(
       find.text('Generate sticker'),
       180,
@@ -64,14 +64,16 @@ void main() {
           )
           .first,
     );
+
     expect(find.text('Generate sticker'), findsOneWidget);
   });
 
   testWidgets('profile edit button opens the existing details sheet', (
-    WidgetTester tester,
+    tester,
   ) async {
     await tester.pumpWidget(const MaterialApp(home: MainNavigation()));
     await _openProfileTab(tester);
+
     await tester.tap(find.byTooltip('Edit profile details'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
@@ -80,9 +82,7 @@ void main() {
     expect(find.text('Save changes'), findsOneWidget);
   });
 
-  testWidgets('profile logout page confirms before handoff', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('profile logout page confirms before handoff', (tester) async {
     var loggedOut = false;
 
     await tester.pumpWidget(
@@ -90,6 +90,7 @@ void main() {
     );
 
     expect(find.widgetWithText(OutlinedButton, 'Log out'), findsNothing);
+
     final state = tester.state<UserProfilePageState>(
       find.byType(UserProfilePage),
     );
@@ -108,15 +109,17 @@ void main() {
   });
 
   testWidgets('profile colour can be changed from the details sheet', (
-    WidgetTester tester,
+    tester,
   ) async {
     await tester.pumpWidget(const MaterialApp(home: MainNavigation()));
     await _openProfileTab(tester);
+
     await tester.tap(find.byTooltip('Edit profile details'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('Profile colour'), findsOneWidget);
+
     await tester.tap(find.widgetWithText(ChoiceChip, 'Rose'));
     await tester.pump();
     await tester.tap(find.text('Save changes'));
@@ -128,7 +131,7 @@ void main() {
   });
 
   testWidgets('profile can receive username from login account boundary', (
-    WidgetTester tester,
+    tester,
   ) async {
     final account = UserAccount(
       name: 'Linda',
@@ -141,6 +144,7 @@ void main() {
     );
 
     expect(find.text('@login_linda'), findsOneWidget);
+
     final state = tester.state<UserProfilePageState>(
       find.byType(UserProfilePage),
     );
@@ -157,13 +161,13 @@ void main() {
     expect(usernameField.enabled, isFalse);
   });
 
-  testWidgets('sticker creation keeps all existing styles', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('sticker creation keeps all existing styles', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: MainNavigation()));
     await _openProfileTab(tester);
+
     await tester.tap(find.byTooltip('Create sticker'));
     await tester.pumpAndSettle();
+
     await tester.scrollUntilVisible(
       find.text('Save sticker'),
       180,
@@ -179,6 +183,7 @@ void main() {
     expect(find.text('Colour Change'), findsOneWidget);
     expect(find.text('Colour Variation'), findsOneWidget);
     expect(find.text('Bubble Border'), findsOneWidget);
+
     final saveButton = tester.widget<FilledButton>(
       find.widgetWithText(FilledButton, 'Save sticker'),
     );
@@ -186,7 +191,7 @@ void main() {
   });
 
   testWidgets('saved sticker appears in profile after returning from creation', (
-    WidgetTester tester,
+    tester,
   ) async {
     final stickerBytes = base64Decode(
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
@@ -194,6 +199,7 @@ void main() {
 
     await tester.pumpWidget(const MaterialApp(home: MainNavigation()));
     await _openProfileTab(tester);
+
     await tester.tap(find.byTooltip('Create sticker'));
     await tester.pumpAndSettle();
 
@@ -205,6 +211,7 @@ void main() {
       stickerBytes,
       'colour_change',
     );
+
     Navigator.of(tester.element(find.byType(StickerCreationPage))).pop();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
@@ -218,7 +225,7 @@ void main() {
   });
 
   testWidgets('profile selects a saved sticker for future upload', (
-    WidgetTester tester,
+    tester,
   ) async {
     final sticker = SavedFlowerPhoto(
       image: MemoryImage(
@@ -241,6 +248,7 @@ void main() {
         ),
       ),
     );
+
     await tester.tap(find.byKey(const ValueKey('saved-sticker-saved-sticker')));
     await tester.pump();
 
@@ -248,9 +256,7 @@ void main() {
     expect(find.byIcon(Icons.check_circle), findsOneWidget);
   });
 
-  testWidgets('profile shares only generated sticker bytes', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('profile shares only generated sticker bytes', (tester) async {
     final stickerBytes = base64Decode(
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
     );
@@ -271,6 +277,7 @@ void main() {
         ),
       ),
     );
+
     await tester.tap(find.byKey(const ValueKey('saved-sticker-colour_change')));
     await tester.pump();
 
@@ -290,7 +297,7 @@ void main() {
   });
 
   testWidgets('profile sends only generated sticker bytes to diary handoff', (
-    WidgetTester tester,
+    tester,
   ) async {
     final stickerBytes = base64Decode(
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
@@ -312,10 +319,12 @@ void main() {
         ),
       ),
     );
+
     await tester.tap(
       find.byKey(const ValueKey('saved-sticker-colour_variation')),
     );
     await tester.pump();
+
     expect(find.text('Your Sticker'), findsOneWidget);
     expect(diarySticker, isNull);
 
@@ -328,7 +337,7 @@ void main() {
   });
 
   testWidgets('sticker action dialog is safe without handoff callbacks', (
-    WidgetTester tester,
+    tester,
   ) async {
     final stickerBytes = base64Decode(
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
@@ -342,16 +351,19 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(home: UserProfilePage(savedFlowerPhotos: [sticker])),
     );
+
     await tester.tap(find.byKey(const ValueKey('saved-sticker-safe-sticker')));
     await tester.pump();
 
     expect(find.text('Your Sticker'), findsOneWidget);
+
     final shareButton = tester.widget<FilledButton>(
       find.widgetWithText(FilledButton, 'Share Sticker'),
     );
     final diaryButton = tester.widget<OutlinedButton>(
       find.widgetWithText(OutlinedButton, 'Add to Diary'),
     );
+
     expect(shareButton.onPressed, isNull);
     expect(diaryButton.onPressed, isNull);
   });
