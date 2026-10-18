@@ -9,9 +9,10 @@ import 'sticker_animation_assets.dart';
 import 'user_profile.dart';
 
 class StickerStorage {
-  const StickerStorage({this.directoryProvider});
+  StickerStorage({this.directoryProvider});
 
   final Future<Directory> Function()? directoryProvider;
+  Future<void> _saveQueue = Future<void>.value();
 
   Future<List<SavedFlowerPhoto>> loadStickers(String accountId) async {
     final file = await _fileFor(accountId);
@@ -31,7 +32,26 @@ class StickerStorage {
     }
   }
 
-  Future<void> saveStickers(
+  Future<void> saveStickers(String accountId, List<SavedFlowerPhoto> stickers) {
+    final snapshot = List<SavedFlowerPhoto>.of(stickers);
+    final save = _saveQueue.then((_) => _writeStickers(accountId, snapshot));
+    _saveQueue = save.then<void>(
+      (_) {},
+      onError: (Object error, StackTrace stackTrace) {
+        FlutterError.reportError(
+          FlutterErrorDetails(
+            exception: error,
+            stack: stackTrace,
+            library: 'sticker storage',
+            context: ErrorDescription('while saving stickers'),
+          ),
+        );
+      },
+    );
+    return save;
+  }
+
+  Future<void> _writeStickers(
     String accountId,
     List<SavedFlowerPhoto> stickers,
   ) async {

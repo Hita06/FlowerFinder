@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:flowerfinderscanner/homepage.dart';
 import 'package:flowerfinderscanner/main_navigation.dart';
-import 'package:flowerfinderscanner/scanner_page.dart';
 import 'package:flowerfinderscanner/sticker_creation.dart';
 import 'package:flowerfinderscanner/user_profile.dart';
 
@@ -38,7 +38,7 @@ void main() {
   ) async {
     await tester.pumpWidget(const MaterialApp(home: MainNavigation()));
 
-    expect(find.byType(ScannerPage), findsOneWidget);
+    expect(find.byType(HomePage), findsOneWidget);
     expect(find.text('Add Sticker'), findsNothing);
 
     await _openProfileTab(tester);

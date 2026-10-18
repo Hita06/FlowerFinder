@@ -68,6 +68,8 @@ PODS:
   - onnxruntime-objc/Core (1.23.0):
     - onnxruntime-c (= 1.23.0)
   - RecaptchaInterop (101.0.0)
+  - share_plus (0.0.1):
+    - Flutter
 
 DEPENDENCIES:
   - camera_avfoundation (from `.symlinks/plugins/camera_avfoundation/darwin`)
@@ -77,6 +79,7 @@ DEPENDENCIES:
   - flutter_onnxruntime (from `.symlinks/plugins/flutter_onnxruntime/ios`)
   - flutter_sticker_maker (from `.symlinks/plugins/flutter_sticker_maker/ios`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
+  - share_plus (from `.symlinks/plugins/share_plus/ios`)
 
 SPEC REPOS:
   trunk:
@@ -108,6 +111,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/flutter_sticker_maker/ios"
   image_picker_ios:
     :path: ".symlinks/plugins/image_picker_ios/ios"
+  share_plus:
+    :path: ".symlinks/plugins/share_plus/ios"
 
 SPEC CHECKSUMS:
   camera_avfoundation: 968a9a5323c79a99c166ad9d7866bfd2047b5a9b
@@ -129,6 +134,7 @@ SPEC CHECKSUMS:
   onnxruntime-c: 3174c63a963d9abbc2bf9627e3d622819c0ed5f7
   onnxruntime-objc: 1254d12f8160e562e7693ff17f5aa3dd17dc409e
   RecaptchaInterop: 11e0b637842dfb48308d242afc3f448062325aba
+  share_plus: eccd7beb7cea61271aeed1800e8ccb2b952c0c7f
 
 PODFILE CHECKSUM: caff213b0e9416be8d9bdb8ac7f3e4327ad5b87e
 

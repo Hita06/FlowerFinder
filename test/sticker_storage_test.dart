@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -51,6 +52,50 @@ void main() {
       'Animations/Fire - Feu - Fuego.json',
     );
     expect(otherStickers, isEmpty);
+  });
+
+  test('serializes concurrent saves and keeps the latest snapshot', () async {
+    final stickerBytes = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    );
+    final firstDirectory = Completer<Directory>();
+    final firstRequestStarted = Completer<void>();
+    var directoryRequests = 0;
+    storage = StickerStorage(
+      directoryProvider: () {
+        directoryRequests += 1;
+        if (directoryRequests == 1) {
+          firstRequestStarted.complete();
+          return firstDirectory.future;
+        }
+        return Future<Directory>.value(tempDirectory);
+      },
+    );
+    final firstSticker = SavedFlowerPhoto(
+      image: MemoryImage(stickerBytes),
+      stickerId: 'first',
+      stickerBytes: stickerBytes,
+    );
+    final latestSticker = SavedFlowerPhoto(
+      image: MemoryImage(stickerBytes),
+      stickerId: 'latest',
+      stickerBytes: stickerBytes,
+    );
+
+    final firstSave = storage.saveStickers('linda@example.com', [firstSticker]);
+    await firstRequestStarted.future;
+    final latestSave = storage.saveStickers('linda@example.com', [
+      latestSticker,
+    ]);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(directoryRequests, 1);
+
+    firstDirectory.complete(tempDirectory);
+    await Future.wait([firstSave, latestSave]);
+
+    final stickers = await storage.loadStickers('linda@example.com');
+    expect(stickers.map((sticker) => sticker.stickerId), ['latest']);
   });
 
   test('migrates stickers from removed fire animations', () async {
