@@ -202,7 +202,8 @@ void main() {
     );
     expect(find.text('No animation'), findsOneWidget);
     expect(find.text('Add animation'), findsOneWidget);
-    expect(find.text('Fire'), findsNothing);
+    expect(find.text('Flame fire'), findsNothing);
+    expect(find.text('Fire - Feu - Fuego'), findsNothing);
     await tester.scrollUntilVisible(
       find.text('Save sticker'),
       180,
@@ -728,11 +729,27 @@ void main() {
     );
     addAnimationChip.onSelected!(true);
     await tester.pump();
+    expect(find.text('Flame fire'), findsOneWidget);
+    expect(find.text('Fire - Feu - Fuego'), findsOneWidget);
     expect(find.text('Bubble explosion'), findsOneWidget);
     expect(find.text('Success celebration'), findsOneWidget);
     expect(
       tester
-          .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Fire'))
+          .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Flame fire'))
+          .selected,
+      isTrue,
+    );
+    tester
+        .widget<ChoiceChip>(
+          find.widgetWithText(ChoiceChip, 'Fire - Feu - Fuego'),
+        )
+        .onSelected!(true);
+    await tester.pump();
+    expect(
+      tester
+          .widget<ChoiceChip>(
+            find.widgetWithText(ChoiceChip, 'Fire - Feu - Fuego'),
+          )
           .selected,
       isTrue,
     );
@@ -753,7 +770,8 @@ void main() {
     );
     noAnimationChip.onSelected!(true);
     await tester.pump();
-    expect(find.text('Fire'), findsNothing);
+    expect(find.text('Flame fire'), findsNothing);
+    expect(find.text('Fire - Feu - Fuego'), findsNothing);
 
     tester
         .widget<FilledButton>(

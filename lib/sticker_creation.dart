@@ -22,7 +22,8 @@ enum AdvancedStickerEffect {
 
 enum StickerAnimation {
   none('No animation', null),
-  fire('Fire', 'Animations/Fire Lottie Animation.json'),
+  flameFire('Flame fire', 'Animations/flamefire.json'),
+  fireFeuFuego('Fire - Feu - Fuego', 'Animations/Fire - Feu - Fuego.json'),
   bubbles('Bubble explosion', 'Animations/Bubble Explosion.json'),
   celebration('Success celebration', 'Animations/Success celebration.json');
 
@@ -460,7 +461,8 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
                     : (_) {
                         if (_stickerAnimation == StickerAnimation.none) {
                           setState(
-                            () => _stickerAnimation = StickerAnimation.fire,
+                            () =>
+                                _stickerAnimation = StickerAnimation.flameFire,
                           );
                         }
                       },

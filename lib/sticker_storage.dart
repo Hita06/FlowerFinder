@@ -12,6 +12,9 @@ class StickerStorage {
 
   final Future<Directory> Function()? directoryProvider;
 
+  static const _replacedFireAnimation = 'Animations/Fire Lottie Animation.json';
+  static const _replacementFireAnimation = 'Animations/flamefire.json';
+
   Future<List<SavedFlowerPhoto>> loadStickers(String accountId) async {
     final file = await _fileFor(accountId);
     if (!await file.exists()) return <SavedFlowerPhoto>[];
@@ -74,7 +77,9 @@ class StickerStorage {
         stickerBytes: Uint8List.fromList(stickerBytes),
         createdAt: DateTime.tryParse(entry['createdAt']?.toString() ?? ''),
         profileGridSizeId: entry['profileGridSize'] as String?,
-        animationAsset: entry['animationAsset'] as String?,
+        animationAsset: entry['animationAsset'] == _replacedFireAnimation
+            ? _replacementFireAnimation
+            : entry['animationAsset'] as String?,
       );
     } catch (_) {
       return null;

@@ -32,7 +32,7 @@ void main() {
       stickerBytes: stickerBytes,
       createdAt: DateTime(2026, 10, 8),
       profileGridSizeId: 'large',
-      animationAsset: 'Animations/Fire Lottie Animation.json',
+      animationAsset: 'Animations/flamefire.json',
     );
 
     await storage.saveStickers('linda@example.com', [sticker]);
@@ -46,11 +46,25 @@ void main() {
     expect(lindaStickers.single.stickerBytes, stickerBytes);
     expect(lindaStickers.single.createdAt, DateTime(2026, 10, 8));
     expect(lindaStickers.single.profileGridSizeId, 'large');
-    expect(
-      lindaStickers.single.animationAsset,
-      'Animations/Fire Lottie Animation.json',
-    );
+    expect(lindaStickers.single.animationAsset, 'Animations/flamefire.json');
     expect(otherStickers, isEmpty);
+  });
+
+  test('migrates stickers from the replaced fire animation', () async {
+    final stickerBytes = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    );
+    final sticker = SavedFlowerPhoto(
+      image: MemoryImage(stickerBytes),
+      stickerBytes: stickerBytes,
+      animationAsset: 'Animations/Fire Lottie Animation.json',
+    );
+
+    await storage.saveStickers('linda@example.com', [sticker]);
+
+    final stickers = await storage.loadStickers('linda@example.com');
+
+    expect(stickers.single.animationAsset, 'Animations/flamefire.json');
   });
 
   test(
