@@ -42,6 +42,7 @@ class FlowerShareService {
     if (_hasUsefulValue(cleanDescription)) {
       lines
         ..add('')
+        ..add('📝 Description:')
         ..add(cleanDescription);
     }
 
@@ -50,13 +51,13 @@ class FlowerShareService {
     if (_hasUsefulValue(cleanCareTips)) {
       lines
         ..add('')
-        ..add('Care tips:')
+        ..add('🌱 Care tips:')
         ..add(cleanCareTips);
     }
 
     lines
       ..add('')
-      ..add('Shared from FlowerFinder.');
+      ..add('🌼 Shared from FlowerFinder.');
 
     return lines.join('\n');
   }
@@ -69,7 +70,8 @@ class FlowerShareService {
     required String flowerColour,
     required String season,
     required String careTips,
-  }) {
+    String? imagePath,
+  }) async {
     final shareText = buildFlowerShareText(
       flowerName: flowerName,
       scientificName: scientificName,
@@ -80,13 +82,7 @@ class FlowerShareService {
       careTips: careTips,
     );
 
-    return SharePlus.instance.share(
-      ShareParams(
-        title: 'FlowerFinder result',
-        subject: 'Flower identified: $flowerName',
-        text: shareText,
-      ),
-    );
+    return SharePlus.instance.share(ShareParams(text: shareText));
   }
 
   void _addOptionalDetail(
@@ -114,13 +110,14 @@ class FlowerShareService {
     return normalizedValue.isNotEmpty &&
         normalizedValue != 'not available' &&
         normalizedValue != 'n/a' &&
-        normalizedValue != 'unknown';
+        normalizedValue != 'unknown' &&
+        normalizedValue != 'null';
   }
 
   String _cleanValue(String value, {required String fallback}) {
     final cleanValue = value.trim();
 
-    if (cleanValue.isEmpty) {
+    if (!_hasUsefulValue(cleanValue)) {
       return fallback;
     }
 

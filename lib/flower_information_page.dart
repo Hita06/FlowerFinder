@@ -74,14 +74,27 @@ class FlowerInformationPage extends StatelessWidget {
         return;
       }
 
-      if (result.status == ShareResultStatus.success) {
-        _showMessage(context, 'Flower information shared successfully');
-      } else if (result.status == ShareResultStatus.dismissed) {
-        _showMessage(context, 'Sharing cancelled');
-      } else {
-        _showMessage(context, 'Sharing is not available on this device');
+      switch (result.status) {
+        case ShareResultStatus.success:
+          _showMessage(context, 'Flower information shared successfully');
+          break;
+
+        case ShareResultStatus.dismissed:
+          _showMessage(context, 'Sharing cancelled');
+          break;
+
+        case ShareResultStatus.unavailable:
+          _showMessage(context, 'Sharing is not available on this device');
+          break;
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      debugPrint('Flower sharing error: $error');
+
+      debugPrintStack(
+        label: 'Flower sharing stack trace',
+        stackTrace: stackTrace,
+      );
+
       if (!context.mounted) {
         return;
       }
@@ -102,7 +115,11 @@ class FlowerInformationPage extends StatelessWidget {
       }
 
       _showMessage(context, 'Flower information copied to clipboard');
-    } catch (error) {
+    } catch (error, stackTrace) {
+      debugPrint('Flower copy error: $error');
+
+      debugPrintStack(label: 'Flower copy stack trace', stackTrace: stackTrace);
+
       if (!context.mounted) {
         return;
       }
@@ -181,10 +198,18 @@ class FlowerInformationPage extends StatelessWidget {
       return;
     }
 
-    if (selectedAction == _SharePreviewAction.copy) {
-      await _copyFlowerInformation(context, shareText);
-    } else if (selectedAction == _SharePreviewAction.share) {
-      await _shareFlower(context);
+    switch (selectedAction) {
+      case _SharePreviewAction.copy:
+        await _copyFlowerInformation(context, shareText);
+        break;
+
+      case _SharePreviewAction.share:
+        await _shareFlower(context);
+        break;
+
+      case _SharePreviewAction.cancel:
+      case null:
+        break;
     }
   }
 
