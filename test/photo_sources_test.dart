@@ -19,7 +19,7 @@ void main() {
       MaterialApp(
         home: StickerCreationPage(
           photos: const [],
-          onSaved: (_, sticker, style) {},
+          onSaved: (_, sticker, style, animation) {},
           loadFlowers: (_) async => throw Exception('offline'),
           pickPhoto: () async => bytes,
         ),
@@ -54,7 +54,7 @@ void main() {
       MaterialApp(
         home: StickerCreationPage(
           photos: const [],
-          onSaved: (_, sticker, style) {},
+          onSaved: (_, sticker, style, animation) {},
           loadFlowers: (query) async {
             queries.add(query);
             return [SavedFlowerPhoto(image: MemoryImage(bytes), label: 'Rose')];

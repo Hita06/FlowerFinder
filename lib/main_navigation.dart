@@ -156,12 +156,14 @@ class _MainNavigationState extends State<MainNavigation> {
       MaterialPageRoute<void>(
         builder: (context) => StickerCreationPage(
           photos: _savedFlowerPhotos,
-          onSaved: (photo, stickerBytes, stickerId) {
+          onSaved: (photo, stickerBytes, stickerId, animationAsset) {
             _addSavedSticker(
               photo.copyWith(
                 stickerId: stickerId,
                 stickerBytes: stickerBytes,
                 createdAt: DateTime.now(),
+                animationAsset: animationAsset,
+                clearAnimationAsset: animationAsset == null,
               ),
             );
           },
@@ -180,12 +182,14 @@ class _MainNavigationState extends State<MainNavigation> {
       MaterialPageRoute<void>(
         builder: (context) => StickerCreationPage(
           photos: [scannedPhoto],
-          onSaved: (photo, stickerBytes, stickerId) {
+          onSaved: (photo, stickerBytes, stickerId, animationAsset) {
             _addSavedSticker(
               photo.copyWith(
                 stickerId: stickerId,
                 stickerBytes: stickerBytes,
                 createdAt: DateTime.now(),
+                animationAsset: animationAsset,
+                clearAnimationAsset: animationAsset == null,
               ),
             );
           },
@@ -200,7 +204,7 @@ class _MainNavigationState extends State<MainNavigation> {
         builder: (context) => StickerCreationPage(
           photos: [sticker],
           initialSticker: sticker,
-          onSaved: (photo, stickerBytes, stickerId) {
+          onSaved: (photo, stickerBytes, stickerId, animationAsset) {
             setState(() {
               final index = _savedFlowerPhotos.indexOf(sticker);
               if (index == -1) return;
@@ -208,6 +212,8 @@ class _MainNavigationState extends State<MainNavigation> {
                 stickerId: stickerId,
                 stickerBytes: stickerBytes,
                 createdAt: DateTime.now(),
+                animationAsset: animationAsset,
+                clearAnimationAsset: animationAsset == null,
               );
               currentIndex = profileTab;
             });

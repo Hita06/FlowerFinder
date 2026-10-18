@@ -178,23 +178,37 @@ void main() {
     await _openProfileTab(tester);
     await tester.tap(find.byTooltip('Create sticker'));
     await tester.pumpAndSettle();
+    final stickerScroll = find
+        .descendant(
+          of: find.byKey(const ValueKey('sticker-scroll')),
+          matching: find.byType(Scrollable),
+        )
+        .first;
     await tester.scrollUntilVisible(
-      find.text('Save sticker'),
+      find.text('Advanced effects'),
       180,
-      scrollable: find
-          .descendant(
-            of: find.byKey(const ValueKey('sticker-scroll')),
-            matching: find.byType(Scrollable),
-          )
-          .first,
+      scrollable: stickerScroll,
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Choose sticker colour'), findsOneWidget);
     expect(find.text('Advanced effects'), findsOneWidget);
     expect(find.text('Bright Glitter'), findsOneWidget);
     expect(find.text('3D Bubble'), findsNothing);
     expect(find.text('Rainbow Prism'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Sticker animation'),
+      180,
+      scrollable: stickerScroll,
+    );
+    expect(find.text('No animation'), findsOneWidget);
+    expect(find.text('Add animation'), findsOneWidget);
+    expect(find.text('Fire'), findsNothing);
+    await tester.scrollUntilVisible(
+      find.text('Save sticker'),
+      180,
+      scrollable: stickerScroll,
+    );
+    expect(find.text('Choose sticker colour'), findsOneWidget);
     final saveButton = tester.widget<FilledButton>(
       find.widgetWithText(FilledButton, 'Save sticker'),
     );
@@ -220,6 +234,7 @@ void main() {
       SavedFlowerPhoto(image: MemoryImage(stickerBytes), label: 'Saved rose'),
       stickerBytes,
       'colour_change',
+      null,
     );
     Navigator.of(tester.element(find.byType(StickerCreationPage))).pop();
     await tester.pump();
@@ -652,7 +667,7 @@ void main() {
         home: StickerCreationPage(
           photos: [sticker],
           initialSticker: sticker,
-          onSaved: (photo, bytes, stickerId) {
+          onSaved: (photo, bytes, stickerId, animationAsset) {
             savedPhoto = photo;
             savedBytes = bytes;
             savedStickerId = stickerId;
@@ -677,5 +692,77 @@ void main() {
     expect(savedPhoto, same(sticker));
     expect(savedBytes, stickerBytes);
     expect(savedStickerId, 'editable-sticker');
+  });
+
+  testWidgets('sticker animation can be added or removed while editing', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 2000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final stickerBytes = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    );
+    final sticker = SavedFlowerPhoto(
+      image: MemoryImage(stickerBytes),
+      stickerBytes: stickerBytes,
+    );
+    String? savedAnimationAsset;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StickerCreationPage(
+          photos: [sticker],
+          initialSticker: sticker,
+          onSaved: (photo, bytes, stickerId, animationAsset) {
+            savedAnimationAsset = animationAsset;
+          },
+        ),
+      ),
+    );
+
+    final addAnimationChip = tester.widget<ChoiceChip>(
+      find.widgetWithText(ChoiceChip, 'Add animation'),
+    );
+    addAnimationChip.onSelected!(true);
+    await tester.pump();
+    expect(find.text('Bubble explosion'), findsOneWidget);
+    expect(find.text('Success celebration'), findsOneWidget);
+    expect(
+      tester
+          .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Fire'))
+          .selected,
+      isTrue,
+    );
+    tester
+        .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Bubble explosion'))
+        .onSelected!(true);
+    await tester.pump();
+    expect(
+      tester
+          .widget<ChoiceChip>(
+            find.widgetWithText(ChoiceChip, 'Bubble explosion'),
+          )
+          .selected,
+      isTrue,
+    );
+    final noAnimationChip = tester.widget<ChoiceChip>(
+      find.widgetWithText(ChoiceChip, 'No animation'),
+    );
+    noAnimationChip.onSelected!(true);
+    await tester.pump();
+    expect(find.text('Fire'), findsNothing);
+
+    tester
+        .widget<FilledButton>(
+          find.widgetWithText(FilledButton, 'Update sticker'),
+        )
+        .onPressed!();
+    await tester.pumpAndSettle();
+
+    expect(savedAnimationAsset, isNull);
+    expect(sticker.copyWith(clearAnimationAsset: true).animationAsset, isNull);
   });
 }

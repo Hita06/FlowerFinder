@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:lottie/lottie.dart';
 
 class UserAccount {
   UserAccount({
@@ -83,6 +84,7 @@ class SavedFlowerPhoto {
     this.stickerBytes,
     this.createdAt,
     this.profileGridSizeId,
+    this.animationAsset,
   });
 
   final ImageProvider image;
@@ -91,6 +93,7 @@ class SavedFlowerPhoto {
   final Uint8List? stickerBytes;
   final DateTime? createdAt;
   final String? profileGridSizeId;
+  final String? animationAsset;
 
   SavedFlowerPhoto copyWith({
     String? label,
@@ -98,6 +101,8 @@ class SavedFlowerPhoto {
     Uint8List? stickerBytes,
     DateTime? createdAt,
     String? profileGridSizeId,
+    String? animationAsset,
+    bool clearAnimationAsset = false,
   }) {
     return SavedFlowerPhoto(
       image: image,
@@ -106,6 +111,9 @@ class SavedFlowerPhoto {
       stickerBytes: stickerBytes ?? this.stickerBytes,
       createdAt: createdAt ?? this.createdAt,
       profileGridSizeId: profileGridSizeId ?? this.profileGridSizeId,
+      animationAsset: clearAnimationAsset
+          ? null
+          : animationAsset ?? this.animationAsset,
     );
   }
 }
@@ -116,12 +124,14 @@ class GeneratedStickerAsset {
     this.stickerId,
     this.createdAt,
     this.label,
+    this.animationAsset,
   });
 
   final Uint8List stickerBytes;
   final String? stickerId;
   final DateTime? createdAt;
   final String? label;
+  final String? animationAsset;
 
   static GeneratedStickerAsset? fromSavedFlowerPhoto(SavedFlowerPhoto photo) {
     final stickerBytes = photo.stickerBytes;
@@ -131,6 +141,38 @@ class GeneratedStickerAsset {
       stickerId: photo.stickerId,
       createdAt: photo.createdAt,
       label: photo.label,
+      animationAsset: photo.animationAsset,
+    );
+  }
+}
+
+class _StickerImageWithAnimation extends StatelessWidget {
+  const _StickerImageWithAnimation({
+    required this.stickerBytes,
+    this.animationAsset,
+  });
+
+  final Uint8List stickerBytes;
+  final String? animationAsset;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.memory(stickerBytes, fit: BoxFit.contain),
+        if (animationAsset != null)
+          IgnorePointer(
+            child: Opacity(
+              opacity: 0.78,
+              child: Lottie.asset(
+                animationAsset!,
+                fit: BoxFit.contain,
+                repeat: true,
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -1379,9 +1421,9 @@ class _MovableStickerBoardItemState extends State<_MovableStickerBoardItem> {
                 : null,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Image.memory(
-            widget.sticker.stickerBytes!,
-            fit: BoxFit.contain,
+          child: _StickerImageWithAnimation(
+            stickerBytes: widget.sticker.stickerBytes!,
+            animationAsset: widget.sticker.animationAsset,
           ),
         ),
       ),
@@ -1455,9 +1497,9 @@ class _VariableCollectionTile extends StatelessWidget {
                 child: item.isSticker
                     ? Padding(
                         padding: const EdgeInsets.all(8),
-                        child: Image.memory(
-                          item.imageBytes,
-                          fit: BoxFit.contain,
+                        child: _StickerImageWithAnimation(
+                          stickerBytes: item.imageBytes,
+                          animationAsset: item.sticker?.animationAsset,
                         ),
                       )
                     : Image.memory(item.imageBytes, fit: BoxFit.cover),
@@ -1713,7 +1755,10 @@ class _ManageStickersList extends StatelessWidget {
                 color: profileColor.softColor,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Image.memory(sticker.stickerBytes!, fit: BoxFit.contain),
+              child: _StickerImageWithAnimation(
+                stickerBytes: sticker.stickerBytes!,
+                animationAsset: sticker.animationAsset,
+              ),
             ),
             title: Text(sticker.label ?? 'Saved sticker'),
             subtitle: Wrap(
@@ -1795,7 +1840,10 @@ class _StickerActionDialog extends StatelessWidget {
               color: profileColor.softColor,
               borderRadius: BorderRadius.circular(18),
             ),
-            child: Image.memory(asset.stickerBytes, fit: BoxFit.contain),
+            child: _StickerImageWithAnimation(
+              stickerBytes: asset.stickerBytes,
+              animationAsset: asset.animationAsset,
+            ),
           ),
           const SizedBox(height: 16),
           const Text(

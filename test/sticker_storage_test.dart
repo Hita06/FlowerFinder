@@ -32,6 +32,7 @@ void main() {
       stickerBytes: stickerBytes,
       createdAt: DateTime(2026, 10, 8),
       profileGridSizeId: 'large',
+      animationAsset: 'Animations/Fire Lottie Animation.json',
     );
 
     await storage.saveStickers('linda@example.com', [sticker]);
@@ -45,6 +46,10 @@ void main() {
     expect(lindaStickers.single.stickerBytes, stickerBytes);
     expect(lindaStickers.single.createdAt, DateTime(2026, 10, 8));
     expect(lindaStickers.single.profileGridSizeId, 'large');
+    expect(
+      lindaStickers.single.animationAsset,
+      'Animations/Fire Lottie Animation.json',
+    );
     expect(otherStickers, isEmpty);
   });
 

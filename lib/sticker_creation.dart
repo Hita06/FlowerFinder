@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:lottie/lottie.dart';
 import 'flower_photo_service.dart';
 import 'package:flutter_sticker_maker/flutter_sticker_maker.dart';
 
@@ -17,6 +18,18 @@ enum AdvancedStickerEffect {
   const AdvancedStickerEffect(this.label);
 
   final String label;
+}
+
+enum StickerAnimation {
+  none('No animation', null),
+  fire('Fire', 'Animations/Fire Lottie Animation.json'),
+  bubbles('Bubble explosion', 'Animations/Bubble Explosion.json'),
+  celebration('Success celebration', 'Animations/Success celebration.json');
+
+  const StickerAnimation(this.label, this.assetPath);
+
+  final String label;
+  final String? assetPath;
 }
 
 class StickerCreationPage extends StatefulWidget {
@@ -37,6 +50,7 @@ class StickerCreationPage extends StatefulWidget {
     SavedFlowerPhoto photo,
     Uint8List stickerBytes,
     String stickerId,
+    String? animationAsset,
   )
   onSaved;
 
@@ -146,6 +160,7 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
   bool _dropShadowEnabled = false;
   double _dropShadowStrength = 0.6;
   AdvancedStickerEffect _advancedEffect = AdvancedStickerEffect.none;
+  StickerAnimation _stickerAnimation = StickerAnimation.none;
   bool _isGenerating = false;
   String? _errorMessage;
 
@@ -169,6 +184,10 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
       if (_photos.isEmpty) {
         _photos.add(initialSticker);
       }
+      _stickerAnimation = StickerAnimation.values.firstWhere(
+        (animation) => animation.assetPath == initialSticker.animationAsset,
+        orElse: () => StickerAnimation.none,
+      );
     } else {
       unawaited(_loadFlowers());
     }
@@ -278,6 +297,7 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
             photo: _photos.isEmpty ? null : _photos[selectedPhotoIndex],
             stickerBytes: _stickerBytes,
             stickerColour: _selectedStickerColour,
+            animationAsset: _stickerAnimation.assetPath,
           ),
           const SizedBox(height: 18),
           if (!_isEditingSavedSticker)
@@ -408,6 +428,65 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
                 )
                 .toList(),
           ),
+          const SizedBox(height: 24),
+          const Text(
+            'Sticker animation',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Choose whether to play an animation over this sticker in previews and Profile.',
+            style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ChoiceChip(
+                label: const Text('No animation'),
+                selected: _stickerAnimation == StickerAnimation.none,
+                onSelected: _baseStickerBytes == null || _busy
+                    ? null
+                    : (_) => setState(
+                        () => _stickerAnimation = StickerAnimation.none,
+                      ),
+              ),
+              ChoiceChip(
+                label: const Text('Add animation'),
+                selected: _stickerAnimation != StickerAnimation.none,
+                onSelected: _baseStickerBytes == null || _busy
+                    ? null
+                    : (_) {
+                        if (_stickerAnimation == StickerAnimation.none) {
+                          setState(
+                            () => _stickerAnimation = StickerAnimation.fire,
+                          );
+                        }
+                      },
+              ),
+            ],
+          ),
+          if (_stickerAnimation != StickerAnimation.none) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: StickerAnimation.values
+                  .where((animation) => animation != StickerAnimation.none)
+                  .map(
+                    (animation) => ChoiceChip(
+                      label: Text(animation.label),
+                      selected: _stickerAnimation == animation,
+                      onSelected: _baseStickerBytes == null || _busy
+                          ? null
+                          : (_) =>
+                                setState(() => _stickerAnimation = animation),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ],
           const SizedBox(height: 28),
           const Text(
             'Choose sticker colour',
@@ -526,6 +605,7 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
       _photos[selectedPhotoIndex],
       stickerBytes,
       selectedStickerId,
+      _stickerAnimation.assetPath,
     );
     Navigator.pop(context);
   }
@@ -1137,11 +1217,13 @@ class _StickerPreview extends StatelessWidget {
     required this.photo,
     required this.stickerBytes,
     required this.stickerColour,
+    required this.animationAsset,
   });
 
   final SavedFlowerPhoto? photo;
   final Uint8List? stickerBytes;
   final Color stickerColour;
+  final String? animationAsset;
 
   @override
   Widget build(BuildContext context) {
@@ -1172,7 +1254,26 @@ class _StickerPreview extends StatelessWidget {
             ],
           )
         : Image.memory(stickerBytes!, fit: BoxFit.contain);
-    return SizedBox(height: 220, child: image);
+    return SizedBox(
+      height: 220,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          image,
+          if (animationAsset != null)
+            IgnorePointer(
+              child: Opacity(
+                opacity: 0.82,
+                child: Lottie.asset(
+                  animationAsset!,
+                  fit: BoxFit.contain,
+                  repeat: true,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }
 
