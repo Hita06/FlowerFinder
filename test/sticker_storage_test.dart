@@ -32,7 +32,7 @@ void main() {
       stickerBytes: stickerBytes,
       createdAt: DateTime(2026, 10, 8),
       profileGridSizeId: 'large',
-      animationAsset: 'Animations/flamefire.json',
+      animationAsset: 'Animations/Fire - Feu - Fuego.json',
     );
 
     await storage.saveStickers('linda@example.com', [sticker]);
@@ -46,25 +46,36 @@ void main() {
     expect(lindaStickers.single.stickerBytes, stickerBytes);
     expect(lindaStickers.single.createdAt, DateTime(2026, 10, 8));
     expect(lindaStickers.single.profileGridSizeId, 'large');
-    expect(lindaStickers.single.animationAsset, 'Animations/flamefire.json');
+    expect(
+      lindaStickers.single.animationAsset,
+      'Animations/Fire - Feu - Fuego.json',
+    );
     expect(otherStickers, isEmpty);
   });
 
-  test('migrates stickers from the replaced fire animation', () async {
+  test('migrates stickers from removed fire animations', () async {
     final stickerBytes = base64Decode(
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
     );
-    final sticker = SavedFlowerPhoto(
-      image: MemoryImage(stickerBytes),
-      stickerBytes: stickerBytes,
-      animationAsset: 'Animations/Fire Lottie Animation.json',
-    );
+    for (final removedAnimation in [
+      'Animations/Fire Lottie Animation.json',
+      'Animations/flamefire.json',
+    ]) {
+      final sticker = SavedFlowerPhoto(
+        image: MemoryImage(stickerBytes),
+        stickerBytes: stickerBytes,
+        animationAsset: removedAnimation,
+      );
 
-    await storage.saveStickers('linda@example.com', [sticker]);
+      await storage.saveStickers('linda@example.com', [sticker]);
 
-    final stickers = await storage.loadStickers('linda@example.com');
+      final stickers = await storage.loadStickers('linda@example.com');
 
-    expect(stickers.single.animationAsset, 'Animations/flamefire.json');
+      expect(
+        stickers.single.animationAsset,
+        'Animations/Fire - Feu - Fuego.json',
+      );
+    }
   });
 
   test(

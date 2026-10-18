@@ -2,7 +2,8 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:lottie/lottie.dart';
+
+import 'sticker_animation_overlay.dart';
 
 class UserAccount {
   UserAccount({
@@ -162,15 +163,11 @@ class _StickerImageWithAnimation extends StatelessWidget {
       children: [
         Image.memory(stickerBytes, fit: BoxFit.contain),
         if (animationAsset != null)
-          IgnorePointer(
-            child: Opacity(
-              opacity: 0.78,
-              child: Lottie.asset(
-                animationAsset!,
-                fit: BoxFit.contain,
-                repeat: true,
-              ),
-            ),
+          StickerAnimationOverlay(
+            key: ValueKey(animationAsset),
+            stickerBytes: stickerBytes,
+            animationAsset: animationAsset!,
+            opacity: 0.78,
           ),
       ],
     );

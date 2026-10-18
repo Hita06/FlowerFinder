@@ -202,7 +202,6 @@ void main() {
     );
     expect(find.text('No animation'), findsOneWidget);
     expect(find.text('Add animation'), findsOneWidget);
-    expect(find.text('Flame fire'), findsNothing);
     expect(find.text('Fire - Feu - Fuego'), findsNothing);
     await tester.scrollUntilVisible(
       find.text('Save sticker'),
@@ -728,23 +727,10 @@ void main() {
       find.widgetWithText(ChoiceChip, 'Add animation'),
     );
     addAnimationChip.onSelected!(true);
-    await tester.pump();
-    expect(find.text('Flame fire'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 100));
     expect(find.text('Fire - Feu - Fuego'), findsOneWidget);
     expect(find.text('Bubble explosion'), findsOneWidget);
     expect(find.text('Success celebration'), findsOneWidget);
-    expect(
-      tester
-          .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Flame fire'))
-          .selected,
-      isTrue,
-    );
-    tester
-        .widget<ChoiceChip>(
-          find.widgetWithText(ChoiceChip, 'Fire - Feu - Fuego'),
-        )
-        .onSelected!(true);
-    await tester.pump();
     expect(
       tester
           .widget<ChoiceChip>(
@@ -753,6 +739,16 @@ void main() {
           .selected,
       isTrue,
     );
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 100)),
+    );
+    await tester.pump();
+    expect(find.byType(ShaderMask), findsOneWidget);
+    tester
+        .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Bubble explosion'))
+        .onSelected!(true);
+    await tester.pump();
+    expect(find.byType(ShaderMask), findsNothing);
     tester
         .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Bubble explosion'))
         .onSelected!(true);
@@ -770,7 +766,6 @@ void main() {
     );
     noAnimationChip.onSelected!(true);
     await tester.pump();
-    expect(find.text('Flame fire'), findsNothing);
     expect(find.text('Fire - Feu - Fuego'), findsNothing);
 
     tester

@@ -5,15 +5,13 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'sticker_animation_assets.dart';
 import 'user_profile.dart';
 
 class StickerStorage {
   const StickerStorage({this.directoryProvider});
 
   final Future<Directory> Function()? directoryProvider;
-
-  static const _replacedFireAnimation = 'Animations/Fire Lottie Animation.json';
-  static const _replacementFireAnimation = 'Animations/flamefire.json';
 
   Future<List<SavedFlowerPhoto>> loadStickers(String accountId) async {
     final file = await _fileFor(accountId);
@@ -77,8 +75,9 @@ class StickerStorage {
         stickerBytes: Uint8List.fromList(stickerBytes),
         createdAt: DateTime.tryParse(entry['createdAt']?.toString() ?? ''),
         profileGridSizeId: entry['profileGridSize'] as String?,
-        animationAsset: entry['animationAsset'] == _replacedFireAnimation
-            ? _replacementFireAnimation
+        animationAsset:
+            replacedFireAnimationAssets.contains(entry['animationAsset'])
+            ? fireFeuFuegoAnimationAsset
             : entry['animationAsset'] as String?,
       );
     } catch (_) {

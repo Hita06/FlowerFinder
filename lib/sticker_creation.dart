@@ -4,10 +4,11 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:lottie/lottie.dart';
 import 'flower_photo_service.dart';
 import 'package:flutter_sticker_maker/flutter_sticker_maker.dart';
 
+import 'sticker_animation_assets.dart';
+import 'sticker_animation_overlay.dart';
 import 'user_profile.dart';
 
 enum AdvancedStickerEffect {
@@ -22,8 +23,7 @@ enum AdvancedStickerEffect {
 
 enum StickerAnimation {
   none('No animation', null),
-  flameFire('Flame fire', 'Animations/flamefire.json'),
-  fireFeuFuego('Fire - Feu - Fuego', 'Animations/Fire - Feu - Fuego.json'),
+  fireFeuFuego('Fire - Feu - Fuego', fireFeuFuegoAnimationAsset),
   bubbles('Bubble explosion', 'Animations/Bubble Explosion.json'),
   celebration('Success celebration', 'Animations/Success celebration.json');
 
@@ -461,8 +461,8 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
                     : (_) {
                         if (_stickerAnimation == StickerAnimation.none) {
                           setState(
-                            () =>
-                                _stickerAnimation = StickerAnimation.flameFire,
+                            () => _stickerAnimation =
+                                StickerAnimation.fireFeuFuego,
                           );
                         }
                       },
@@ -1262,16 +1262,14 @@ class _StickerPreview extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           image,
-          if (animationAsset != null)
-            IgnorePointer(
-              child: Opacity(
-                opacity: 0.82,
-                child: Lottie.asset(
-                  animationAsset!,
-                  fit: BoxFit.contain,
-                  repeat: true,
-                ),
-              ),
+          if (animationAsset != null &&
+              (animationAsset != fireFeuFuegoAnimationAsset ||
+                  stickerBytes != null))
+            StickerAnimationOverlay(
+              key: ValueKey(animationAsset),
+              stickerBytes: stickerBytes,
+              animationAsset: animationAsset!,
+              opacity: 0.82,
             ),
         ],
       ),
