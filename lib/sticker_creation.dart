@@ -23,9 +23,15 @@ enum AdvancedStickerEffect {
 
 enum StickerAnimation {
   none('No animation', null),
-  fireFeuFuego('Fire - Feu - Fuego', fireFeuFuegoAnimationAsset),
+  fire('Fire', fireAnimationAsset),
   bubbles('Bubble explosion', 'Animations/Bubble Explosion.json'),
-  celebration('Success celebration', 'Animations/Success celebration.json');
+  celebration('Success celebration', 'Animations/Success celebration.json'),
+  fireworks('Fireworks', 'Animations/Fireworks 4_3.json'),
+  redWhiteBlueFirework(
+    'Red White & Blue Firework',
+    'Animations/Red White & Blue Firework.json',
+  ),
+  rewardLightEffect('Reward Light Effect', 'Animations/Reward light effect.json');
 
   const StickerAnimation(this.label, this.assetPath);
 
@@ -462,7 +468,7 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
                         if (_stickerAnimation == StickerAnimation.none) {
                           setState(
                             () => _stickerAnimation =
-                                StickerAnimation.fireFeuFuego,
+                                StickerAnimation.fire,
                           );
                         }
                       },
@@ -1263,7 +1269,7 @@ class _StickerPreview extends StatelessWidget {
         children: [
           image,
           if (animationAsset != null &&
-              (animationAsset != fireFeuFuegoAnimationAsset ||
+              (animationAsset != fireAnimationAsset ||
                   stickerBytes != null))
             StickerAnimationOverlay(
               key: ValueKey(animationAsset),

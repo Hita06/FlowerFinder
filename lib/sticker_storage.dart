@@ -80,6 +80,9 @@ class StickerStorage {
       'stickerBytes': base64Encode(photo.stickerBytes!),
       'profileGridSize': photo.profileGridSizeId,
       'animationAsset': photo.animationAsset,
+      'boardPositionX': photo.boardPositionX,
+      'boardPositionY': photo.boardPositionY,
+      'boardScale': photo.boardScale,
     };
   }
 
@@ -96,9 +99,12 @@ class StickerStorage {
         createdAt: DateTime.tryParse(entry['createdAt']?.toString() ?? ''),
         profileGridSizeId: entry['profileGridSize'] as String?,
         animationAsset:
-            replacedFireAnimationAssets.contains(entry['animationAsset'])
-            ? fireFeuFuegoAnimationAsset
+            legacyFireAnimationAssets.contains(entry['animationAsset'])
+            ? fireAnimationAsset
             : entry['animationAsset'] as String?,
+        boardPositionX: (entry['boardPositionX'] as num?)?.toDouble(),
+        boardPositionY: (entry['boardPositionY'] as num?)?.toDouble(),
+        boardScale: (entry['boardScale'] as num?)?.toDouble(),
       );
     } catch (_) {
       return null;

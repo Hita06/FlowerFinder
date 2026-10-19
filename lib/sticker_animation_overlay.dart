@@ -28,7 +28,7 @@ class _StickerAnimationOverlayState extends State<StickerAnimationOverlay> {
   ui.Image? _stickerMask;
 
   bool get _needsStickerMask =>
-      widget.animationAsset == fireFeuFuegoAnimationAsset;
+      widget.animationAsset == fireAnimationAsset;
 
   @override
   void initState() {

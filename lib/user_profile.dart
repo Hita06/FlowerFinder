@@ -77,6 +77,28 @@ class ProfileColorChoice {
   final Color avatarColor;
 }
 
+class ProfileCollectionSettings {
+  const ProfileCollectionSettings({
+    this.displaySizeId = 'smallGrid',
+    this.uploadedPhotos = const [],
+  });
+
+  final String displaySizeId;
+  final List<ProfilePhotoData> uploadedPhotos;
+}
+
+class ProfilePhotoData {
+  const ProfilePhotoData({
+    required this.imageBytes,
+    this.label = 'Gallery photo',
+    this.sizeId = 'small',
+  });
+
+  final Uint8List imageBytes;
+  final String label;
+  final String sizeId;
+}
+
 class SavedFlowerPhoto {
   const SavedFlowerPhoto({
     required this.image,
@@ -86,6 +108,9 @@ class SavedFlowerPhoto {
     this.createdAt,
     this.profileGridSizeId,
     this.animationAsset,
+    this.boardPositionX,
+    this.boardPositionY,
+    this.boardScale,
   });
 
   final ImageProvider image;
@@ -95,6 +120,9 @@ class SavedFlowerPhoto {
   final DateTime? createdAt;
   final String? profileGridSizeId;
   final String? animationAsset;
+  final double? boardPositionX;
+  final double? boardPositionY;
+  final double? boardScale;
 
   SavedFlowerPhoto copyWith({
     String? label,
@@ -103,6 +131,9 @@ class SavedFlowerPhoto {
     DateTime? createdAt,
     String? profileGridSizeId,
     String? animationAsset,
+    double? boardPositionX,
+    double? boardPositionY,
+    double? boardScale,
     bool clearAnimationAsset = false,
   }) {
     return SavedFlowerPhoto(
@@ -115,6 +146,9 @@ class SavedFlowerPhoto {
       animationAsset: clearAnimationAsset
           ? null
           : animationAsset ?? this.animationAsset,
+      boardPositionX: boardPositionX ?? this.boardPositionX,
+      boardPositionY: boardPositionY ?? this.boardPositionY,
+      boardScale: boardScale ?? this.boardScale,
     );
   }
 }
@@ -179,6 +213,7 @@ class UserProfilePage extends StatefulWidget {
     super.key,
     this.account,
     this.savedFlowerPhotos = const [],
+    this.collectionSettings = const ProfileCollectionSettings(),
     this.onCreateSticker,
     this.onStickerSelected,
     this.onShareSticker,
@@ -186,6 +221,8 @@ class UserProfilePage extends StatefulWidget {
     this.onDeleteSticker,
     this.onReorderStickers,
     this.onStickerGridSizeChanged,
+    this.onStickerBoardPlacementChanged,
+    this.onCollectionSettingsChanged,
     this.onEditSticker,
     this.onProfileChanged,
     this.onLogout,
@@ -194,6 +231,7 @@ class UserProfilePage extends StatefulWidget {
 
   final UserAccount? account;
   final List<SavedFlowerPhoto> savedFlowerPhotos;
+  final ProfileCollectionSettings collectionSettings;
   final VoidCallback? onCreateSticker;
   final ValueChanged<SavedFlowerPhoto>? onStickerSelected;
   final ValueChanged<GeneratedStickerAsset>? onShareSticker;
@@ -202,6 +240,14 @@ class UserProfilePage extends StatefulWidget {
   final void Function(int oldIndex, int newIndex)? onReorderStickers;
   final void Function(SavedFlowerPhoto sticker, String sizeId)?
   onStickerGridSizeChanged;
+  final void Function(
+    SavedFlowerPhoto sticker,
+    double positionX,
+    double positionY,
+    double scale,
+  )?
+  onStickerBoardPlacementChanged;
+  final ValueChanged<ProfileCollectionSettings>? onCollectionSettingsChanged;
   final ValueChanged<SavedFlowerPhoto>? onEditSticker;
   final ValueChanged<UserAccount>? onProfileChanged;
   final VoidCallback? onLogout;
@@ -240,9 +286,18 @@ class UserProfilePageState extends State<UserProfilePage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _applyCollectionSettings(widget.collectionSettings);
+  }
+
+  @override
   void didUpdateWidget(covariant UserProfilePage oldWidget) {
     super.didUpdateWidget(oldWidget);
     _applyPendingStickerSize(oldWidget.savedFlowerPhotos);
+    if (oldWidget.collectionSettings != widget.collectionSettings) {
+      _applyCollectionSettings(widget.collectionSettings);
+    }
     final account = widget.account;
     if (account == null || identical(account, oldWidget.account)) return;
     setState(() {
@@ -252,6 +307,40 @@ class UserProfilePageState extends State<UserProfilePage> {
         ..email = account.email
         ..profileColorId = account.profileColorId;
     });
+  }
+
+  void _applyCollectionSettings(ProfileCollectionSettings settings) {
+    _stickerDisplaySize = _StickerDisplaySize.fromStorageId(
+      settings.displaySizeId,
+    );
+    _uploadedProfilePhotos
+      ..clear()
+      ..addAll(
+        settings.uploadedPhotos.map(
+          (photo) => _UploadedProfilePhoto(
+            imageBytes: Uint8List.fromList(photo.imageBytes),
+            label: photo.label,
+            size: _ProfileItemSize.fromStorageId(photo.sizeId),
+          ),
+        ),
+      );
+  }
+
+  void _notifyCollectionSettingsChanged() {
+    widget.onCollectionSettingsChanged?.call(
+      ProfileCollectionSettings(
+        displaySizeId: _stickerDisplaySize.storageId,
+        uploadedPhotos: _uploadedProfilePhotos
+            .map(
+              (photo) => ProfilePhotoData(
+                imageBytes: Uint8List.fromList(photo.imageBytes),
+                label: photo.label,
+                sizeId: photo.size.storageId,
+              ),
+            )
+            .toList(),
+      ),
+    );
   }
 
   void _applyPendingStickerSize(List<SavedFlowerPhoto> oldPhotos) {
@@ -296,6 +385,7 @@ class UserProfilePageState extends State<UserProfilePage> {
         ),
       );
     });
+    _notifyCollectionSettingsChanged();
   }
 
   Future<void> _showAddStickerOptions(ProfileColorChoice profileColor) async {
@@ -336,6 +426,7 @@ class UserProfilePageState extends State<UserProfilePage> {
     setState(() {
       _uploadedProfilePhotos[index] = photo.copyWith(size: size);
     });
+    _notifyCollectionSettingsChanged();
   }
 
   _StickerBoardPlacement _placementForSticker(
@@ -343,7 +434,7 @@ class UserProfilePageState extends State<UserProfilePage> {
     int index,
   ) {
     return _stickerBoardPlacements[sticker] ??
-        _StickerBoardPlacement.initial(index);
+        _StickerBoardPlacement.fromSticker(sticker, index);
   }
 
   void _moveStickerOnBoard(
@@ -358,11 +449,14 @@ class UserProfilePageState extends State<UserProfilePage> {
       (current.position.dx + delta.dx / boardSize.width).clamp(0.0, 0.82),
       (current.position.dy + delta.dy / boardSize.height).clamp(0.0, 0.82),
     );
-    setState(() {
-      _stickerBoardPlacements[sticker] = current.copyWith(
-        position: nextPosition,
-      );
-    });
+    final next = current.copyWith(position: nextPosition);
+    setState(() => _stickerBoardPlacements[sticker] = next);
+    widget.onStickerBoardPlacementChanged?.call(
+      sticker,
+      next.position.dx,
+      next.position.dy,
+      next.scale,
+    );
   }
 
   void _resizeStickerOnBoard(
@@ -371,11 +465,16 @@ class UserProfilePageState extends State<UserProfilePage> {
     double delta,
   ) {
     final current = _placementForSticker(sticker, index);
-    setState(() {
-      _stickerBoardPlacements[sticker] = current.copyWith(
-        scale: (current.scale + delta).clamp(0.7, 1.8),
-      );
-    });
+    final next = current.copyWith(
+      scale: (current.scale + delta).clamp(0.7, 1.8),
+    );
+    setState(() => _stickerBoardPlacements[sticker] = next);
+    widget.onStickerBoardPlacementChanged?.call(
+      sticker,
+      next.position.dx,
+      next.position.dy,
+      next.scale,
+    );
   }
 
   Future<void> _editAccount() async {
@@ -477,11 +576,13 @@ class UserProfilePageState extends State<UserProfilePage> {
             displaySize: _stickerDisplaySize,
             onDisplaySizeChanged: (size) {
               setState(() => _stickerDisplaySize = size);
+              _notifyCollectionSettingsChanged();
             },
             onCreateSticker: widget.onCreateSticker,
             onShowAddOptions: () => _showAddStickerOptions(profileColor),
             onRemoveUploadedPhoto: (photo) {
               setState(() => _uploadedProfilePhotos.remove(photo));
+              _notifyCollectionSettingsChanged();
             },
             gridSizeForSticker: _gridSizeForSticker,
             onChangeStickerGridSize: _setStickerGridSize,
@@ -668,7 +769,21 @@ class LogoutPage extends StatelessWidget {
   }
 }
 
-enum _StickerDisplaySize { smallGrid, largeSquare }
+enum _StickerDisplaySize {
+  smallGrid('smallGrid'),
+  largeSquare('largeSquare');
+
+  const _StickerDisplaySize(this.storageId);
+
+  final String storageId;
+
+  static _StickerDisplaySize fromStorageId(String? storageId) {
+    return _StickerDisplaySize.values.firstWhere(
+      (size) => size.storageId == storageId,
+      orElse: () => _StickerDisplaySize.smallGrid,
+    );
+  }
+}
 
 enum _StickerAddAction { createSticker, uploadPhoto }
 
@@ -732,6 +847,19 @@ class _StickerBoardPlacement {
       position: positions[index % positions.length],
       scale: index.isEven ? 1.0 : 0.9,
     );
+  }
+
+  factory _StickerBoardPlacement.fromSticker(
+    SavedFlowerPhoto sticker,
+    int index,
+  ) {
+    final x = sticker.boardPositionX;
+    final y = sticker.boardPositionY;
+    final scale = sticker.boardScale;
+    if (x == null || y == null || scale == null) {
+      return _StickerBoardPlacement.initial(index);
+    }
+    return _StickerBoardPlacement(position: Offset(x, y), scale: scale);
   }
 
   final Offset position;
