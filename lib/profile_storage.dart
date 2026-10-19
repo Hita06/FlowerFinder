@@ -55,12 +55,91 @@ class ProfileStorage {
     );
   }
 
+  Future<ProfileCollectionSettings> loadCollectionSettings(
+    String accountId,
+  ) async {
+    final file = await _collectionFileFor(accountId);
+    if (!await file.exists()) return const ProfileCollectionSettings();
+
+    try {
+      final decoded = jsonDecode(await file.readAsString());
+      if (decoded is! Map<String, dynamic>) {
+        return const ProfileCollectionSettings();
+      }
+      final encodedPhotos = decoded['uploadedPhotos'];
+      final photos = encodedPhotos is List
+          ? encodedPhotos
+                .whereType<Map<String, dynamic>>()
+                .map(_photoFromEntry)
+                .whereType<ProfilePhotoData>()
+                .toList()
+          : const <ProfilePhotoData>[];
+      return ProfileCollectionSettings(
+        displaySizeId: decoded['displaySizeId'] == 'largeSquare'
+            ? 'largeSquare'
+            : 'smallGrid',
+        uploadedPhotos: photos,
+      );
+    } catch (_) {
+      return const ProfileCollectionSettings();
+    }
+  }
+
+  Future<void> saveCollectionSettings(
+    String accountId,
+    ProfileCollectionSettings settings,
+  ) async {
+    final file = await _collectionFileFor(accountId);
+    await file.parent.create(recursive: true);
+    await file.writeAsString(
+      jsonEncode(<String, Object?>{
+        'displaySizeId': settings.displaySizeId == 'largeSquare'
+            ? 'largeSquare'
+            : 'smallGrid',
+        'uploadedPhotos': settings.uploadedPhotos
+            .map(
+              (photo) => <String, Object?>{
+                'imageBytes': base64Encode(photo.imageBytes),
+                'label': photo.label,
+                'sizeId': photo.sizeId == 'large' ? 'large' : 'small',
+              },
+            )
+            .toList(),
+      }),
+      flush: true,
+    );
+  }
+
   Future<File> _fileFor(String accountId) async {
     final baseDirectory = directoryProvider == null
         ? await getApplicationDocumentsDirectory()
         : await directoryProvider!();
     final safeId = base64Url.encode(utf8.encode(accountId)).replaceAll('=', '');
     return File('${baseDirectory.path}/flower_finder/profile_$safeId.json');
+  }
+
+  Future<File> _collectionFileFor(String accountId) async {
+    final baseDirectory = directoryProvider == null
+        ? await getApplicationDocumentsDirectory()
+        : await directoryProvider!();
+    final safeId = base64Url.encode(utf8.encode(accountId)).replaceAll('=', '');
+    return File(
+      '${baseDirectory.path}/flower_finder/profile_collection_$safeId.json',
+    );
+  }
+
+  static ProfilePhotoData? _photoFromEntry(Map<String, dynamic> entry) {
+    final encodedBytes = entry['imageBytes'];
+    if (encodedBytes is! String) return null;
+    try {
+      return ProfilePhotoData(
+        imageBytes: base64Decode(encodedBytes),
+        label: _stringOrNull(entry['label']) ?? 'Gallery photo',
+        sizeId: entry['sizeId'] == 'large' ? 'large' : 'small',
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   static String? _stringOrNull(Object? value) {

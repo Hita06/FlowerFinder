@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flowerfinderscanner/sticker_animation_assets.dart';
 import 'package:flowerfinderscanner/sticker_storage.dart';
 import 'package:flowerfinderscanner/user_profile.dart';
 
@@ -33,7 +34,10 @@ void main() {
       stickerBytes: stickerBytes,
       createdAt: DateTime(2026, 10, 8),
       profileGridSizeId: 'large',
-      animationAsset: 'Animations/Fire - Feu - Fuego.json',
+      animationAsset: fireAnimationAsset,
+      boardPositionX: 0.3,
+      boardPositionY: 0.4,
+      boardScale: 1.2,
     );
 
     await storage.saveStickers('linda@example.com', [sticker]);
@@ -47,12 +51,57 @@ void main() {
     expect(lindaStickers.single.stickerBytes, stickerBytes);
     expect(lindaStickers.single.createdAt, DateTime(2026, 10, 8));
     expect(lindaStickers.single.profileGridSizeId, 'large');
-    expect(
-      lindaStickers.single.animationAsset,
-      'Animations/Fire - Feu - Fuego.json',
-    );
+    expect(lindaStickers.single.animationAsset, fireAnimationAsset);
+    expect(lindaStickers.single.boardPositionX, 0.3);
+    expect(lindaStickers.single.boardPositionY, 0.4);
+    expect(lindaStickers.single.boardScale, 1.2);
     expect(otherStickers, isEmpty);
   });
+
+  test(
+    'restores stickers with each newly added animation after reload',
+    () async {
+      final stickerBytes = base64Decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+      );
+      const animationAssets = [
+        'Animations/Fireworks 4_3.json',
+        'Animations/Red White & Blue Firework.json',
+        'Animations/Reward light effect.json',
+      ];
+      final stickers = [
+        for (var index = 0; index < animationAssets.length; index += 1)
+          SavedFlowerPhoto(
+            image: MemoryImage(stickerBytes),
+            label: 'Sticker $index',
+            stickerId: 'sticker-$index',
+            stickerBytes: stickerBytes,
+            createdAt: DateTime(2026, 10, 20, 12, index),
+            profileGridSizeId: index.isEven ? 'small' : 'large',
+            animationAsset: animationAssets[index],
+          ),
+      ];
+
+      await storage.saveStickers('linda@example.com', stickers);
+
+      final restoredStickers = await storage.loadStickers('linda@example.com');
+
+      expect(
+        restoredStickers.map((sticker) => sticker.animationAsset),
+        animationAssets,
+      );
+      expect(restoredStickers.map((sticker) => sticker.stickerId), [
+        'sticker-0',
+        'sticker-1',
+        'sticker-2',
+      ]);
+      expect(restoredStickers.map((sticker) => sticker.profileGridSizeId), [
+        'small',
+        'large',
+        'small',
+      ]);
+    },
+  );
 
   test('serializes concurrent saves and keeps the latest snapshot', () async {
     final stickerBytes = base64Decode(
@@ -98,12 +147,12 @@ void main() {
     expect(stickers.map((sticker) => sticker.stickerId), ['latest']);
   });
 
-  test('migrates stickers from removed fire animations', () async {
+  test('migrates stickers from replaced fire animations', () async {
     final stickerBytes = base64Decode(
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
     );
     for (final removedAnimation in [
-      'Animations/Fire Lottie Animation.json',
+      'Animations/Fire - Feu - Fuego.json',
       'Animations/flamefire.json',
     ]) {
       final sticker = SavedFlowerPhoto(
@@ -116,10 +165,7 @@ void main() {
 
       final stickers = await storage.loadStickers('linda@example.com');
 
-      expect(
-        stickers.single.animationAsset,
-        'Animations/Fire - Feu - Fuego.json',
-      );
+      expect(stickers.single.animationAsset, fireAnimationAsset);
     }
   });
 

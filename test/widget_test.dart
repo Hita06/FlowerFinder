@@ -1,17 +1,37 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowerfinderscanner/homepage.dart';
 import 'package:flowerfinderscanner/main_navigation.dart';
+import 'package:flowerfinderscanner/profile_storage.dart';
 import 'package:flowerfinderscanner/sticker_creation.dart';
+import 'package:flowerfinderscanner/sticker_storage.dart';
 import 'package:flowerfinderscanner/user_profile.dart';
 
 import 'package:google_fonts/google_fonts.dart';
 
+late Directory _testStorageDirectory;
+
+MainNavigation _mainNavigation() {
+  return MainNavigation(
+    profileStorage: ProfileStorage(
+      directoryProvider: () async => _testStorageDirectory,
+    ),
+    stickerStorage: StickerStorage(
+      directoryProvider: () async => _testStorageDirectory,
+    ),
+  );
+}
+
 Future<void> _openProfileTab(WidgetTester tester) async {
   await tester.tap(find.byKey(const ValueKey('nav-profile')));
+  await tester.pump();
+  await tester.runAsync(
+    () => Future<void>.delayed(const Duration(milliseconds: 100)),
+  );
   await tester.pump();
 }
 
@@ -33,10 +53,22 @@ void main() {
     GoogleFonts.config.allowRuntimeFetching = false;
   });
 
+  setUp(() async {
+    _testStorageDirectory = await Directory.systemTemp.createTemp(
+      'flower_finder_widget_test_',
+    );
+  });
+
+  tearDown(() async {
+    if (await _testStorageDirectory.exists()) {
+      await _testStorageDirectory.delete(recursive: true);
+    }
+  });
+
   testWidgets('profile tab opens the profile page', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const MaterialApp(home: MainNavigation()));
+    await tester.pumpWidget(MaterialApp(home: _mainNavigation()));
 
     expect(find.byType(HomePage), findsOneWidget);
     expect(find.text('Add Sticker'), findsNothing);
@@ -54,7 +86,7 @@ void main() {
   });
 
   testWidgets('profile opens sticker creation', (WidgetTester tester) async {
-    await tester.pumpWidget(const MaterialApp(home: MainNavigation()));
+    await tester.pumpWidget(MaterialApp(home: _mainNavigation()));
     await _openProfileTab(tester);
 
     expect(
@@ -84,7 +116,7 @@ void main() {
   testWidgets('profile edit button opens the existing details sheet', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const MaterialApp(home: MainNavigation()));
+    await tester.pumpWidget(MaterialApp(home: _mainNavigation()));
     await _openProfileTab(tester);
     await tester.tap(find.byTooltip('Edit profile details'));
     await tester.pump();
@@ -124,7 +156,7 @@ void main() {
   testWidgets('profile colour can be changed from the details sheet', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const MaterialApp(home: MainNavigation()));
+    await tester.pumpWidget(MaterialApp(home: _mainNavigation()));
     await _openProfileTab(tester);
     await tester.tap(find.byTooltip('Edit profile details'));
     await tester.pump();
@@ -174,7 +206,7 @@ void main() {
   testWidgets('sticker creation exposes colour wheel and advanced effects', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const MaterialApp(home: MainNavigation()));
+    await tester.pumpWidget(MaterialApp(home: _mainNavigation()));
     await _openProfileTab(tester);
     await tester.tap(find.byTooltip('Create sticker'));
     await tester.pumpAndSettle();
@@ -202,7 +234,7 @@ void main() {
     );
     expect(find.text('No animation'), findsOneWidget);
     expect(find.text('Add animation'), findsOneWidget);
-    expect(find.text('Fire - Feu - Fuego'), findsNothing);
+    expect(find.text('Fire'), findsNothing);
     await tester.scrollUntilVisible(
       find.text('Save sticker'),
       180,
@@ -222,7 +254,7 @@ void main() {
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
     );
 
-    await tester.pumpWidget(const MaterialApp(home: MainNavigation()));
+    await tester.pumpWidget(MaterialApp(home: _mainNavigation()));
     await _openProfileTab(tester);
     await tester.tap(find.byTooltip('Create sticker'));
     await tester.pumpAndSettle();
@@ -605,10 +637,14 @@ void main() {
     final photoBytes = base64Decode(
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
     );
+    ProfileCollectionSettings? savedSettings;
 
     await tester.pumpWidget(
       MaterialApp(
-        home: UserProfilePage(pickProfileImage: () async => photoBytes),
+        home: UserProfilePage(
+          pickProfileImage: () async => photoBytes,
+          onCollectionSettingsChanged: (settings) => savedSettings = settings,
+        ),
       ),
     );
 
@@ -617,6 +653,30 @@ void main() {
     await tester.tap(find.text('Upload photo'));
     await tester.pumpAndSettle();
 
+    expect(find.byKey(const ValueKey('uploaded-photo-0')), findsOneWidget);
+    expect(savedSettings?.uploadedPhotos, hasLength(1));
+    expect(
+      savedSettings!.uploadedPhotos.single.imageBytes,
+      orderedEquals(photoBytes),
+    );
+
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Large square'));
+    await tester.pump();
+    expect(savedSettings?.displaySizeId, 'largeSquare');
+
+    await tester.pumpWidget(
+      MaterialApp(home: UserProfilePage(collectionSettings: savedSettings!)),
+    );
+    expect(
+      tester
+          .widget<ChoiceChip>(
+            find.widgetWithText(ChoiceChip, 'Large square'),
+          )
+          .selected,
+      isTrue,
+    );
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Small grid'));
+    await tester.pump();
     expect(find.byKey(const ValueKey('uploaded-photo-0')), findsOneWidget);
   });
 
@@ -728,14 +788,15 @@ void main() {
     );
     addAnimationChip.onSelected!(true);
     await tester.pump(const Duration(milliseconds: 100));
-    expect(find.text('Fire - Feu - Fuego'), findsOneWidget);
+    expect(find.text('Fire'), findsOneWidget);
     expect(find.text('Bubble explosion'), findsOneWidget);
     expect(find.text('Success celebration'), findsOneWidget);
+    expect(find.text('Fireworks'), findsOneWidget);
+    expect(find.text('Red White & Blue Firework'), findsOneWidget);
+    expect(find.text('Reward Light Effect'), findsOneWidget);
     expect(
       tester
-          .widget<ChoiceChip>(
-            find.widgetWithText(ChoiceChip, 'Fire - Feu - Fuego'),
-          )
+          .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Fire'))
           .selected,
       isTrue,
     );
@@ -766,7 +827,7 @@ void main() {
     );
     noAnimationChip.onSelected!(true);
     await tester.pump();
-    expect(find.text('Fire - Feu - Fuego'), findsNothing);
+    expect(find.text('Fire'), findsNothing);
 
     tester
         .widget<FilledButton>(

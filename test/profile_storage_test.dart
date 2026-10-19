@@ -1,7 +1,9 @@
+import 'dart:typed_data';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flowerfinderscanner/profile_storage.dart';
+import 'package:flowerfinderscanner/user_profile.dart';
 
 void main() {
   late Directory tempDirectory;
@@ -51,4 +53,42 @@ void main() {
     expect(profile?.name, 'Linda Flower');
     expect(profile?.profileColorId, isNull);
   });
+
+  test(
+    'restores uploaded profile photos and collection display settings',
+    () async {
+      final imageBytes = Uint8List.fromList([1, 2, 3, 4]);
+      final settings = ProfileCollectionSettings(
+        displaySizeId: 'largeSquare',
+        uploadedPhotos: <ProfilePhotoData>[
+          ProfilePhotoData(
+            imageBytes: imageBytes,
+            label: 'Garden photo',
+            sizeId: 'large',
+          ),
+        ],
+      );
+
+      await storage.saveCollectionSettings('linda@example.com', settings);
+
+      final restored = await storage.loadCollectionSettings(
+        'linda@example.com',
+      );
+
+      expect(restored.displaySizeId, 'largeSquare');
+      expect(restored.uploadedPhotos, hasLength(1));
+      expect(
+        restored.uploadedPhotos.single.imageBytes,
+        orderedEquals(imageBytes),
+      );
+      expect(restored.uploadedPhotos.single.label, 'Garden photo');
+      expect(restored.uploadedPhotos.single.sizeId, 'large');
+      expect(
+        (await storage.loadCollectionSettings(
+          'iris@example.com',
+        )).uploadedPhotos,
+        isEmpty,
+      );
+    },
+  );
 }

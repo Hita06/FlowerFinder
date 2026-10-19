@@ -18,9 +18,16 @@ import 'user_profile.dart';
 import 'widgets/bottom_nav.dart';
 
 class MainNavigation extends StatefulWidget {
-  const MainNavigation({super.key, this.account});
+  const MainNavigation({
+    super.key,
+    this.account,
+    this.profileStorage,
+    this.stickerStorage,
+  });
 
   final UserAccount? account;
+  final ProfileStorage? profileStorage;
+  final StickerStorage? stickerStorage;
 
   @override
   State<MainNavigation> createState() => _MainNavigationState();
@@ -35,10 +42,24 @@ class _MainNavigationState extends State<MainNavigation> {
 
   final _profileKey = GlobalKey<UserProfilePageState>();
   final List<SavedFlowerPhoto> _savedFlowerPhotos = [];
-  final StickerStorage _stickerStorage = StickerStorage();
-  final ProfileStorage _profileStorage = const ProfileStorage();
+  late final StickerStorage _stickerStorage =
+      widget.stickerStorage ?? StickerStorage();
+  late final ProfileStorage _profileStorage =
+      widget.profileStorage ?? const ProfileStorage();
   EditableProfileDetails? _savedProfileDetails;
+  ProfileCollectionSettings _savedCollectionSettings =
+      const ProfileCollectionSettings();
+  Future<void> _profileWriteQueue = Future<void>.value();
+  Future<void> _collectionWriteQueue = Future<void>.value();
+  Future<void> _stickerWriteQueue = Future<void>.value();
+  Future<void> _pendingProfileWrite = Future<void>.value();
+  Future<void> _pendingCollectionWrite = Future<void>.value();
+  Future<void> _pendingStickerWrite = Future<void>.value();
+  Timer? _stickerWriteDebounce;
   int currentIndex = homeTab;
+  int _accountLoadGeneration = 0;
+  bool _profileLoaded = false;
+  bool _collectionLoaded = false;
   bool _stickersLoaded = false;
 
   UserAccount get _baseAccount =>
@@ -60,48 +81,112 @@ class _MainNavigationState extends State<MainNavigation> {
   String get _accountStorageId => _baseAccount.email;
 
   @override
+  void dispose() {
+    _stickerWriteDebounce?.cancel();
+    super.dispose();
+  }
+
+  @override
   void initState() {
     super.initState();
-    unawaited(_loadSavedProfile());
-    unawaited(_loadSavedStickers());
+    final generation = _accountLoadGeneration;
+    unawaited(_loadSavedProfile(generation));
+    unawaited(_loadSavedCollectionSettings(generation));
+    unawaited(_loadSavedStickers(generation));
   }
 
   @override
   void didUpdateWidget(covariant MainNavigation oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.account?.email == widget.account?.email) return;
+    if (_stickerWriteDebounce != null) {
+      _stickerWriteDebounce!.cancel();
+      _stickerWriteDebounce = null;
+      _enqueueSavedStickerWrite(
+        accountId:
+            oldWidget.account?.email ??
+            UserProfilePageState.defaultAccount.email,
+      );
+    }
+    final generation = ++_accountLoadGeneration;
     setState(() {
       _savedFlowerPhotos.clear();
       _savedProfileDetails = null;
+      _savedCollectionSettings = const ProfileCollectionSettings();
+      _profileLoaded = false;
+      _collectionLoaded = false;
       _stickersLoaded = false;
     });
-    unawaited(_loadSavedProfile());
-    unawaited(_loadSavedStickers());
+    unawaited(_loadSavedProfile(generation));
+    unawaited(_loadSavedCollectionSettings(generation));
+    unawaited(_loadSavedStickers(generation));
   }
 
-  Future<void> _loadSavedProfile() async {
-    final savedProfile = await _profileStorage.loadProfile(_accountStorageId);
-    if (!mounted) return;
+  Future<void> _loadSavedProfile(int generation) async {
+    final accountId = _accountStorageId;
+    final savedProfile = await _profileStorage.loadProfile(accountId);
+    if (!mounted ||
+        generation != _accountLoadGeneration ||
+        accountId != _accountStorageId) {
+      return;
+    }
     setState(() {
       _savedProfileDetails = savedProfile;
+      _profileLoaded = true;
     });
   }
 
-  Future<void> _persistSavedProfile(UserAccount account) async {
+  Future<void> _loadSavedCollectionSettings(int generation) async {
+    final accountId = _accountStorageId;
+    final settings = await _profileStorage.loadCollectionSettings(accountId);
+    if (!mounted ||
+        generation != _accountLoadGeneration ||
+        accountId != _accountStorageId) {
+      return;
+    }
+    setState(() {
+      _savedCollectionSettings = settings;
+      _collectionLoaded = true;
+    });
+  }
+
+  void _persistSavedProfile(UserAccount account) {
     final details = EditableProfileDetails(
       name: account.name,
       email: account.email,
       profileColorId: account.profileColorId,
     );
+    final accountId = _accountStorageId;
     setState(() {
       _savedProfileDetails = details;
     });
-    await _profileStorage.saveProfile(_accountStorageId, details);
+    final write = _profileWriteQueue.then(
+      (_) => _profileStorage.saveProfile(accountId, details),
+    );
+    // Recover the queue after a failure; the original Future reports it below.
+    _profileWriteQueue = write.then<void>(
+      (_) {},
+      onError: (Object error, StackTrace stackTrace) {},
+    );
+    _pendingProfileWrite = write;
+    unawaited(
+      write.then<void>(
+        (_) {},
+        onError: (Object error, StackTrace stackTrace) {
+          _reportPersistenceError('profile', error, stackTrace);
+        },
+      ),
+    );
   }
 
-  Future<void> _loadSavedStickers() async {
-    final savedStickers = await _stickerStorage.loadStickers(_accountStorageId);
-    if (!mounted) return;
+  Future<void> _loadSavedStickers(int generation) async {
+    final accountId = _accountStorageId;
+    final savedStickers = await _stickerStorage.loadStickers(accountId);
+    if (!mounted ||
+        generation != _accountLoadGeneration ||
+        accountId != _accountStorageId) {
+      return;
+    }
     setState(() {
       _savedFlowerPhotos
         ..clear()
@@ -110,8 +195,113 @@ class _MainNavigationState extends State<MainNavigation> {
     });
   }
 
-  Future<void> _persistSavedStickers() async {
-    await _stickerStorage.saveStickers(_accountStorageId, _savedFlowerPhotos);
+  void _persistSavedCollectionSettings(ProfileCollectionSettings settings) {
+    final accountId = _accountStorageId;
+    setState(() => _savedCollectionSettings = settings);
+    final write = _collectionWriteQueue.then(
+      (_) => _profileStorage.saveCollectionSettings(accountId, settings),
+    );
+    _collectionWriteQueue = write.then<void>(
+      (_) {},
+      onError: (Object error, StackTrace stackTrace) {},
+    );
+    _pendingCollectionWrite = write;
+    unawaited(
+      write.then<void>(
+        (_) {},
+        onError: (Object error, StackTrace stackTrace) {
+          _reportPersistenceError('profile collection', error, stackTrace);
+        },
+      ),
+    );
+  }
+
+  void _persistSavedStickers({bool debounce = false}) {
+    _stickerWriteDebounce?.cancel();
+    if (debounce) {
+      _stickerWriteDebounce = Timer(const Duration(milliseconds: 300), () {
+        _stickerWriteDebounce = null;
+        _enqueueSavedStickerWrite();
+      });
+      return;
+    }
+    _enqueueSavedStickerWrite();
+  }
+
+  void _enqueueSavedStickerWrite({String? accountId}) {
+    final targetAccountId = accountId ?? _accountStorageId;
+    final snapshot = List<SavedFlowerPhoto>.of(_savedFlowerPhotos);
+    final write = _stickerWriteQueue.then(
+      (_) => _stickerStorage.saveStickers(targetAccountId, snapshot),
+    );
+    // Recover the queue after a failure; the original Future reports it below.
+    _stickerWriteQueue = write.then<void>(
+      (_) {},
+      onError: (Object error, StackTrace stackTrace) {},
+    );
+    _pendingStickerWrite = write;
+    unawaited(
+      write.then<void>(
+        (_) {},
+        onError: (Object error, StackTrace stackTrace) {
+          _reportPersistenceError('stickers', error, stackTrace);
+        },
+      ),
+    );
+  }
+
+  void _updateStickerBoardPlacement(
+    SavedFlowerPhoto sticker,
+    double positionX,
+    double positionY,
+    double scale,
+  ) {
+    final index = _savedStickerIndex(sticker);
+    if (index < 0) return;
+    setState(() {
+      _savedFlowerPhotos[index] = sticker.copyWith(
+        boardPositionX: positionX,
+        boardPositionY: positionY,
+        boardScale: scale,
+      );
+    });
+    _persistSavedStickers(debounce: true);
+  }
+
+  int _savedStickerIndex(SavedFlowerPhoto sticker) {
+    final directIndex = _savedFlowerPhotos.indexOf(sticker);
+    if (directIndex >= 0) return directIndex;
+    if (sticker.createdAt != null) {
+      return _savedFlowerPhotos.indexWhere(
+        (saved) =>
+            saved.createdAt == sticker.createdAt &&
+            saved.stickerId == sticker.stickerId,
+      );
+    }
+    return _savedFlowerPhotos.indexWhere(
+      (saved) => identical(saved.stickerBytes, sticker.stickerBytes),
+    );
+  }
+
+  void _reportPersistenceError(
+    String dataType,
+    Object error,
+    StackTrace stackTrace,
+  ) {
+    FlutterError.reportError(
+      FlutterErrorDetails(
+        exception: error,
+        stack: stackTrace,
+        library: 'account data persistence',
+        context: ErrorDescription('while saving $dataType'),
+      ),
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Could not save your $dataType. Please try again.'),
+      ),
+    );
   }
 
   void _addSavedSticker(SavedFlowerPhoto photo) {
@@ -119,14 +309,14 @@ class _MainNavigationState extends State<MainNavigation> {
       _savedFlowerPhotos.add(photo);
       currentIndex = profileTab;
     });
-    unawaited(_persistSavedStickers());
+    _persistSavedStickers();
   }
 
   void _deleteSavedSticker(SavedFlowerPhoto sticker) {
     setState(() {
       _savedFlowerPhotos.remove(sticker);
     });
-    unawaited(_persistSavedStickers());
+    _persistSavedStickers();
   }
 
   void _updateStickerGridSize(SavedFlowerPhoto sticker, String sizeId) {
@@ -135,7 +325,7 @@ class _MainNavigationState extends State<MainNavigation> {
       if (index == -1) return;
       _savedFlowerPhotos[index] = sticker.copyWith(profileGridSizeId: sizeId);
     });
-    unawaited(_persistSavedStickers());
+    _persistSavedStickers();
   }
 
   void _reorderSavedStickers(int oldIndex, int newIndex) {
@@ -146,7 +336,7 @@ class _MainNavigationState extends State<MainNavigation> {
       final sticker = _savedFlowerPhotos.removeAt(oldIndex);
       _savedFlowerPhotos.insert(newIndex, sticker);
     });
-    unawaited(_persistSavedStickers());
+    _persistSavedStickers();
   }
 
   // BOTTOM NAVIGATION
@@ -241,7 +431,7 @@ class _MainNavigationState extends State<MainNavigation> {
               );
               currentIndex = profileTab;
             });
-            unawaited(_persistSavedStickers());
+            _persistSavedStickers();
           },
         ),
       ),
@@ -266,7 +456,23 @@ class _MainNavigationState extends State<MainNavigation> {
 
   // Signs the current user out through Firebase Authentication.
   Future<void> _handleLogout() async {
-    await FirebaseAuth.instance.signOut();
+    _stickerWriteDebounce?.cancel();
+    _enqueueSavedStickerWrite();
+    try {
+      await Future.wait([
+        _pendingProfileWrite,
+        _pendingCollectionWrite,
+        _pendingStickerWrite,
+      ]);
+      await FirebaseAuth.instance.signOut();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Your changes could not be saved. Please try again.'),
+        ),
+      );
+    }
   }
 
   // BUILD
@@ -293,15 +499,19 @@ class _MainNavigationState extends State<MainNavigation> {
         profileKey: _profileKey,
         account: _account,
         savedFlowerPhotos: _savedFlowerPhotos,
-        stickersLoaded: _stickersLoaded,
+        collectionSettings: _savedCollectionSettings,
+        accountDataLoaded:
+            _profileLoaded && _collectionLoaded && _stickersLoaded,
         onCreateSticker: _openStickerCreation,
         onShareSticker: _handleShareSticker,
         onAddStickerToDiary: _handleAddStickerToDiary,
         onDeleteSticker: _deleteSavedSticker,
         onReorderStickers: _reorderSavedStickers,
         onStickerGridSizeChanged: _updateStickerGridSize,
+        onStickerBoardPlacementChanged: _updateStickerBoardPlacement,
+        onCollectionSettingsChanged: _persistSavedCollectionSettings,
         onEditSticker: (sticker) => unawaited(_openStickerEditor(sticker)),
-        onProfileChanged: (account) => unawaited(_persistSavedProfile(account)),
+        onProfileChanged: _persistSavedProfile,
         onLogout: _handleLogout,
       ),
     ];
@@ -323,13 +533,16 @@ class _ProfileTab extends StatelessWidget {
     required this.profileKey,
     required this.account,
     required this.savedFlowerPhotos,
-    required this.stickersLoaded,
+    required this.collectionSettings,
+    required this.accountDataLoaded,
     required this.onCreateSticker,
     required this.onShareSticker,
     required this.onAddStickerToDiary,
     required this.onDeleteSticker,
     required this.onReorderStickers,
     required this.onStickerGridSizeChanged,
+    required this.onStickerBoardPlacementChanged,
+    required this.onCollectionSettingsChanged,
     required this.onEditSticker,
     required this.onProfileChanged,
     required this.onLogout,
@@ -338,7 +551,8 @@ class _ProfileTab extends StatelessWidget {
   final GlobalKey<UserProfilePageState> profileKey;
   final UserAccount account;
   final List<SavedFlowerPhoto> savedFlowerPhotos;
-  final bool stickersLoaded;
+  final ProfileCollectionSettings collectionSettings;
+  final bool accountDataLoaded;
   final VoidCallback onCreateSticker;
   final ValueChanged<GeneratedStickerAsset> onShareSticker;
   final ValueChanged<GeneratedStickerAsset> onAddStickerToDiary;
@@ -346,6 +560,14 @@ class _ProfileTab extends StatelessWidget {
   final void Function(int oldIndex, int newIndex) onReorderStickers;
   final void Function(SavedFlowerPhoto sticker, String sizeId)
   onStickerGridSizeChanged;
+  final void Function(
+    SavedFlowerPhoto sticker,
+    double positionX,
+    double positionY,
+    double scale,
+  )
+  onStickerBoardPlacementChanged;
+  final ValueChanged<ProfileCollectionSettings> onCollectionSettingsChanged;
   final ValueChanged<SavedFlowerPhoto> onEditSticker;
   final ValueChanged<UserAccount> onProfileChanged;
   final Future<void> Function() onLogout;
@@ -358,18 +580,22 @@ class _ProfileTab extends StatelessWidget {
         centerTitle: true,
         title: const Text('Profile'),
         leading: IconButton(
-          onPressed: () => profileKey.currentState?.openLogoutPage(),
+          onPressed: !accountDataLoaded
+              ? null
+              : () => profileKey.currentState?.openLogoutPage(),
           tooltip: 'Log out',
           icon: const Icon(Icons.logout),
         ),
         actions: [
           IconButton(
-            onPressed: onCreateSticker,
+            onPressed: accountDataLoaded ? onCreateSticker : null,
             tooltip: 'Create sticker',
             icon: const Icon(Icons.add),
           ),
           IconButton(
-            onPressed: () => profileKey.currentState?.editProfileDetails(),
+            onPressed: !accountDataLoaded
+                ? null
+                : () => profileKey.currentState?.editProfileDetails(),
             tooltip: 'Edit profile details',
             icon: const Icon(Icons.edit_outlined),
           ),
@@ -377,21 +603,27 @@ class _ProfileTab extends StatelessWidget {
       ),
       body: Stack(
         children: [
-          UserProfilePage(
-            key: profileKey,
-            account: account,
-            savedFlowerPhotos: savedFlowerPhotos,
-            onCreateSticker: onCreateSticker,
-            onShareSticker: onShareSticker,
-            onAddStickerToDiary: onAddStickerToDiary,
-            onDeleteSticker: onDeleteSticker,
-            onReorderStickers: onReorderStickers,
-            onStickerGridSizeChanged: onStickerGridSizeChanged,
-            onEditSticker: onEditSticker,
-            onProfileChanged: onProfileChanged,
-            onLogout: onLogout,
+          AbsorbPointer(
+            absorbing: !accountDataLoaded,
+            child: UserProfilePage(
+              key: profileKey,
+              account: account,
+              savedFlowerPhotos: savedFlowerPhotos,
+              collectionSettings: collectionSettings,
+              onCreateSticker: onCreateSticker,
+              onShareSticker: onShareSticker,
+              onAddStickerToDiary: onAddStickerToDiary,
+              onDeleteSticker: onDeleteSticker,
+              onReorderStickers: onReorderStickers,
+              onStickerGridSizeChanged: onStickerGridSizeChanged,
+              onStickerBoardPlacementChanged: onStickerBoardPlacementChanged,
+              onCollectionSettingsChanged: onCollectionSettingsChanged,
+              onEditSticker: onEditSticker,
+              onProfileChanged: onProfileChanged,
+              onLogout: onLogout,
+            ),
           ),
-          if (!stickersLoaded) const LinearProgressIndicator(),
+          if (!accountDataLoaded) const LinearProgressIndicator(),
         ],
       ),
     );
