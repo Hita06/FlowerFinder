@@ -3,18 +3,25 @@ import 'weather_service.dart';
 import 'flower_library.dart';
 import 'theme.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({
     super.key,
+    this.profileName = 'there',
     this.onOpenScanner,
     this.onOpenWateringReminders,
     this.onOpenRecentlyIdentified,
   });
 
+  final String profileName;
   final VoidCallback? onOpenScanner;
   final VoidCallback? onOpenWateringReminders;
   final VoidCallback? onOpenRecentlyIdentified;
 
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
   String _getGreeting(String name) {
     final hour = DateTime.now().hour;
 
@@ -39,7 +46,11 @@ class HomePage extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         children: [
           Text(
-            _getGreeting('there'),
+            _getGreeting(
+              widget.profileName.trim().isNotEmpty
+                  ? widget.profileName.trim()
+                  : 'there',
+            ),
             style: Theme.of(context).textTheme.headlineMedium,
           ),
           const SizedBox(height: 8),
@@ -72,7 +83,7 @@ class HomePage extends StatelessWidget {
             icon: Icons.camera_alt_outlined,
             title: 'Scan a Flower',
             subtitle: 'Take a photo to identify a flower.',
-            onTap: onOpenScanner,
+            onTap: widget.onOpenScanner,
           ),
 
           const SizedBox(height: 24),
