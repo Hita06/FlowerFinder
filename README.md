@@ -16,10 +16,10 @@ FlowerFinder is a Flutter mobile application for COMP602. The app helps users id
 
 | Area | Responsibility |
 | --- | --- |
-| User Profile | Linda |
-| Sticker Creation | Linda |
+| G3 User Profile | Linda |
+| G6 Sticker Creation | Linda |
 | Scanner / Flower Identification | Iris |
-| Flower Search| Hita |
+| Flower Search | Hita |
 | Flower Information | Hita |
 | Diary | Erin |
 | Sharing | Erin |

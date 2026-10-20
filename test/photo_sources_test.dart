@@ -19,7 +19,7 @@ void main() {
       MaterialApp(
         home: StickerCreationPage(
           photos: const [],
-          onSaved: (_, sticker, style) {},
+          onSaved: (_, sticker, style, animation) {},
           loadFlowers: (_) async => throw Exception('offline'),
           pickPhoto: () async => bytes,
         ),
@@ -54,7 +54,7 @@ void main() {
       MaterialApp(
         home: StickerCreationPage(
           photos: const [],
-          onSaved: (_, sticker, style) {},
+          onSaved: (_, sticker, style, animation) {},
           loadFlowers: (query) async {
             queries.add(query);
             return [SavedFlowerPhoto(image: MemoryImage(bytes), label: 'Rose')];
@@ -74,6 +74,174 @@ void main() {
     expect(queries, ['rose', 'daisy']);
   });
 
+  test('white outline follows generated sticker alpha shape', () async {
+    final stickerBytes = await _transparentPngWithFlowerBounds(
+      canvasSize: 24,
+      flowerBounds: const Rect.fromLTWH(8, 8, 8, 8),
+    );
+
+    final outlinedBytes = await applyStickerEffects(
+      stickerBytes,
+      whiteOutline: true,
+      outlineThickness: 4,
+    );
+    final codec = await ui.instantiateImageCodec(outlinedBytes);
+    final frame = await codec.getNextFrame();
+    final image = frame.image;
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+    final pixels = byteData!.buffer.asUint8List();
+
+    expect(image.width, 32);
+    expect(image.height, 32);
+    expect(_hasVisibleWhitePixel(pixels, image.width, image.height), isTrue);
+    expect(_alphaAt(pixels, image.width, 0, 0), 0);
+  });
+
+  test('inner shadow keeps transparency and darkens sticker edges', () async {
+    final stickerBytes = await _transparentPngWithFlowerBounds(
+      canvasSize: 24,
+      flowerBounds: const Rect.fromLTWH(6, 6, 12, 12),
+    );
+
+    final shadowedBytes = await applyStickerEffects(
+      stickerBytes,
+      innerShadow: true,
+    );
+    final original = await _decodeRawRgba(stickerBytes);
+    final shadowed = await _decodeRawRgba(shadowedBytes);
+
+    expect(shadowed.width, original.width);
+    expect(shadowed.height, original.height);
+    expect(_alphaAt(shadowed.pixels, shadowed.width, 0, 0), 0);
+    expect(
+      _brightnessAt(shadowed.pixels, shadowed.width, 6, 6),
+      lessThan(_brightnessAt(original.pixels, original.width, 6, 6)),
+    );
+  });
+
+  test(
+    'drop shadow adds visible transparent-space shadow outside sticker',
+    () async {
+      final stickerBytes = await _transparentPngWithFlowerBounds(
+        canvasSize: 24,
+        flowerBounds: const Rect.fromLTWH(6, 6, 12, 12),
+      );
+
+      final shadowedBytes = await applyStickerEffects(
+        stickerBytes,
+        dropShadow: true,
+      );
+      final original = await _decodeRawRgba(stickerBytes);
+      final shadowed = await _decodeRawRgba(shadowedBytes);
+
+      expect(shadowed.width, greaterThan(original.width));
+      expect(shadowed.height, greaterThan(original.height));
+      expect(_alphaAt(shadowed.pixels, shadowed.width, 0, 0), 0);
+      expect(
+        _hasVisibleDarkPixel(shadowed.pixels, shadowed.width, shadowed.height),
+        isTrue,
+      );
+    },
+  );
+
+  test('drop shadow strength increases shadow footprint', () async {
+    final stickerBytes = await _transparentPngWithFlowerBounds(
+      canvasSize: 24,
+      flowerBounds: const Rect.fromLTWH(6, 6, 12, 12),
+    );
+
+    final softShadowBytes = await applyStickerEffects(
+      stickerBytes,
+      dropShadow: true,
+      dropShadowStrength: 0.25,
+    );
+    final strongShadowBytes = await applyStickerEffects(
+      stickerBytes,
+      dropShadow: true,
+      dropShadowStrength: 1,
+    );
+    final softShadow = await _decodeRawRgba(softShadowBytes);
+    final strongShadow = await _decodeRawRgba(strongShadowBytes);
+
+    expect(strongShadow.width, greaterThan(softShadow.width));
+    expect(strongShadow.height, greaterThan(softShadow.height));
+    expect(
+      _darkPixelCount(
+        strongShadow.pixels,
+        strongShadow.width,
+        strongShadow.height,
+      ),
+      greaterThan(
+        _darkPixelCount(softShadow.pixels, softShadow.width, softShadow.height),
+      ),
+    );
+  });
+
+  test('bright glitter advanced effect decorates sticker surface', () async {
+    final stickerBytes = await _transparentPngWithFlowerBounds(
+      canvasSize: 48,
+      flowerBounds: const Rect.fromLTWH(8, 8, 32, 32),
+    );
+
+    final glitterBytes = await applyStickerEffects(
+      stickerBytes,
+      advancedEffect: AdvancedStickerEffect.pinkGlitter,
+    );
+    final original = await _decodeRawRgba(stickerBytes);
+    final glitter = await _decodeRawRgba(glitterBytes);
+
+    expect(glitter.width, original.width);
+    expect(glitter.height, original.height);
+    expect(
+      _hasVisibleMagentaPixel(glitter.pixels, glitter.width, glitter.height),
+      isTrue,
+    );
+  });
+
+  test('colour wheel tint is exported into sticker PNG', () async {
+    final stickerBytes = await _transparentPngWithFlowerBounds(
+      canvasSize: 48,
+      flowerBounds: const Rect.fromLTWH(8, 8, 32, 32),
+    );
+
+    final tintedBytes = await applyStickerEffects(
+      stickerBytes,
+      stickerTintColor: const Color(0xff45c7ff),
+    );
+    final original = await _decodeRawRgba(stickerBytes);
+    final tinted = await _decodeRawRgba(tintedBytes);
+
+    expect(
+      _hasVisibleTintShift(
+        original.pixels,
+        tinted.pixels,
+        tinted.width,
+        tinted.height,
+      ),
+      isTrue,
+    );
+  });
+
+  test('rainbow prism advanced effect adds rainbow surface colour', () async {
+    final stickerBytes = await _transparentPngWithFlowerBounds(
+      canvasSize: 48,
+      flowerBounds: const Rect.fromLTWH(8, 8, 32, 32),
+    );
+
+    final rainbowBytes = await applyStickerEffects(
+      stickerBytes,
+      advancedEffect: AdvancedStickerEffect.rainbowPrism,
+    );
+    final original = await _decodeRawRgba(stickerBytes);
+    final rainbow = await _decodeRawRgba(rainbowBytes);
+
+    expect(rainbow.width, original.width);
+    expect(rainbow.height, original.height);
+    expect(
+      _hasVisibleCyanPixel(rainbow.pixels, rainbow.width, rainbow.height),
+      isTrue,
+    );
+  });
   test('generated sticker transparent padding is cropped', () async {
     final stickerBytes = await _transparentPngWithFlowerBounds(
       canvasSize: 100,
@@ -100,4 +268,132 @@ Future<Uint8List> _transparentPngWithFlowerBounds({
   final image = await recorder.endRecording().toImage(canvasSize, canvasSize);
   final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
   return bytes!.buffer.asUint8List();
+}
+
+int _alphaAt(Uint8List pixels, int width, int x, int y) {
+  return pixels[((y * width + x) * 4) + 3];
+}
+
+bool _hasVisibleWhitePixel(Uint8List pixels, int width, int height) {
+  for (var y = 0; y < height; y += 1) {
+    for (var x = 0; x < width; x += 1) {
+      final index = (y * width + x) * 4;
+      final isWhite =
+          pixels[index] == 255 &&
+          pixels[index + 1] == 255 &&
+          pixels[index + 2] == 255;
+      if (isWhite && pixels[index + 3] > 0) return true;
+    }
+  }
+  return false;
+}
+
+bool _hasVisibleMagentaPixel(Uint8List pixels, int width, int height) {
+  for (var y = 0; y < height; y += 1) {
+    for (var x = 0; x < width; x += 1) {
+      final index = (y * width + x) * 4;
+      final red = pixels[index];
+      final green = pixels[index + 1];
+      final blue = pixels[index + 2];
+      final alpha = pixels[index + 3];
+      if (alpha > 20 && red > 150 && blue > 100 && green < 90) return true;
+    }
+  }
+  return false;
+}
+
+bool _hasVisibleCyanPixel(Uint8List pixels, int width, int height) {
+  for (var y = 0; y < height; y += 1) {
+    for (var x = 0; x < width; x += 1) {
+      final index = (y * width + x) * 4;
+      final red = pixels[index];
+      final green = pixels[index + 1];
+      final blue = pixels[index + 2];
+      final alpha = pixels[index + 3];
+      if (alpha > 20 && blue > 130 && green > 130 && red < 130) return true;
+    }
+  }
+  return false;
+}
+
+bool _hasVisibleTintShift(
+  Uint8List originalPixels,
+  Uint8List tintedPixels,
+  int width,
+  int height,
+) {
+  for (var y = 0; y < height; y += 1) {
+    for (var x = 0; x < width; x += 1) {
+      final index = (y * width + x) * 4;
+      final originalRed = originalPixels[index];
+      final originalBlue = originalPixels[index + 2];
+      final tintedRed = tintedPixels[index];
+      final tintedBlue = tintedPixels[index + 2];
+      final alpha = tintedPixels[index + 3];
+      if (alpha > 20 &&
+          tintedBlue > originalBlue + 8 &&
+          tintedRed < originalRed - 8) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+Future<_RawImage> _decodeRawRgba(Uint8List bytes) async {
+  final codec = await ui.instantiateImageCodec(bytes);
+  final frame = await codec.getNextFrame();
+  final image = frame.image;
+  final byteData = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+  return _RawImage(
+    width: image.width,
+    height: image.height,
+    pixels: byteData!.buffer.asUint8List(),
+  );
+}
+
+int _brightnessAt(Uint8List pixels, int width, int x, int y) {
+  final index = (y * width + x) * 4;
+  return pixels[index] + pixels[index + 1] + pixels[index + 2];
+}
+
+bool _hasVisibleDarkPixel(Uint8List pixels, int width, int height) {
+  for (var y = 0; y < height; y += 1) {
+    for (var x = 0; x < width; x += 1) {
+      final index = (y * width + x) * 4;
+      final red = pixels[index];
+      final green = pixels[index + 1];
+      final blue = pixels[index + 2];
+      final alpha = pixels[index + 3];
+      if (alpha > 0 && red < 70 && green < 70 && blue < 70) return true;
+    }
+  }
+  return false;
+}
+
+class _RawImage {
+  const _RawImage({
+    required this.width,
+    required this.height,
+    required this.pixels,
+  });
+
+  final int width;
+  final int height;
+  final Uint8List pixels;
+}
+
+int _darkPixelCount(Uint8List pixels, int width, int height) {
+  var count = 0;
+  for (var y = 0; y < height; y += 1) {
+    for (var x = 0; x < width; x += 1) {
+      final offset = (y * width + x) * 4;
+      final red = pixels[offset];
+      final green = pixels[offset + 1];
+      final blue = pixels[offset + 2];
+      final alpha = pixels[offset + 3];
+      if (alpha > 10 && red < 80 && green < 80 && blue < 80) count += 1;
+    }
+  }
+  return count;
 }

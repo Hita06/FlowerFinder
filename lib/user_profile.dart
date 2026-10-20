@@ -1,6 +1,9 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+
+import 'sticker_animation_overlay.dart';
 
 class UserAccount {
   UserAccount({
@@ -74,6 +77,28 @@ class ProfileColorChoice {
   final Color avatarColor;
 }
 
+class ProfileCollectionSettings {
+  const ProfileCollectionSettings({
+    this.displaySizeId = 'smallGrid',
+    this.uploadedPhotos = const [],
+  });
+
+  final String displaySizeId;
+  final List<ProfilePhotoData> uploadedPhotos;
+}
+
+class ProfilePhotoData {
+  const ProfilePhotoData({
+    required this.imageBytes,
+    this.label = 'Gallery photo',
+    this.sizeId = 'small',
+  });
+
+  final Uint8List imageBytes;
+  final String label;
+  final String sizeId;
+}
+
 class SavedFlowerPhoto {
   const SavedFlowerPhoto({
     required this.image,
@@ -81,6 +106,11 @@ class SavedFlowerPhoto {
     this.stickerId,
     this.stickerBytes,
     this.createdAt,
+    this.profileGridSizeId,
+    this.animationAsset,
+    this.boardPositionX,
+    this.boardPositionY,
+    this.boardScale,
   });
 
   final ImageProvider image;
@@ -88,12 +118,23 @@ class SavedFlowerPhoto {
   final String? stickerId;
   final Uint8List? stickerBytes;
   final DateTime? createdAt;
+  final String? profileGridSizeId;
+  final String? animationAsset;
+  final double? boardPositionX;
+  final double? boardPositionY;
+  final double? boardScale;
 
   SavedFlowerPhoto copyWith({
     String? label,
     String? stickerId,
     Uint8List? stickerBytes,
     DateTime? createdAt,
+    String? profileGridSizeId,
+    String? animationAsset,
+    double? boardPositionX,
+    double? boardPositionY,
+    double? boardScale,
+    bool clearAnimationAsset = false,
   }) {
     return SavedFlowerPhoto(
       image: image,
@@ -101,6 +142,13 @@ class SavedFlowerPhoto {
       stickerId: stickerId ?? this.stickerId,
       stickerBytes: stickerBytes ?? this.stickerBytes,
       createdAt: createdAt ?? this.createdAt,
+      profileGridSizeId: profileGridSizeId ?? this.profileGridSizeId,
+      animationAsset: clearAnimationAsset
+          ? null
+          : animationAsset ?? this.animationAsset,
+      boardPositionX: boardPositionX ?? this.boardPositionX,
+      boardPositionY: boardPositionY ?? this.boardPositionY,
+      boardScale: boardScale ?? this.boardScale,
     );
   }
 }
@@ -111,12 +159,14 @@ class GeneratedStickerAsset {
     this.stickerId,
     this.createdAt,
     this.label,
+    this.animationAsset,
   });
 
   final Uint8List stickerBytes;
   final String? stickerId;
   final DateTime? createdAt;
   final String? label;
+  final String? animationAsset;
 
   static GeneratedStickerAsset? fromSavedFlowerPhoto(SavedFlowerPhoto photo) {
     final stickerBytes = photo.stickerBytes;
@@ -126,6 +176,34 @@ class GeneratedStickerAsset {
       stickerId: photo.stickerId,
       createdAt: photo.createdAt,
       label: photo.label,
+      animationAsset: photo.animationAsset,
+    );
+  }
+}
+
+class _StickerImageWithAnimation extends StatelessWidget {
+  const _StickerImageWithAnimation({
+    required this.stickerBytes,
+    this.animationAsset,
+  });
+
+  final Uint8List stickerBytes;
+  final String? animationAsset;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.memory(stickerBytes, fit: BoxFit.contain),
+        if (animationAsset != null)
+          StickerAnimationOverlay(
+            key: ValueKey(animationAsset),
+            stickerBytes: stickerBytes,
+            animationAsset: animationAsset!,
+            opacity: 0.78,
+          ),
+      ],
     );
   }
 }
@@ -135,20 +213,45 @@ class UserProfilePage extends StatefulWidget {
     super.key,
     this.account,
     this.savedFlowerPhotos = const [],
+    this.collectionSettings = const ProfileCollectionSettings(),
     this.onCreateSticker,
     this.onStickerSelected,
     this.onShareSticker,
     this.onAddStickerToDiary,
+    this.onDeleteSticker,
+    this.onReorderStickers,
+    this.onStickerGridSizeChanged,
+    this.onStickerBoardPlacementChanged,
+    this.onCollectionSettingsChanged,
+    this.onEditSticker,
+    this.onProfileChanged,
     this.onLogout,
+    this.pickProfileImage,
   });
 
   final UserAccount? account;
   final List<SavedFlowerPhoto> savedFlowerPhotos;
+  final ProfileCollectionSettings collectionSettings;
   final VoidCallback? onCreateSticker;
   final ValueChanged<SavedFlowerPhoto>? onStickerSelected;
   final ValueChanged<GeneratedStickerAsset>? onShareSticker;
   final ValueChanged<GeneratedStickerAsset>? onAddStickerToDiary;
+  final ValueChanged<SavedFlowerPhoto>? onDeleteSticker;
+  final void Function(int oldIndex, int newIndex)? onReorderStickers;
+  final void Function(SavedFlowerPhoto sticker, String sizeId)?
+  onStickerGridSizeChanged;
+  final void Function(
+    SavedFlowerPhoto sticker,
+    double positionX,
+    double positionY,
+    double scale,
+  )?
+  onStickerBoardPlacementChanged;
+  final ValueChanged<ProfileCollectionSettings>? onCollectionSettingsChanged;
+  final ValueChanged<SavedFlowerPhoto>? onEditSticker;
+  final ValueChanged<UserAccount>? onProfileChanged;
   final VoidCallback? onLogout;
+  final Future<Uint8List?> Function()? pickProfileImage;
 
   @override
   State<UserProfilePage> createState() => UserProfilePageState();
@@ -156,14 +259,22 @@ class UserProfilePage extends StatefulWidget {
 
 class UserProfilePageState extends State<UserProfilePage> {
   late final UserAccount _account = _copyAccount(
-    widget.account ?? _defaultAccount,
+    widget.account ?? defaultAccount,
   );
-  static final UserAccount _defaultAccount = UserAccount(
+  static final UserAccount defaultAccount = UserAccount(
     name: 'New Flower Finder User',
     username: 'flower_finder_user',
     email: 'user@example.com',
   );
   SavedFlowerPhoto? _selectedSticker;
+  bool _isManagingStickers = false;
+  bool _isEditingStickerBoard = false;
+  _StickerDisplaySize _stickerDisplaySize = _StickerDisplaySize.smallGrid;
+  _ProfileItemSize _nextStickerGridSize = _ProfileItemSize.small;
+  final List<_UploadedProfilePhoto> _uploadedProfilePhotos = [];
+  final Map<SavedFlowerPhoto, _ProfileItemSize> _stickerGridSizes = {};
+  final Map<SavedFlowerPhoto, _StickerBoardPlacement> _stickerBoardPlacements =
+      {};
 
   static UserAccount _copyAccount(UserAccount account) {
     return UserAccount(
@@ -175,16 +286,195 @@ class UserProfilePageState extends State<UserProfilePage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _applyCollectionSettings(widget.collectionSettings);
+  }
+
+  @override
   void didUpdateWidget(covariant UserProfilePage oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _applyPendingStickerSize(oldWidget.savedFlowerPhotos);
+    if (oldWidget.collectionSettings != widget.collectionSettings) {
+      _applyCollectionSettings(widget.collectionSettings);
+    }
     final account = widget.account;
     if (account == null || identical(account, oldWidget.account)) return;
     setState(() {
       _account
         ..name = account.name
         ..username = account.username
-        ..email = account.email;
+        ..email = account.email
+        ..profileColorId = account.profileColorId;
     });
+  }
+
+  void _applyCollectionSettings(ProfileCollectionSettings settings) {
+    _stickerDisplaySize = _StickerDisplaySize.fromStorageId(
+      settings.displaySizeId,
+    );
+    _uploadedProfilePhotos
+      ..clear()
+      ..addAll(
+        settings.uploadedPhotos.map(
+          (photo) => _UploadedProfilePhoto(
+            imageBytes: Uint8List.fromList(photo.imageBytes),
+            label: photo.label,
+            size: _ProfileItemSize.fromStorageId(photo.sizeId),
+          ),
+        ),
+      );
+  }
+
+  void _notifyCollectionSettingsChanged() {
+    widget.onCollectionSettingsChanged?.call(
+      ProfileCollectionSettings(
+        displaySizeId: _stickerDisplaySize.storageId,
+        uploadedPhotos: _uploadedProfilePhotos
+            .map(
+              (photo) => ProfilePhotoData(
+                imageBytes: Uint8List.fromList(photo.imageBytes),
+                label: photo.label,
+                sizeId: photo.size.storageId,
+              ),
+            )
+            .toList(),
+      ),
+    );
+  }
+
+  void _applyPendingStickerSize(List<SavedFlowerPhoto> oldPhotos) {
+    if (_nextStickerGridSize == _ProfileItemSize.small) return;
+    final oldStickers = oldPhotos
+        .where((photo) => photo.stickerBytes != null)
+        .toSet();
+    for (final sticker in widget.savedFlowerPhotos) {
+      if (sticker.stickerBytes == null) continue;
+      if (oldStickers.contains(sticker) ||
+          _stickerGridSizes.containsKey(sticker)) {
+        continue;
+      }
+      setState(() {
+        _stickerGridSizes[sticker] = _nextStickerGridSize;
+        _nextStickerGridSize = _ProfileItemSize.small;
+      });
+      return;
+    }
+  }
+
+  Future<void> _pickProfilePhoto(_ProfileItemSize size) async {
+    Uint8List? bytes;
+    if (widget.pickProfileImage != null) {
+      bytes = await widget.pickProfileImage!();
+    } else {
+      final file = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 2048,
+        maxHeight: 2048,
+        requestFullMetadata: false,
+      );
+      bytes = await file?.readAsBytes();
+    }
+    if (!mounted || bytes == null) return;
+    setState(() {
+      _uploadedProfilePhotos.add(
+        _UploadedProfilePhoto(
+          imageBytes: Uint8List.fromList(bytes!),
+          label: 'Gallery photo',
+          size: size,
+        ),
+      );
+    });
+    _notifyCollectionSettingsChanged();
+  }
+
+  Future<void> _showAddStickerOptions(ProfileColorChoice profileColor) async {
+    final selection = await showModalBottomSheet<_StickerAddSelection>(
+      context: context,
+      builder: (context) => _AddStickerOptionsSheet(profileColor: profileColor),
+    );
+    if (selection == null) return;
+    switch (selection.action) {
+      case _StickerAddAction.createSticker:
+        setState(() => _nextStickerGridSize = selection.size);
+        widget.onCreateSticker?.call();
+      case _StickerAddAction.uploadPhoto:
+        await _pickProfilePhoto(selection.size);
+    }
+  }
+
+  _ProfileItemSize _gridSizeForSticker(SavedFlowerPhoto sticker, int index) {
+    return _stickerGridSizes[sticker] ??
+        _ProfileItemSize.fromStorageId(sticker.profileGridSizeId);
+  }
+
+  void _setStickerGridSize(
+    SavedFlowerPhoto sticker,
+    int index,
+    _ProfileItemSize size,
+  ) {
+    setState(() => _stickerGridSizes[sticker] = size);
+    widget.onStickerGridSizeChanged?.call(sticker, size.storageId);
+  }
+
+  void _setUploadedPhotoSize(
+    _UploadedProfilePhoto photo,
+    _ProfileItemSize size,
+  ) {
+    final index = _uploadedProfilePhotos.indexOf(photo);
+    if (index < 0) return;
+    setState(() {
+      _uploadedProfilePhotos[index] = photo.copyWith(size: size);
+    });
+    _notifyCollectionSettingsChanged();
+  }
+
+  _StickerBoardPlacement _placementForSticker(
+    SavedFlowerPhoto sticker,
+    int index,
+  ) {
+    return _stickerBoardPlacements[sticker] ??
+        _StickerBoardPlacement.fromSticker(sticker, index);
+  }
+
+  void _moveStickerOnBoard(
+    SavedFlowerPhoto sticker,
+    int index,
+    Offset delta,
+    Size boardSize,
+  ) {
+    if (boardSize.width <= 0 || boardSize.height <= 0) return;
+    final current = _placementForSticker(sticker, index);
+    final nextPosition = Offset(
+      (current.position.dx + delta.dx / boardSize.width).clamp(0.0, 0.82),
+      (current.position.dy + delta.dy / boardSize.height).clamp(0.0, 0.82),
+    );
+    final next = current.copyWith(position: nextPosition);
+    setState(() => _stickerBoardPlacements[sticker] = next);
+    widget.onStickerBoardPlacementChanged?.call(
+      sticker,
+      next.position.dx,
+      next.position.dy,
+      next.scale,
+    );
+  }
+
+  void _resizeStickerOnBoard(
+    SavedFlowerPhoto sticker,
+    int index,
+    double delta,
+  ) {
+    final current = _placementForSticker(sticker, index);
+    final next = current.copyWith(
+      scale: (current.scale + delta).clamp(0.7, 1.8),
+    );
+    setState(() => _stickerBoardPlacements[sticker] = next);
+    widget.onStickerBoardPlacementChanged?.call(
+      sticker,
+      next.position.dx,
+      next.position.dy,
+      next.scale,
+    );
   }
 
   Future<void> _editAccount() async {
@@ -207,6 +497,7 @@ class UserProfilePageState extends State<UserProfilePage> {
         ..email = updatedAccount.email
         ..profileColorId = updatedAccount.profileColorId;
     });
+    widget.onProfileChanged?.call(_copyAccount(_account));
   }
 
   Future<void> editProfileDetails() => _editAccount();
@@ -281,13 +572,51 @@ class UserProfilePageState extends State<UserProfilePage> {
             photos: widget.savedFlowerPhotos,
             selectedSticker: _selectedSticker,
             profileColor: profileColor,
+            uploadedPhotos: _uploadedProfilePhotos,
+            displaySize: _stickerDisplaySize,
+            onDisplaySizeChanged: (size) {
+              setState(() => _stickerDisplaySize = size);
+              _notifyCollectionSettingsChanged();
+            },
             onCreateSticker: widget.onCreateSticker,
+            onShowAddOptions: () => _showAddStickerOptions(profileColor),
+            onRemoveUploadedPhoto: (photo) {
+              setState(() => _uploadedProfilePhotos.remove(photo));
+              _notifyCollectionSettingsChanged();
+            },
+            gridSizeForSticker: _gridSizeForSticker,
+            onChangeStickerGridSize: _setStickerGridSize,
+            onChangeUploadedPhotoSize: _setUploadedPhotoSize,
+            placementForSticker: _placementForSticker,
+            onMoveSticker: _moveStickerOnBoard,
+            onResizeSticker: _resizeStickerOnBoard,
+            isEditingStickerBoard: _isEditingStickerBoard,
+            onToggleStickerBoardEditing: () {
+              setState(() => _isEditingStickerBoard = !_isEditingStickerBoard);
+            },
+            onClearStickerSelection: () {
+              if (_selectedSticker != null) {
+                setState(() => _selectedSticker = null);
+              }
+            },
             onShareSticker: widget.onShareSticker,
             onAddStickerToDiary: widget.onAddStickerToDiary,
+            onDeleteSticker: widget.onDeleteSticker == null
+                ? null
+                : (sticker) => _confirmDeleteSticker(sticker, profileColor),
+            onReorderStickers: widget.onReorderStickers,
+            isManaging: _isManagingStickers,
+            onToggleManaging: () {
+              setState(() => _isManagingStickers = !_isManagingStickers);
+            },
             onStickerSelected: (sticker) {
               setState(() => _selectedSticker = sticker);
               widget.onStickerSelected?.call(sticker);
               _showStickerActions(sticker, profileColor);
+            },
+            onLargeStickerSelected: (sticker) {
+              setState(() => _selectedSticker = sticker);
+              widget.onStickerSelected?.call(sticker);
             },
           ),
         ],
@@ -309,8 +638,51 @@ class UserProfilePageState extends State<UserProfilePage> {
         profileColor: profileColor,
         onShareSticker: widget.onShareSticker,
         onAddStickerToDiary: widget.onAddStickerToDiary,
+        onEditSticker: widget.onEditSticker == null
+            ? null
+            : () => widget.onEditSticker!(sticker),
       ),
     );
+
+    if (mounted && identical(_selectedSticker, sticker)) {
+      setState(() => _selectedSticker = null);
+    }
+  }
+
+  Future<void> _confirmDeleteSticker(
+    SavedFlowerPhoto sticker,
+    ProfileColorChoice profileColor,
+  ) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete sticker?'),
+        content: const Text(
+          'This removes the saved sticker from your profile collection.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red.shade700,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldDelete != true) return;
+    if (_selectedSticker == sticker) {
+      setState(() => _selectedSticker = null);
+    }
+    widget.onDeleteSticker?.call(sticker);
   }
 }
 
@@ -397,6 +769,216 @@ class LogoutPage extends StatelessWidget {
   }
 }
 
+enum _StickerDisplaySize {
+  smallGrid('smallGrid'),
+  largeSquare('largeSquare');
+
+  const _StickerDisplaySize(this.storageId);
+
+  final String storageId;
+
+  static _StickerDisplaySize fromStorageId(String? storageId) {
+    return _StickerDisplaySize.values.firstWhere(
+      (size) => size.storageId == storageId,
+      orElse: () => _StickerDisplaySize.smallGrid,
+    );
+  }
+}
+
+enum _StickerAddAction { createSticker, uploadPhoto }
+
+enum _ProfileItemSize {
+  small('small'),
+  large('large');
+
+  const _ProfileItemSize(this.storageId);
+
+  final String storageId;
+
+  static _ProfileItemSize fromStorageId(String? storageId) {
+    return _ProfileItemSize.values.firstWhere(
+      (size) => size.storageId == storageId,
+      orElse: () => _ProfileItemSize.small,
+    );
+  }
+}
+
+class _StickerAddSelection {
+  const _StickerAddSelection({required this.action, required this.size});
+
+  final _StickerAddAction action;
+  final _ProfileItemSize size;
+}
+
+class _UploadedProfilePhoto {
+  const _UploadedProfilePhoto({
+    required this.imageBytes,
+    required this.label,
+    required this.size,
+  });
+
+  final Uint8List imageBytes;
+  final String label;
+  final _ProfileItemSize size;
+
+  _UploadedProfilePhoto copyWith({_ProfileItemSize? size}) {
+    return _UploadedProfilePhoto(
+      imageBytes: imageBytes,
+      label: label,
+      size: size ?? this.size,
+    );
+  }
+}
+
+class _StickerBoardPlacement {
+  const _StickerBoardPlacement({required this.position, required this.scale});
+
+  factory _StickerBoardPlacement.initial(int index) {
+    const positions = [
+      Offset(0.08, 0.08),
+      Offset(0.58, 0.08),
+      Offset(0.1, 0.52),
+      Offset(0.58, 0.52),
+      Offset(0.34, 0.3),
+      Offset(0.18, 0.28),
+      Offset(0.62, 0.32),
+    ];
+    return _StickerBoardPlacement(
+      position: positions[index % positions.length],
+      scale: index.isEven ? 1.0 : 0.9,
+    );
+  }
+
+  factory _StickerBoardPlacement.fromSticker(
+    SavedFlowerPhoto sticker,
+    int index,
+  ) {
+    final x = sticker.boardPositionX;
+    final y = sticker.boardPositionY;
+    final scale = sticker.boardScale;
+    if (x == null || y == null || scale == null) {
+      return _StickerBoardPlacement.initial(index);
+    }
+    return _StickerBoardPlacement(position: Offset(x, y), scale: scale);
+  }
+
+  final Offset position;
+  final double scale;
+
+  _StickerBoardPlacement copyWith({Offset? position, double? scale}) {
+    return _StickerBoardPlacement(
+      position: position ?? this.position,
+      scale: scale ?? this.scale,
+    );
+  }
+}
+
+class _StickerCollectionItem {
+  const _StickerCollectionItem.sticker(this.sticker, this.size)
+    : uploadedPhoto = null,
+      isSticker = true;
+
+  _StickerCollectionItem.photo(this.uploadedPhoto)
+    : sticker = null,
+      size = uploadedPhoto!.size,
+      isSticker = false;
+
+  final SavedFlowerPhoto? sticker;
+  final _UploadedProfilePhoto? uploadedPhoto;
+  final _ProfileItemSize size;
+  final bool isSticker;
+
+  Uint8List get imageBytes =>
+      isSticker ? sticker!.stickerBytes! : uploadedPhoto!.imageBytes;
+
+  String get label =>
+      isSticker ? sticker!.label ?? 'Saved sticker' : uploadedPhoto!.label;
+}
+
+class _AddStickerOptionsSheet extends StatefulWidget {
+  const _AddStickerOptionsSheet({required this.profileColor});
+
+  final ProfileColorChoice profileColor;
+
+  @override
+  State<_AddStickerOptionsSheet> createState() =>
+      _AddStickerOptionsSheetState();
+}
+
+class _AddStickerOptionsSheetState extends State<_AddStickerOptionsSheet> {
+  _ProfileItemSize _size = _ProfileItemSize.small;
+
+  void _finish(_StickerAddAction action) {
+    Navigator.pop(context, _StickerAddSelection(action: action, size: _size));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Add to Your Stickers',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 12),
+            const Text('Choose display size'),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                ChoiceChip(
+                  label: const Text('Small square'),
+                  selected: _size == _ProfileItemSize.small,
+                  onSelected: (_) =>
+                      setState(() => _size = _ProfileItemSize.small),
+                ),
+                ChoiceChip(
+                  label: const Text('Large square'),
+                  selected: _size == _ProfileItemSize.large,
+                  onSelected: (_) =>
+                      setState(() => _size = _ProfileItemSize.large),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: CircleAvatar(
+                backgroundColor: widget.profileColor.softColor,
+                child: Icon(
+                  Icons.auto_fix_high,
+                  color: widget.profileColor.color,
+                ),
+              ),
+              title: const Text('Create sticker'),
+              subtitle: const Text('Make a new generated flower sticker'),
+              onTap: () => _finish(_StickerAddAction.createSticker),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: CircleAvatar(
+                backgroundColor: widget.profileColor.softColor,
+                child: Icon(
+                  Icons.photo_library_outlined,
+                  color: widget.profileColor.color,
+                ),
+              ),
+              title: const Text('Upload photo'),
+              subtitle: const Text('Add a photo from your gallery'),
+              onTap: () => _finish(_StickerAddAction.uploadPhoto),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ProfileStat extends StatelessWidget {
   const _ProfileStat({required this.value, required this.label});
 
@@ -419,66 +1001,937 @@ class _ProfileStat extends StatelessWidget {
 class _StickersSection extends StatelessWidget {
   const _StickersSection({
     required this.photos,
+    required this.uploadedPhotos,
     required this.selectedSticker,
     required this.profileColor,
+    required this.displaySize,
+    required this.onDisplaySizeChanged,
     required this.onCreateSticker,
+    required this.onShowAddOptions,
+    required this.onRemoveUploadedPhoto,
+    required this.gridSizeForSticker,
+    required this.onChangeStickerGridSize,
+    required this.onChangeUploadedPhotoSize,
+    required this.placementForSticker,
+    required this.onMoveSticker,
+    required this.onResizeSticker,
+    required this.isEditingStickerBoard,
+    required this.onToggleStickerBoardEditing,
+    required this.onClearStickerSelection,
     required this.onStickerSelected,
+    required this.onLargeStickerSelected,
     required this.onShareSticker,
     required this.onAddStickerToDiary,
+    required this.onDeleteSticker,
+    required this.onReorderStickers,
+    required this.isManaging,
+    required this.onToggleManaging,
   });
 
   final List<SavedFlowerPhoto> photos;
+  final List<_UploadedProfilePhoto> uploadedPhotos;
   final SavedFlowerPhoto? selectedSticker;
   final ProfileColorChoice profileColor;
+  final _StickerDisplaySize displaySize;
+  final ValueChanged<_StickerDisplaySize> onDisplaySizeChanged;
   final VoidCallback? onCreateSticker;
+  final VoidCallback onShowAddOptions;
+  final ValueChanged<_UploadedProfilePhoto> onRemoveUploadedPhoto;
+  final _ProfileItemSize Function(SavedFlowerPhoto sticker, int index)
+  gridSizeForSticker;
+  final void Function(
+    SavedFlowerPhoto sticker,
+    int index,
+    _ProfileItemSize size,
+  )
+  onChangeStickerGridSize;
+  final void Function(_UploadedProfilePhoto photo, _ProfileItemSize size)
+  onChangeUploadedPhotoSize;
+  final _StickerBoardPlacement Function(SavedFlowerPhoto sticker, int index)
+  placementForSticker;
+  final void Function(
+    SavedFlowerPhoto sticker,
+    int index,
+    Offset delta,
+    Size boardSize,
+  )
+  onMoveSticker;
+  final void Function(SavedFlowerPhoto sticker, int index, double delta)
+  onResizeSticker;
+  final bool isEditingStickerBoard;
+  final VoidCallback onToggleStickerBoardEditing;
+  final VoidCallback onClearStickerSelection;
   final ValueChanged<SavedFlowerPhoto> onStickerSelected;
+  final ValueChanged<SavedFlowerPhoto> onLargeStickerSelected;
   final ValueChanged<GeneratedStickerAsset>? onShareSticker;
   final ValueChanged<GeneratedStickerAsset>? onAddStickerToDiary;
+  final ValueChanged<SavedFlowerPhoto>? onDeleteSticker;
+  final void Function(int oldIndex, int newIndex)? onReorderStickers;
+  final bool isManaging;
+  final VoidCallback onToggleManaging;
 
   @override
   Widget build(BuildContext context) {
     final stickers = photos
         .where((photo) => photo.stickerBytes != null)
         .toList();
+    final collectionItems = <_StickerCollectionItem>[
+      for (var index = 0; index < stickers.length; index += 1)
+        _StickerCollectionItem.sticker(
+          stickers[index],
+          gridSizeForSticker(stickers[index], index),
+        ),
+      ...uploadedPhotos.map(_StickerCollectionItem.photo),
+    ];
+    final canManage =
+        collectionItems.isNotEmpty &&
+        (onDeleteSticker != null ||
+            onReorderStickers != null ||
+            uploadedPhotos.isNotEmpty);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Your Stickers',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 14),
-        if (stickers.isEmpty)
-          _AddStickerTile(onTap: onCreateSticker, profileColor: profileColor)
-        else
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Your Stickers',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              ),
             ),
-            itemCount: stickers.length + 1,
-            itemBuilder: (context, index) {
-              if (index == stickers.length) {
-                return _AddStickerTile(
-                  onTap: onCreateSticker,
+            if (canManage)
+              TextButton.icon(
+                onPressed: onToggleManaging,
+                icon: Icon(
+                  isManaging ? Icons.check : Icons.tune,
+                  color: profileColor.color,
+                ),
+                label: Text(isManaging ? 'Done' : 'Manage'),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text(
+              'Display size:',
+              style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+            ),
+            ChoiceChip(
+              label: const Text('Small grid'),
+              selected: displaySize == _StickerDisplaySize.smallGrid,
+              onSelected: (_) =>
+                  onDisplaySizeChanged(_StickerDisplaySize.smallGrid),
+            ),
+            ChoiceChip(
+              label: const Text('Large square'),
+              selected: displaySize == _StickerDisplaySize.largeSquare,
+              onSelected: (_) =>
+                  onDisplaySizeChanged(_StickerDisplaySize.largeSquare),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (isManaging && collectionItems.isNotEmpty)
+          Text(
+            'Manage saved stickers and uploaded photos in your profile collection.',
+            style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+          )
+        else
+          Text(
+            displaySize == _StickerDisplaySize.largeSquare
+                ? isEditingStickerBoard
+                      ? 'Edit mode: move stickers with one finger or pinch with two fingers to resize.'
+                      : 'Show all generated stickers in one large square. Tap Edit to move or resize.'
+                : 'Show saved stickers and uploaded photos in a mixed-size grid.',
+            style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+          ),
+        const SizedBox(height: 14),
+        if (isManaging && collectionItems.isNotEmpty)
+          uploadedPhotos.isEmpty
+              ? _ManageStickersList(
+                  stickers: stickers,
                   profileColor: profileColor,
-                );
-              }
-              final sticker = stickers[index];
-              return _StickerTile(
-                key: ValueKey('saved-sticker-${sticker.stickerId ?? index}'),
-                sticker: sticker,
-                selected: identical(sticker, selectedSticker),
-                profileColor: profileColor,
-                onTap: () => onStickerSelected(sticker),
-              );
-            },
+                  onDeleteSticker: onDeleteSticker,
+                  onReorderStickers: onReorderStickers,
+                  gridSizeForSticker: gridSizeForSticker,
+                  onChangeStickerGridSize: onChangeStickerGridSize,
+                )
+              : _ManageCollectionList(
+                  stickers: stickers,
+                  uploadedPhotos: uploadedPhotos,
+                  profileColor: profileColor,
+                  onDeleteSticker: onDeleteSticker,
+                  onRemoveUploadedPhoto: onRemoveUploadedPhoto,
+                  gridSizeForSticker: gridSizeForSticker,
+                  onChangeStickerGridSize: onChangeStickerGridSize,
+                  onChangeUploadedPhotoSize: onChangeUploadedPhotoSize,
+                )
+        else if (displaySize == _StickerDisplaySize.largeSquare)
+          _LargeStickerSquare(
+            stickers: stickers,
+            selectedSticker: selectedSticker,
+            profileColor: profileColor,
+            onStickerSelected: onLargeStickerSelected,
+            onAddTap: onShowAddOptions,
+            placementForSticker: placementForSticker,
+            onMoveSticker: onMoveSticker,
+            onResizeSticker: onResizeSticker,
+            isEditing: isEditingStickerBoard,
+            onToggleEditing: onToggleStickerBoardEditing,
+            onClearSelection: onClearStickerSelection,
+          )
+        else
+          _SmallStickerGrid(
+            items: collectionItems,
+            selectedSticker: selectedSticker,
+            profileColor: profileColor,
+            onStickerSelected: onStickerSelected,
+            onAddTap: onShowAddOptions,
           ),
       ],
     );
+  }
+}
+
+class _SmallStickerGrid extends StatelessWidget {
+  const _SmallStickerGrid({
+    required this.items,
+    required this.selectedSticker,
+    required this.profileColor,
+    required this.onStickerSelected,
+    required this.onAddTap,
+  });
+
+  final List<_StickerCollectionItem> items;
+  final SavedFlowerPhoto? selectedSticker;
+  final ProfileColorChoice profileColor;
+  final ValueChanged<SavedFlowerPhoto> onStickerSelected;
+  final VoidCallback onAddTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return _AddStickerTile(onTap: onAddTap, profileColor: profileColor);
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final gap = 10.0;
+        final smallWidth = (constraints.maxWidth - gap * 2) / 3;
+        final largeWidth = smallWidth * 2 + gap;
+        final entries = <Object>[...items, const _AddGridEntry()];
+        final rows = <Widget>[];
+        var index = 0;
+
+        Widget buildEntry(Object? entry, double width, double height) {
+          if (entry == null) {
+            return SizedBox(width: width, height: height);
+          }
+          if (entry is _AddGridEntry) {
+            return SizedBox(
+              width: width,
+              height: height,
+              child: _AddStickerTile(
+                onTap: onAddTap,
+                profileColor: profileColor,
+              ),
+            );
+          }
+          final item = entry as _StickerCollectionItem;
+          final itemIndex = items.indexOf(item);
+          return _VariableCollectionTile(
+            key: ValueKey(_collectionItemKey(item, itemIndex)),
+            item: item,
+            selected:
+                item.sticker != null &&
+                identical(item.sticker, selectedSticker),
+            profileColor: profileColor,
+            width: width,
+            height: height,
+            onTap: item.sticker == null
+                ? null
+                : () => onStickerSelected(item.sticker!),
+          );
+        }
+
+        Object? takeSideEntry() {
+          if (index >= entries.length) return null;
+          final next = entries[index];
+          if (next is _StickerCollectionItem &&
+              next.size == _ProfileItemSize.large) {
+            return null;
+          }
+          index += 1;
+          return next;
+        }
+
+        while (index < entries.length) {
+          final current = entries[index];
+          if (current is _StickerCollectionItem &&
+              current.size == _ProfileItemSize.large) {
+            index += 1;
+            final topRight = takeSideEntry();
+            final bottomRight = takeSideEntry();
+            rows.add(
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  buildEntry(current, largeWidth, largeWidth),
+                  SizedBox(width: gap),
+                  Column(
+                    children: [
+                      buildEntry(topRight, smallWidth, smallWidth),
+                      SizedBox(height: gap),
+                      buildEntry(bottomRight, smallWidth, smallWidth),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          } else {
+            final rowEntries = <Object?>[];
+            while (rowEntries.length < 3 && index < entries.length) {
+              final next = entries[index];
+              if (next is _StickerCollectionItem &&
+                  next.size == _ProfileItemSize.large) {
+                break;
+              }
+              rowEntries.add(next);
+              index += 1;
+            }
+            while (rowEntries.length < 3) {
+              rowEntries.add(null);
+            }
+            rows.add(
+              Row(
+                children: [
+                  for (var column = 0; column < 3; column += 1) ...[
+                    if (column > 0) SizedBox(width: gap),
+                    buildEntry(rowEntries[column], smallWidth, smallWidth),
+                  ],
+                ],
+              ),
+            );
+          }
+        }
+
+        return Column(
+          children: [
+            for (var row = 0; row < rows.length; row += 1) ...[
+              if (row > 0) SizedBox(height: gap),
+              rows[row],
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _AddGridEntry {
+  const _AddGridEntry();
+}
+
+class _LargeStickerSquare extends StatelessWidget {
+  const _LargeStickerSquare({
+    required this.stickers,
+    required this.selectedSticker,
+    required this.profileColor,
+    required this.onStickerSelected,
+    required this.onAddTap,
+    required this.placementForSticker,
+    required this.onMoveSticker,
+    required this.onResizeSticker,
+    required this.isEditing,
+    required this.onToggleEditing,
+    required this.onClearSelection,
+  });
+
+  final List<SavedFlowerPhoto> stickers;
+  final SavedFlowerPhoto? selectedSticker;
+  final ProfileColorChoice profileColor;
+  final ValueChanged<SavedFlowerPhoto> onStickerSelected;
+  final VoidCallback onAddTap;
+  final _StickerBoardPlacement Function(SavedFlowerPhoto sticker, int index)
+  placementForSticker;
+  final void Function(
+    SavedFlowerPhoto sticker,
+    int index,
+    Offset delta,
+    Size boardSize,
+  )
+  onMoveSticker;
+  final void Function(SavedFlowerPhoto sticker, int index, double delta)
+  onResizeSticker;
+  final bool isEditing;
+  final VoidCallback onToggleEditing;
+  final VoidCallback onClearSelection;
+
+  @override
+  Widget build(BuildContext context) {
+    return AspectRatio(
+      aspectRatio: 1,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final boardSize = Size(constraints.maxWidth, constraints.maxHeight);
+          return Container(
+            decoration: BoxDecoration(
+              color: profileColor.softColor,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: profileColor.color.withValues(alpha: 0.16),
+                width: 2,
+              ),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onClearSelection,
+              child: Stack(
+                children: [
+                  if (stickers.isEmpty)
+                    Center(
+                      child: _LargeSquarePlaceholder(
+                        profileColor: profileColor,
+                        onTap: onAddTap,
+                      ),
+                    ),
+                  for (var index = 0; index < stickers.length; index += 1)
+                    _MovableStickerBoardItem(
+                      key: ValueKey(
+                        'large-sticker-${stickers[index].stickerId ?? index.toString()}',
+                      ),
+                      sticker: stickers[index],
+                      index: index,
+                      placement: placementForSticker(stickers[index], index),
+                      boardSize: boardSize,
+                      selected: identical(stickers[index], selectedSticker),
+                      isEditing: isEditing,
+                      profileColor: profileColor,
+                      onTap: () => onStickerSelected(stickers[index]),
+                      onMove: onMoveSticker,
+                      onResize: onResizeSticker,
+                    ),
+                  Positioned(
+                    left: 12,
+                    top: 12,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: isEditing
+                            ? profileColor.color
+                            : Colors.white.withValues(alpha: 0.92),
+                        foregroundColor: isEditing
+                            ? Colors.white
+                            : profileColor.color,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      onPressed: onToggleEditing,
+                      icon: Icon(isEditing ? Icons.check : Icons.edit_outlined),
+                      label: Text(isEditing ? 'Done' : 'Edit'),
+                    ),
+                  ),
+                  Positioned(
+                    right: 12,
+                    bottom: 12,
+                    child: FloatingActionButton.small(
+                      heroTag: 'add-profile-sticker-item',
+                      onPressed: onAddTap,
+                      backgroundColor: profileColor.color,
+                      foregroundColor: Colors.white,
+                      child: const Icon(Icons.add),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _MovableStickerBoardItem extends StatefulWidget {
+  const _MovableStickerBoardItem({
+    super.key,
+    required this.sticker,
+    required this.index,
+    required this.placement,
+    required this.boardSize,
+    required this.selected,
+    required this.isEditing,
+    required this.profileColor,
+    required this.onTap,
+    required this.onMove,
+    required this.onResize,
+  });
+
+  final SavedFlowerPhoto sticker;
+  final int index;
+  final _StickerBoardPlacement placement;
+  final Size boardSize;
+  final bool selected;
+  final bool isEditing;
+  final ProfileColorChoice profileColor;
+  final VoidCallback onTap;
+  final void Function(
+    SavedFlowerPhoto sticker,
+    int index,
+    Offset delta,
+    Size boardSize,
+  )
+  onMove;
+  final void Function(SavedFlowerPhoto sticker, int index, double delta)
+  onResize;
+
+  @override
+  State<_MovableStickerBoardItem> createState() =>
+      _MovableStickerBoardItemState();
+}
+
+class _MovableStickerBoardItemState extends State<_MovableStickerBoardItem> {
+  double _startScale = 1;
+  Offset _lastFocalPoint = Offset.zero;
+
+  @override
+  Widget build(BuildContext context) {
+    final itemSize =
+        widget.boardSize.shortestSide * 0.28 * widget.placement.scale;
+    return Positioned(
+      left: widget.placement.position.dx * widget.boardSize.width,
+      top: widget.placement.position.dy * widget.boardSize.height,
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: widget.onTap,
+        onScaleStart: widget.isEditing
+            ? (details) {
+                _startScale = widget.placement.scale;
+                _lastFocalPoint = details.focalPoint;
+              }
+            : null,
+        onScaleUpdate: widget.isEditing
+            ? (details) {
+                final moveDelta = details.focalPoint - _lastFocalPoint;
+                _lastFocalPoint = details.focalPoint;
+                if (moveDelta.distance > 0) {
+                  widget.onMove(
+                    widget.sticker,
+                    widget.index,
+                    moveDelta,
+                    widget.boardSize,
+                  );
+                }
+                final nextScale = (_startScale * details.scale).clamp(
+                  0.55,
+                  2.4,
+                );
+                final scaleDelta = nextScale - widget.placement.scale;
+                if (scaleDelta.abs() > 0.005) {
+                  widget.onResize(widget.sticker, widget.index, scaleDelta);
+                }
+              }
+            : null,
+        child: Container(
+          width: itemSize,
+          height: itemSize,
+          padding: const EdgeInsets.all(2),
+          decoration: BoxDecoration(
+            border: widget.selected
+                ? Border.all(color: widget.profileColor.color, width: 2)
+                : null,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: _StickerImageWithAnimation(
+            stickerBytes: widget.sticker.stickerBytes!,
+            animationAsset: widget.sticker.animationAsset,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LargeSquarePlaceholder extends StatelessWidget {
+  const _LargeSquarePlaceholder({
+    required this.profileColor,
+    required this.onTap,
+  });
+
+  final ProfileColorChoice profileColor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(18),
+    child: Ink(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: profileColor.color.withValues(alpha: 0.14)),
+      ),
+      child: Icon(Icons.add, color: profileColor.color, size: 30),
+    ),
+  );
+}
+
+class _VariableCollectionTile extends StatelessWidget {
+  const _VariableCollectionTile({
+    super.key,
+    required this.item,
+    required this.selected,
+    required this.profileColor,
+    required this.width,
+    required this.height,
+    required this.onTap,
+  });
+
+  final _StickerCollectionItem item;
+  final bool selected;
+  final ProfileColorChoice profileColor;
+  final double width;
+  final double height;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(18),
+    child: SizedBox(
+      width: width,
+      height: height,
+      child: Ink(
+        decoration: BoxDecoration(
+          color: item.isSticker ? profileColor.softColor : null,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: selected ? profileColor.color : Colors.transparent,
+            width: 3,
+          ),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: item.isSticker
+                    ? Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: _StickerImageWithAnimation(
+                          stickerBytes: item.imageBytes,
+                          animationAsset: item.sticker?.animationAsset,
+                        ),
+                      )
+                    : Image.memory(item.imageBytes, fit: BoxFit.cover),
+              ),
+              if (selected)
+                Align(
+                  alignment: Alignment.topRight,
+                  child: Icon(Icons.check_circle, color: profileColor.color),
+                ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+String _collectionItemKey(_StickerCollectionItem item, int index) {
+  if (item.sticker != null) {
+    return 'saved-sticker-${item.sticker!.stickerId ?? index.toString()}';
+  }
+  return 'uploaded-photo-$index';
+}
+
+class _ManageCollectionList extends StatelessWidget {
+  const _ManageCollectionList({
+    required this.stickers,
+    required this.uploadedPhotos,
+    required this.profileColor,
+    required this.onDeleteSticker,
+    required this.onRemoveUploadedPhoto,
+    required this.gridSizeForSticker,
+    required this.onChangeStickerGridSize,
+    required this.onChangeUploadedPhotoSize,
+  });
+
+  final List<SavedFlowerPhoto> stickers;
+  final List<_UploadedProfilePhoto> uploadedPhotos;
+  final ProfileColorChoice profileColor;
+  final ValueChanged<SavedFlowerPhoto>? onDeleteSticker;
+  final ValueChanged<_UploadedProfilePhoto> onRemoveUploadedPhoto;
+  final _ProfileItemSize Function(SavedFlowerPhoto sticker, int index)
+  gridSizeForSticker;
+  final void Function(
+    SavedFlowerPhoto sticker,
+    int index,
+    _ProfileItemSize size,
+  )
+  onChangeStickerGridSize;
+  final void Function(_UploadedProfilePhoto photo, _ProfileItemSize size)
+  onChangeUploadedPhotoSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = <_StickerCollectionItem>[
+      for (var index = 0; index < stickers.length; index += 1)
+        _StickerCollectionItem.sticker(
+          stickers[index],
+          gridSizeForSticker(stickers[index], index),
+        ),
+      ...uploadedPhotos.map(_StickerCollectionItem.photo),
+    ];
+    return Column(
+      children: [
+        for (final item in items)
+          Card(
+            elevation: 0,
+            color: Colors.white,
+            margin: const EdgeInsets.only(bottom: 10),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: profileColor.softColor, width: 2),
+            ),
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
+              leading: Container(
+                width: 54,
+                height: 54,
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: profileColor.softColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Image.memory(item.imageBytes, fit: BoxFit.contain),
+              ),
+              title: Text(item.label),
+              subtitle: Wrap(
+                spacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(item.isSticker ? 'Generated sticker' : 'Uploaded photo'),
+                  _ProfileItemSizeToggle(
+                    value: item.size,
+                    profileColor: profileColor,
+                    onChanged: (size) => item.isSticker
+                        ? onChangeStickerGridSize(
+                            item.sticker!,
+                            stickers.indexOf(item.sticker!),
+                            size,
+                          )
+                        : onChangeUploadedPhotoSize(item.uploadedPhoto!, size),
+                  ),
+                ],
+              ),
+              trailing: IconButton(
+                tooltip: item.isSticker ? 'Delete sticker' : 'Remove photo',
+                onPressed: item.isSticker
+                    ? onDeleteSticker == null
+                          ? null
+                          : () => onDeleteSticker!(item.sticker!)
+                    : () => onRemoveUploadedPhoto(item.uploadedPhoto!),
+                icon: const Icon(Icons.delete_outline),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _ProfileItemSizeToggle extends StatelessWidget {
+  const _ProfileItemSizeToggle({
+    required this.value,
+    required this.profileColor,
+    required this.onChanged,
+  });
+
+  final _ProfileItemSize value;
+  final ProfileColorChoice profileColor;
+  final ValueChanged<_ProfileItemSize> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: profileColor.color.withValues(alpha: 0.28)),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ProfileItemSizeToggleButton(
+            label: 'Small',
+            selected: value == _ProfileItemSize.small,
+            profileColor: profileColor,
+            onTap: () => onChanged(_ProfileItemSize.small),
+          ),
+          _ProfileItemSizeToggleButton(
+            label: 'Large',
+            selected: value == _ProfileItemSize.large,
+            profileColor: profileColor,
+            onTap: () => onChanged(_ProfileItemSize.large),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileItemSizeToggleButton extends StatelessWidget {
+  const _ProfileItemSizeToggleButton({
+    required this.label,
+    required this.selected,
+    required this.profileColor,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final ProfileColorChoice profileColor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? profileColor.softColor : Colors.white,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          width: 68,
+          height: 34,
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: selected ? profileColor.color : Colors.black87,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ManageStickersList extends StatelessWidget {
+  const _ManageStickersList({
+    required this.stickers,
+    required this.profileColor,
+    required this.onDeleteSticker,
+    required this.onReorderStickers,
+    required this.gridSizeForSticker,
+    required this.onChangeStickerGridSize,
+  });
+
+  final List<SavedFlowerPhoto> stickers;
+  final ProfileColorChoice profileColor;
+  final ValueChanged<SavedFlowerPhoto>? onDeleteSticker;
+  final void Function(int oldIndex, int newIndex)? onReorderStickers;
+  final _ProfileItemSize Function(SavedFlowerPhoto sticker, int index)
+  gridSizeForSticker;
+  final void Function(
+    SavedFlowerPhoto sticker,
+    int index,
+    _ProfileItemSize size,
+  )
+  onChangeStickerGridSize;
+
+  @override
+  Widget build(BuildContext context) {
+    return ReorderableListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      buildDefaultDragHandles: false,
+      itemCount: stickers.length,
+      onReorderItem: onReorderStickers ?? (_, _) {},
+      itemBuilder: (context, index) {
+        final sticker = stickers[index];
+        return Card(
+          key: ObjectKey(sticker),
+          elevation: 0,
+          color: Colors.white,
+          margin: const EdgeInsets.only(bottom: 10),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: profileColor.softColor, width: 2),
+          ),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 8,
+            ),
+            leading: Container(
+              width: 54,
+              height: 54,
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: profileColor.softColor,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: _StickerImageWithAnimation(
+                stickerBytes: sticker.stickerBytes!,
+                animationAsset: sticker.animationAsset,
+              ),
+            ),
+            title: Text(sticker.label ?? 'Saved sticker'),
+            subtitle: Wrap(
+              spacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  sticker.createdAt == null
+                      ? 'Generated sticker'
+                      : 'Saved ${_formatStickerDate(sticker.createdAt!)}',
+                ),
+                _ProfileItemSizeToggle(
+                  value: gridSizeForSticker(sticker, index),
+                  profileColor: profileColor,
+                  onChanged: (size) =>
+                      onChangeStickerGridSize(sticker, index, size),
+                ),
+              ],
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: 'Delete sticker',
+                  onPressed: onDeleteSticker == null
+                      ? null
+                      : () => onDeleteSticker!(sticker),
+                  icon: const Icon(Icons.delete_outline),
+                ),
+                ReorderableDragStartListener(
+                  index: index,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Icon(Icons.drag_handle, color: profileColor.color),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  static String _formatStickerDate(DateTime date) {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    return '$day/$month/${date.year}';
   }
 }
 
@@ -488,12 +1941,14 @@ class _StickerActionDialog extends StatelessWidget {
     required this.profileColor,
     required this.onShareSticker,
     required this.onAddStickerToDiary,
+    required this.onEditSticker,
   });
 
   final GeneratedStickerAsset asset;
   final ProfileColorChoice profileColor;
   final ValueChanged<GeneratedStickerAsset>? onShareSticker;
   final ValueChanged<GeneratedStickerAsset>? onAddStickerToDiary;
+  final VoidCallback? onEditSticker;
 
   @override
   Widget build(BuildContext context) {
@@ -510,7 +1965,10 @@ class _StickerActionDialog extends StatelessWidget {
               color: profileColor.softColor,
               borderRadius: BorderRadius.circular(18),
             ),
-            child: Image.memory(asset.stickerBytes, fit: BoxFit.contain),
+            child: _StickerImageWithAnimation(
+              stickerBytes: asset.stickerBytes,
+              animationAsset: asset.animationAsset,
+            ),
           ),
           const SizedBox(height: 16),
           const Text(
@@ -523,6 +1981,16 @@ class _StickerActionDialog extends StatelessWidget {
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
+        ),
+        OutlinedButton.icon(
+          onPressed: onEditSticker == null
+              ? null
+              : () {
+                  Navigator.pop(context);
+                  onEditSticker!();
+                },
+          icon: Icon(Icons.edit_outlined, color: profileColor.color),
+          label: const Text('Edit Sticker'),
         ),
         OutlinedButton.icon(
           onPressed: onAddStickerToDiary == null
@@ -547,50 +2015,6 @@ class _StickerActionDialog extends StatelessWidget {
       ],
     );
   }
-}
-
-class _StickerTile extends StatelessWidget {
-  const _StickerTile({
-    super.key,
-    required this.sticker,
-    required this.selected,
-    required this.profileColor,
-    required this.onTap,
-  });
-
-  final SavedFlowerPhoto sticker;
-  final bool selected;
-  final ProfileColorChoice profileColor;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => InkWell(
-    onTap: onTap,
-    borderRadius: BorderRadius.circular(14),
-    child: Ink(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: profileColor.softColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: selected ? profileColor.color : Colors.transparent,
-          width: 3,
-        ),
-      ),
-      child: Stack(
-        children: [
-          Center(
-            child: Image.memory(sticker.stickerBytes!, fit: BoxFit.contain),
-          ),
-          if (selected)
-            Align(
-              alignment: Alignment.topRight,
-              child: Icon(Icons.check_circle, color: profileColor.color),
-            ),
-        ],
-      ),
-    ),
-  );
 }
 
 class _AddStickerTile extends StatelessWidget {
