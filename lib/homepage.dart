@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'weather_service.dart';
 import 'flower_library.dart';
@@ -349,6 +348,10 @@ class FlowerOfTheDayCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final flower = FlowerLibrary.getFlowerOfTheDay();
 
+    debugPrint(
+      'Flower: ${flower.name}, image: ${flower.imagePath}',
+    );
+    
     return Card(
       clipBehavior: Clip.antiAlias,
       color: Colors.white,

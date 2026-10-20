@@ -1,4 +1,3 @@
-
 class Flower {
   final String name;
   final String scientificName;
@@ -24,7 +23,7 @@ class FlowerLibrary {
           'coral, apricot, mauve, and lilac tones. Its flowers '
           'have a light tea-like fragrance and repeat throughout '
           'the flowering season.',
-      imagePath: 'assets/flowers/englishrose.jpg',
+      imagePath: 'assets/flowers/englishrose.jpeg',
     ),
     Flower(
       name: 'Common Sunflower',
@@ -34,7 +33,7 @@ class FlowerLibrary {
           'bright yellow petals, and dark central disc. '
           'Its flowers attract pollinators, and its seeds provide food '
           'for birds and people.',
-      imagePath: 'assets/flowers/sunflower.jpg',
+      imagePath: 'assets/flowers/sunflower.jpeg',
     ),
     Flower(
       name: 'Darwin Hybrid Tulip',
@@ -44,7 +43,7 @@ class FlowerLibrary {
           'classically shaped blooms and strong stems. '
           'They are popular spring flowers available in a range '
           'of vibrant colours.',
-      imagePath: 'assets/flowers/tulip.jpg',
+      imagePath: 'assets/flowers/tulip.jpeg',
     ),
     Flower(
       name: 'Chrysanthemum',
@@ -53,7 +52,7 @@ class FlowerLibrary {
           'Chrysanthemums produce striking blooms in many shapes '
           'and colours, from daisy-like flowers to dense, rounded heads. '
           'They are popular ornamental flowers, especially in autumn.',
-      imagePath: 'assets/flowers/chrysanthemum.jpg',
+      imagePath: 'assets/flowers/chrysanthemum.jpeg',
     ),
     Flower(
       name: 'Cosmos',
@@ -62,7 +61,7 @@ class FlowerLibrary {
           'Cosmos bipinnatus has delicate, daisy-like flowers '
           'and finely divided foliage. Its colourful blooms attract '
           'bees and butterflies and add a light, airy look to gardens.',
-      imagePath: 'assets/flowers/cosmos.jpg',
+      imagePath: 'assets/flowers/cosmos.jpeg',
     ),
     Flower(
       name: 'Japanese Water Iris',
@@ -72,7 +71,7 @@ class FlowerLibrary {
           'often large and ruffled flowers in shades of purple, '
           'blue, pink, and white. It thrives in moist soil and '
           'is often grown near ponds and water gardens.',
-      imagePath: 'assets/flowers/iris.jpg',
+      imagePath: 'assets/flowers/iris.jpeg',
     ),
   ];
 
