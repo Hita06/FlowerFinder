@@ -25,6 +25,7 @@ dependencies:
 
   # Sticker functionality
   flutter_sticker_maker: ^0.2.2
+  lottie: ^3.6.1
 
   # Other packages
   image_picker: ^1.2.3
@@ -32,7 +33,6 @@ dependencies:
   path_provider: ^2.1.6
   flutter_dotenv: ^6.0.1
   share_plus: ^13.3.1
-  image: ^4.10.1
 
 dev_dependencies:
   flutter_test:
@@ -45,3 +45,5 @@ flutter:
 
   assets:
     - .env
+    - Animations/
+    - assets/flowers/
