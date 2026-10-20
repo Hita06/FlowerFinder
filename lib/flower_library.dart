@@ -16,66 +16,81 @@ class Flower {
 class FlowerLibrary {
   static const List<Flower> flowers = [
     Flower(
-      name: 'Rose',
-      scientificName: 'Rosa',
+      name: 'Emma Bridgewater™ Rose',
+      scientificName: "Rosa 'Ausb44a16'",
       description:
-          'Roses are popular flowering plants known for their '
-          'beautiful petals and variety of colours.',
-      imagePath: 'assets/flowers/rose.jpg',
+          'Emma Bridgewater™ is an English shrub rose with '
+          'full, rosette-shaped blooms that shift through pink, '
+          'coral, apricot, mauve, and lilac tones. Its flowers '
+          'have a light tea-like fragrance and repeat throughout '
+          'the flowering season.',
+      imagePath: 'assets/flowers/englishrose.jpg',
     ),
     Flower(
-      name: 'Sunflower',
+      name: 'Common Sunflower',
       scientificName: 'Helianthus annuus',
       description:
-          'Sunflowers are bright, sun-loving flowers with large '
-          'golden petals and distinctive centres.',
+          'The common sunflower is known for its large flower head, '
+          'bright yellow petals, and dark central disc. '
+          'Its flowers attract pollinators, and its seeds provide food '
+          'for birds and people.',
       imagePath: 'assets/flowers/sunflower.jpg',
     ),
     Flower(
-      name: 'Tulip',
-      scientificName: 'Tulipa',
+      name: 'Darwin Hybrid Tulip',
+      scientificName: 'Tulipa (Darwin Hybrid Group)',
       description:
-          'Tulips are spring flowers recognised by their '
-          'cup-shaped blooms and vibrant colours.',
+          'Darwin Hybrid tulips are known for their large, '
+          'classically shaped blooms and strong stems. '
+          'They are popular spring flowers available in a range '
+          'of vibrant colours.',
       imagePath: 'assets/flowers/tulip.jpg',
     ),
     Flower(
-      name: 'Daisy',
-      scientificName: 'Bellis perennis',
+      name: 'Chrysanthemum',
+      scientificName: 'Chrysanthemum × morifolium',
       description:
-          'Daisies have delicate white petals surrounding a '
-          'bright yellow centre.',
-      imagePath: 'assets/flowers/daisy.jpg',
+          'Chrysanthemums produce striking blooms in many shapes '
+          'and colours, from daisy-like flowers to dense, rounded heads. '
+          'They are popular ornamental flowers, especially in autumn.',
+      imagePath: 'assets/flowers/chrysanthemum.jpg',
     ),
     Flower(
       name: 'Cosmos',
       scientificName: 'Cosmos bipinnatus',
       description:
-          'Cosmos flowers have delicate petals and attract '
-          'pollinators such as bees and butterflies.',
+          'Cosmos bipinnatus has delicate, daisy-like flowers '
+          'and finely divided foliage. Its colourful blooms attract '
+          'bees and butterflies and add a light, airy look to gardens.',
       imagePath: 'assets/flowers/cosmos.jpg',
     ),
     Flower(
-      name: 'Lavender',
-      scientificName: 'Lavandula',
+      name: 'Japanese Water Iris',
+      scientificName: 'Iris ensata',
       description:
-          'Lavender is known for its purple flower spikes, '
-          'fragrance, and attraction to pollinators.',
-      imagePath: 'assets/flowers/lavender.jpg',
+          'The Japanese water iris is known for its elegant, '
+          'often large and ruffled flowers in shades of purple, '
+          'blue, pink, and white. It thrives in moist soil and '
+          'is often grown near ponds and water gardens.',
+      imagePath: 'assets/flowers/iris.jpg',
     ),
   ];
 
   static Flower getFlowerOfTheDay([DateTime? date]) {
     final today = date ?? DateTime.now();
 
-    // Use UTC calendar dates to avoid timezone boundary issues.
-    final day = DateTime.utc(
+    // Select one flower per calendar day.
+    final currentDate = DateTime.utc(
       today.year,
       today.month,
       today.day,
-    ).difference(DateTime.utc(2026, 1, 1)).inDays;
+    );
+    final startDate = DateTime.utc(2026, 1, 1);
 
-    final index = day % flowers.length;
+    final dayNumber = currentDate.difference(startDate).inDays;
+    final index = dayNumber % flowers.length;
+
+    // Keep the index valid for dates before the start date too.
     return flowers[(index + flowers.length) % flowers.length];
   }
 }

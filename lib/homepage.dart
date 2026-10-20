@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import 'weather_service.dart';
+import 'flower_library.dart';
 import 'theme.dart';
 
 class HomePage extends StatelessWidget {
@@ -88,7 +89,7 @@ class HomePage extends StatelessWidget {
           const SizedBox(height: 24),
           const _SectionTitle(title: 'Flower of the Day'),
           const SizedBox(height: 10),
-          const _FlowerOfTheDayCard(),
+          const FlowerOfTheDayCard(),
           const SizedBox(height: 30),
         ],
       ),
@@ -341,45 +342,95 @@ class _ShortcutCard extends StatelessWidget {
   }
 }
 
-class _FlowerOfTheDayCard extends StatelessWidget {
-  const _FlowerOfTheDayCard();
+class FlowerOfTheDayCard extends StatelessWidget {
+  const FlowerOfTheDayCard({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.cream,
+    final flower = FlowerLibrary.getFlowerOfTheDay();
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      color: Colors.white,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            height: 100,
-            width: 100,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Icon(
-              Icons.local_florist,
-              size: 50,
-              color: AppColors.green,
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.local_florist,
+                  color: AppColors.darkGreen,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Flower of the Day',
+                    style: Theme.of(context)
+                        .textTheme.titleLarge
+                        ?.copyWith(
+                          color: AppColors.darkGreen,
+                        ),
+                  ),
+                ),
+                const Icon(
+                  Icons.auto_awesome,
+                  color: AppColors.pink,
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 16),
-          Expanded(
+          SizedBox(
+            width: double.infinity,
+            height: 190,
+            child: Image.asset(
+              flower.imagePath,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return const ColoredBox(
+                  color: AppColors.cream,
+                  child: Center(
+                    child: Icon(
+                      Icons.local_florist,
+                      size: 64,
+                      color: AppColors.green,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Rose',
-                  style: Theme.of(context).textTheme.titleLarge,
+                  flower.name,
+                  style: Theme.of(context)
+                      .textTheme.headlineMedium
+                      ?.copyWith(
+                        color: AppColors.darkGreen,
+                      ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 Text(
-                  'Roses are widely recognised flowering plants.',
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  flower.scientificName,
+                  style: Theme.of(context)
+                      .textTheme.bodyMedium
+                      ?.copyWith(
+                        fontStyle: FontStyle.italic,
+                      ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  flower.description,
+                  style: Theme.of(context).textTheme.bodyLarge,
                 ),
               ],
             ),
