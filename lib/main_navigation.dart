@@ -514,6 +514,7 @@ class _MainNavigationState extends State<MainNavigation> {
     final pages = [
       // 0 - Home
       HomePage(
+        profileName: _account.name,
         onOpenScanner: _openScanner,
         onOpenWateringReminders: _openDiary,
         onOpenRecentlyIdentified: _openScanner,

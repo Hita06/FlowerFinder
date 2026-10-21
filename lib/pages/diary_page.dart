@@ -6,6 +6,14 @@ import '../diary_entry.dart';
 import '../diary_storage.dart';
 import '../user_profile.dart';
 
+const Color diaryMainGreen = Color(0xFF5BC68D);
+const Color diaryDarkGreen = Color(0xFF276749);
+const Color diaryCream = Color(0xFFFFF9F2);
+const Color diaryLightGreen = Color(0xFFE4F3E8);
+const Color diaryPinkAccent = Color(0xFFF7A8C4);
+const Color diaryTextGrey = Color(0xFF68776D);
+const Color diaryBorderGreen = Color(0xFFD5EDE0);
+
 class DiaryPage extends StatefulWidget {
   const DiaryPage({
     this.accountId = 'default',
@@ -32,9 +40,7 @@ class _DiaryPageState extends State<DiaryPage> {
   int _loadGeneration = 0;
   bool _entriesReady = false;
 
-  final List<DiaryEntry> _entries = _defaultEntries();
-
-  static List<DiaryEntry> _defaultEntries() => [
+  final List<DiaryEntry> _entries = [
     DiaryEntry(
       flowerName: 'Purple Orchid',
       location: 'Near campus',
@@ -77,13 +83,32 @@ class _DiaryPageState extends State<DiaryPage> {
     }
   }
 
+  static List<DiaryEntry> _defaultEntries() => [
+    DiaryEntry(
+      flowerName: 'Purple Orchid',
+      location: 'Near campus',
+      notes: 'A bright purple orchid growing beside the walking path.',
+      date: DateTime(2026, 9, 14),
+      sticker: '🌸',
+      isFavorite: true,
+    ),
+    DiaryEntry(
+      flowerName: 'Sunflower',
+      location: 'Community garden',
+      notes: 'A tall sunflower facing towards the afternoon sunlight.',
+      date: DateTime(2026, 9, 12),
+      sticker: '🌻',
+    ),
+  ];
+
   Future<void> _loadEntries() async {
     final generation = ++_loadGeneration;
+    final accountId = widget.accountId;
     try {
-      final savedEntries = await _diaryStorage.loadEntries(widget.accountId);
+      final savedEntries = await _diaryStorage.loadEntries(accountId);
       if (!mounted ||
           generation != _loadGeneration ||
-          !_isCurrentAccount(widget.accountId)) {
+          widget.accountId != accountId) {
         return;
       }
       setState(() {
@@ -103,18 +128,12 @@ class _DiaryPageState extends State<DiaryPage> {
           context: ErrorDescription('while loading diary entries'),
         ),
       );
-      if (!mounted ||
-          generation != _loadGeneration ||
-          !_isCurrentAccount(widget.accountId)) {
-        return;
-      }
+      if (!mounted || generation != _loadGeneration) return;
       setState(() => _entriesReady = true);
       _showMessage('Diary entries could not be loaded.');
     }
     _scheduleStickerEntryForm(widget.stickerRequestId, widget.stickerToAdd);
   }
-
-  bool _isCurrentAccount(String accountId) => widget.accountId == accountId;
 
   void _scheduleStickerEntryForm(
     int requestId,
@@ -127,7 +146,7 @@ class _DiaryPageState extends State<DiaryPage> {
     });
   }
 
-  List<DiaryEntry> get _filteredEntries {
+  List<DiaryEntry> get _visibleEntries {
     Iterable<DiaryEntry> entries = _entries;
 
     if (_showFavoritesOnly) {
@@ -147,7 +166,21 @@ class _DiaryPageState extends State<DiaryPage> {
       });
     }
 
-    return entries.toList();
+    final visibleEntries = entries.toList();
+
+    if (_sortOption == 'Newest') {
+      visibleEntries.sort(
+        (firstEntry, secondEntry) =>
+            secondEntry.date.compareTo(firstEntry.date),
+      );
+    } else {
+      visibleEntries.sort(
+        (firstEntry, secondEntry) =>
+            firstEntry.date.compareTo(secondEntry.date),
+      );
+    }
+
+    return visibleEntries;
   }
 
   String _formatDate(DateTime date) {
@@ -169,12 +202,49 @@ class _DiaryPageState extends State<DiaryPage> {
     return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context).clearSnackBars();
+  InputDecoration _fieldDecoration({
+    required String label,
+    required IconData icon,
+    String? hint,
+    bool alignLabelWithHint = false,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      alignLabelWithHint: alignLabelWithHint,
+      prefixIcon: Icon(icon, color: diaryDarkGreen),
+      filled: true,
+      fillColor: Colors.white,
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: diaryBorderGreen, width: 1.5),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: diaryMainGreen, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: Colors.red.shade600),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: Colors.red.shade700, width: 2),
+      ),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+    );
+  }
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: diaryDarkGreen,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
   }
 
   void _toggleFavorite(DiaryEntry entry) {
@@ -245,8 +315,38 @@ class _DiaryPageState extends State<DiaryPage> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text(
-                existingEntry == null ? 'Add Diary Entry' : 'Edit Diary Entry',
+              backgroundColor: diaryCream,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(22),
+              ),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(9),
+                    decoration: const BoxDecoration(
+                      color: diaryLightGreen,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      existingEntry == null
+                          ? Icons.menu_book_outlined
+                          : Icons.edit_outlined,
+                      color: diaryDarkGreen,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      existingEntry == null
+                          ? 'Add Diary Entry'
+                          : 'Edit Diary Entry',
+                      style: const TextStyle(
+                        color: diaryDarkGreen,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               content: Form(
                 key: formKey,
@@ -262,10 +362,9 @@ class _DiaryPageState extends State<DiaryPage> {
                               existingEntry == null &&
                               initialGeneratedSticker == null,
                           textInputAction: TextInputAction.next,
-                          decoration: const InputDecoration(
-                            labelText: 'Flower name',
-                            prefixIcon: Icon(Icons.local_florist),
-                            border: OutlineInputBorder(),
+                          decoration: _fieldDecoration(
+                            label: 'Flower name',
+                            icon: Icons.local_florist,
                           ),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
@@ -279,10 +378,9 @@ class _DiaryPageState extends State<DiaryPage> {
                         TextFormField(
                           controller: locationController,
                           textInputAction: TextInputAction.next,
-                          decoration: const InputDecoration(
-                            labelText: 'Location',
-                            prefixIcon: Icon(Icons.location_on),
-                            border: OutlineInputBorder(),
+                          decoration: _fieldDecoration(
+                            label: 'Location',
+                            icon: Icons.location_on,
                           ),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
@@ -297,22 +395,19 @@ class _DiaryPageState extends State<DiaryPage> {
                           controller: notesController,
                           maxLines: 4,
                           maxLength: 300,
-                          decoration: const InputDecoration(
-                            labelText: 'Diary entry or observations',
-                            hintText:
-                                'Write something about this flower memory.',
-                            prefixIcon: Icon(Icons.notes),
-                            border: OutlineInputBorder(),
+                          decoration: _fieldDecoration(
+                            label: 'Diary entry or observations',
+                            hint: 'Write something about this flower memory.',
+                            icon: Icons.notes,
                             alignLabelWithHint: true,
                           ),
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           initialValue: selectedSticker,
-                          decoration: const InputDecoration(
-                            labelText: 'Choose a sticker',
-                            prefixIcon: Icon(Icons.emoji_emotions_outlined),
-                            border: OutlineInputBorder(),
+                          decoration: _fieldDecoration(
+                            label: 'Choose a sticker',
+                            icon: Icons.emoji_emotions_outlined,
                           ),
                           items: [
                             if (selectedGeneratedSticker != null)
@@ -329,7 +424,7 @@ class _DiaryPageState extends State<DiaryPage> {
                                     const SizedBox(width: 8),
                                     Text(
                                       selectedGeneratedSticker!.label ??
-                                          'Generated sticker',
+                                          'Saved sticker',
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ],
@@ -386,9 +481,9 @@ class _DiaryPageState extends State<DiaryPage> {
                           width: double.infinity,
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF0F7EF),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFC8DDC8)),
+                            color: diaryLightGreen,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: diaryMainGreen),
                           ),
                           child: Column(
                             children: [
@@ -396,11 +491,12 @@ class _DiaryPageState extends State<DiaryPage> {
                                 'Sticker preview',
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFF5F6F63),
+                                  color: diaryDarkGreen,
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              selectedSticker == _generatedStickerOption
+                              selectedSticker == _generatedStickerOption &&
+                                      selectedGeneratedSticker != null
                                   ? Image.memory(
                                       selectedGeneratedSticker!.stickerBytes,
                                       width: 96,
@@ -408,7 +504,9 @@ class _DiaryPageState extends State<DiaryPage> {
                                       fit: BoxFit.contain,
                                     )
                                   : Text(
-                                      selectedSticker,
+                                      selectedSticker == _generatedStickerOption
+                                          ? 'Choose a saved sticker'
+                                          : selectedSticker,
                                       style: const TextStyle(fontSize: 48),
                                     ),
                             ],
@@ -420,7 +518,7 @@ class _DiaryPageState extends State<DiaryPage> {
                 ),
               ),
               actions: [
-                TextButton(
+                TextButton.icon(
                   onPressed: () {
                     flowerNameController.clear();
                     locationController.clear();
@@ -431,7 +529,8 @@ class _DiaryPageState extends State<DiaryPage> {
                       selectedGeneratedSticker = null;
                     });
                   },
-                  child: const Text('Clear'),
+                  icon: const Icon(Icons.cleaning_services_outlined),
+                  label: const Text('Clear'),
                 ),
                 TextButton(
                   onPressed: () {
@@ -439,7 +538,7 @@ class _DiaryPageState extends State<DiaryPage> {
                   },
                   child: const Text('Cancel'),
                 ),
-                FilledButton(
+                FilledButton.icon(
                   onPressed: () {
                     final isValid = formKey.currentState?.validate() ?? false;
 
@@ -459,10 +558,11 @@ class _DiaryPageState extends State<DiaryPage> {
                     );
                   },
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF3F6B45),
+                    backgroundColor: diaryDarkGreen,
                     foregroundColor: Colors.white,
                   ),
-                  child: const Text('Save'),
+                  icon: const Icon(Icons.save_outlined),
+                  label: const Text('Save'),
                 ),
               ],
             );
@@ -471,6 +571,8 @@ class _DiaryPageState extends State<DiaryPage> {
       },
     );
 
+    // Do not dispose the three dialog controllers here.
+    // Flutter may still be removing the dialog text fields.
     if (result == null || !mounted) {
       return;
     }
@@ -536,8 +638,21 @@ class _DiaryPageState extends State<DiaryPage> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Delete diary entry?'),
-          content: Text('Are you sure you want to delete ${entry.flowerName}?'),
+          backgroundColor: diaryCream,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.delete_outline, color: Colors.red),
+              SizedBox(width: 10),
+              Expanded(child: Text('Delete diary entry?')),
+            ],
+          ),
+          content: Text(
+            'Are you sure you want to delete '
+            '${entry.flowerName}?',
+          ),
           actions: [
             TextButton(
               onPressed: () {
@@ -545,7 +660,7 @@ class _DiaryPageState extends State<DiaryPage> {
               },
               child: const Text('Cancel'),
             ),
-            FilledButton(
+            FilledButton.icon(
               onPressed: () {
                 Navigator.pop(dialogContext, true);
               },
@@ -553,7 +668,8 @@ class _DiaryPageState extends State<DiaryPage> {
                 backgroundColor: Colors.red.shade700,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Delete'),
+              icon: const Icon(Icons.delete),
+              label: const Text('Delete'),
             ),
           ],
         );
@@ -580,28 +696,31 @@ class _DiaryPageState extends State<DiaryPage> {
     }
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          backgroundColor: diaryDarkGreen,
+          behavior: SnackBarBehavior.floating,
+          content: Text('${entry.flowerName} deleted'),
+          action: SnackBarAction(
+            label: 'Undo',
+            textColor: diaryMainGreen,
+            onPressed: () {
+              if (!mounted) {
+                return;
+              }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${entry.flowerName} deleted'),
-        action: SnackBarAction(
-          label: 'Undo',
-          onPressed: () {
-            if (!mounted) {
-              return;
-            }
+              setState(() {
+                final restoreIndex = deletedIndex.clamp(0, _entries.length);
 
-            setState(() {
-              final restoreIndex = deletedIndex.clamp(0, _entries.length);
-
-              _entries.insert(restoreIndex, entry);
-            });
-            unawaited(_saveEntries());
-          },
+                _entries.insert(restoreIndex, entry);
+              });
+              unawaited(_saveEntries());
+            },
+          ),
         ),
-      ),
-    );
+      );
   }
 
   Future<void> _showEntryDetails(DiaryEntry entry) async {
@@ -609,6 +728,10 @@ class _DiaryPageState extends State<DiaryPage> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
+          backgroundColor: diaryCream,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+          ),
           title: Row(
             children: [
               _stickerImage(
@@ -618,53 +741,90 @@ class _DiaryPageState extends State<DiaryPage> {
                 height: 40,
               ),
               const SizedBox(width: 12),
-              Expanded(child: Text(entry.flowerName)),
+              Expanded(
+                child: Text(
+                  entry.flowerName,
+                  style: const TextStyle(
+                    color: diaryDarkGreen,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
               if (entry.isFavorite)
-                const Icon(Icons.star, color: Color(0xFFE0A52B)),
+                const Icon(Icons.star, color: diaryPinkAccent),
             ],
           ),
           content: SizedBox(
             width: 420,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 110,
-                    height: 110,
-                    alignment: Alignment.center,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFE4F0E4),
-                      shape: BoxShape.circle,
-                    ),
-                    child: _stickerImage(
-                      entry.generatedSticker,
-                      entry.sticker,
-                      width: 96,
-                      height: 96,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 110,
+                      height: 110,
+                      alignment: Alignment.center,
+                      decoration: const BoxDecoration(
+                        color: diaryLightGreen,
+                        shape: BoxShape.circle,
+                      ),
+                      child: _stickerImage(
+                        entry.generatedSticker,
+                        entry.sticker,
+                        width: 96,
+                        height: 96,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'Location: ${entry.location}',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                Text('Date: ${_formatDate(entry.date)}'),
-                const SizedBox(height: 16),
-                const Text(
-                  'Diary entry',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  entry.notes.isEmpty
-                      ? 'No diary notes were recorded.'
-                      : entry.notes,
-                ),
-              ],
+                  const SizedBox(height: 20),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.location_on_outlined,
+                        color: diaryDarkGreen,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          entry.location,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.calendar_today_outlined,
+                        color: diaryDarkGreen,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(_formatDate(entry.date)),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  const Text(
+                    'Diary entry',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: diaryDarkGreen,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    entry.notes.isEmpty
+                        ? 'No diary notes were recorded.'
+                        : entry.notes,
+                    style: const TextStyle(height: 1.5, color: diaryTextGrey),
+                  ),
+                ],
+              ),
             ),
           ),
           actions: [
@@ -674,7 +834,7 @@ class _DiaryPageState extends State<DiaryPage> {
               },
               icon: Icon(
                 entry.isFavorite ? Icons.star : Icons.star_border,
-                color: const Color(0xFFE0A52B),
+                color: diaryPinkAccent,
               ),
               label: Text(entry.isFavorite ? 'Unfavourite' : 'Favourite'),
             ),
@@ -710,42 +870,32 @@ class _DiaryPageState extends State<DiaryPage> {
   @override
   void dispose() {
     _searchController.dispose();
+    _loadGeneration++;
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final visibleEntries = List<DiaryEntry>.from(_filteredEntries);
-
-    if (_sortOption == 'Newest') {
-      visibleEntries.sort(
-        (firstEntry, secondEntry) =>
-            secondEntry.date.compareTo(firstEntry.date),
-      );
-    } else {
-      visibleEntries.sort(
-        (firstEntry, secondEntry) =>
-            firstEntry.date.compareTo(secondEntry.date),
-      );
-    }
+    final visibleEntries = _visibleEntries;
 
     final favoriteCount = _entries.where((entry) => entry.isFavorite).length;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6FAF4),
+      backgroundColor: diaryCream,
       appBar: AppBar(
         title: const Text(
           'My Diary',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: const Color(0xFF3F6B45),
+        backgroundColor: diaryMainGreen,
         foregroundColor: Colors.white,
         centerTitle: true,
+        elevation: 0,
       ),
-      body: !_entriesReady
-          ? const Center(child: CircularProgressIndicator())
-          : Center(
-              child: ConstrainedBox(
+      body: Center(
+        child: !_entriesReady
+            ? const CircularProgressIndicator()
+            : ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 850),
                 child: ListView(
                   padding: const EdgeInsets.all(16),
@@ -755,13 +905,18 @@ class _DiaryPageState extends State<DiaryPage> {
                       style: TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF294D32),
+                        color: diaryDarkGreen,
                       ),
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Write about flowers you discover and customize each memory with a sticker.',
-                      style: TextStyle(fontSize: 16, color: Color(0xFF5F6F63)),
+                      'Write about flowers you discover and '
+                      'customize each memory with a sticker.',
+                      style: TextStyle(
+                        fontSize: 16,
+                        height: 1.5,
+                        color: diaryTextGrey,
+                      ),
                     ),
                     const SizedBox(height: 20),
                     TextField(
@@ -773,7 +928,10 @@ class _DiaryPageState extends State<DiaryPage> {
                       },
                       decoration: InputDecoration(
                         hintText: 'Search diary entries',
-                        prefixIcon: const Icon(Icons.search),
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: diaryDarkGreen,
+                        ),
                         suffixIcon: _searchText.isEmpty
                             ? null
                             : IconButton(
@@ -789,19 +947,53 @@ class _DiaryPageState extends State<DiaryPage> {
                               ),
                         filled: true,
                         fillColor: Colors.white,
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(
+                            color: diaryBorderGreen,
+                            width: 1.5,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(
+                            color: diaryMainGreen,
+                            width: 2,
+                          ),
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
                         ),
                       ),
                     ),
                     const SizedBox(height: 20),
                     DropdownButtonFormField<String>(
                       initialValue: _sortOption,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Sort entries',
-                        prefixIcon: Icon(Icons.sort),
-                        border: OutlineInputBorder(),
+                        prefixIcon: const Icon(
+                          Icons.sort,
+                          color: diaryDarkGreen,
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(
+                            color: diaryBorderGreen,
+                            width: 1.5,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(
+                            color: diaryMainGreen,
+                            width: 2,
+                          ),
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
                       items: const [
                         DropdownMenuItem(
@@ -824,26 +1016,65 @@ class _DiaryPageState extends State<DiaryPage> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    Container(
-                      decoration: BoxDecoration(
+
+                    // Uses Row and Switch rather than SwitchListTile.
+                    Material(
+                      color: Colors.white,
+                      shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFE0E8DF)),
+                        side: const BorderSide(color: diaryBorderGreen),
                       ),
-                      child: SwitchListTile(
-                        value: _showFavoritesOnly,
-                        onChanged: (value) {
-                          setState(() {
-                            _showFavoritesOnly = value;
-                          });
-                        },
-                        secondary: Icon(
-                          _showFavoritesOnly ? Icons.star : Icons.star_border,
-                          color: const Color(0xFFE0A52B),
+                      clipBehavior: Clip.antiAlias,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
                         ),
-                        title: const Text('Show favourites only'),
-                        subtitle: Text(
-                          '$favoriteCount '
-                          '${favoriteCount == 1 ? 'favourite' : 'favourites'}',
+                        child: Row(
+                          children: [
+                            Icon(
+                              _showFavoritesOnly
+                                  ? Icons.star
+                                  : Icons.star_border,
+                              color: diaryPinkAccent,
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Show favourites only',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                      color: diaryDarkGreen,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '$favoriteCount '
+                                    '${favoriteCount == 1 ? 'favourite' : 'favourites'}',
+                                    style: const TextStyle(
+                                      color: diaryTextGrey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Switch(
+                              value: _showFavoritesOnly,
+                              activeThumbColor: Colors.white,
+                              activeTrackColor: diaryMainGreen,
+                              inactiveThumbColor: Colors.white,
+                              inactiveTrackColor: const Color(0xFFB8C1BA),
+                              onChanged: (value) {
+                                setState(() {
+                                  _showFavoritesOnly = value;
+                                });
+                              },
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -853,7 +1084,7 @@ class _DiaryPageState extends State<DiaryPage> {
                       '${visibleEntries.length == 1 ? 'entry' : 'entries'}',
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF5F6F63),
+                        color: diaryTextGrey,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -892,18 +1123,18 @@ class _DiaryPageState extends State<DiaryPage> {
                   ],
                 ),
               ),
-            ),
+      ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: !_entriesReady
-            ? null
-            : () {
-                _showEntryForm();
-              },
-        backgroundColor: const Color(0xFF3F6B45),
+        onPressed: !_entriesReady ? null : () => _showEntryForm(),
+        backgroundColor: diaryDarkGreen,
         foregroundColor: Colors.white,
+        elevation: 4,
         tooltip: 'Create a new diary entry',
         icon: const Icon(Icons.add),
-        label: const Text('Add Entry'),
+        label: const Text(
+          'Add Entry',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }
@@ -979,13 +1210,17 @@ class DiaryEntryCard extends StatelessWidget {
     return Card(
       elevation: 2,
       color: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shadowColor: Colors.black.withValues(alpha: 0.12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: Color(0xFFE5EEE7)),
+      ),
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
         onTap: onTap,
         leading: CircleAvatar(
           radius: 28,
-          backgroundColor: const Color(0xFFE4F0E4),
+          backgroundColor: diaryLightGreen,
           child: ClipOval(
             child: _stickerImage(
               generatedSticker,
@@ -1003,23 +1238,24 @@ class DiaryEntryCard extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF294D32),
+                  color: diaryDarkGreen,
                 ),
               ),
             ),
             if (isFavorite)
-              const Icon(Icons.star, color: Color(0xFFE0A52B), size: 22),
+              const Icon(Icons.star, color: diaryPinkAccent, size: 22),
           ],
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 6),
           child: Text(
             '$location\n$date',
-            style: const TextStyle(height: 1.5, color: Color(0xFF5F6F63)),
+            style: const TextStyle(height: 1.5, color: diaryTextGrey),
           ),
         ),
         trailing: PopupMenuButton<String>(
           tooltip: 'Diary entry options',
+          icon: const Icon(Icons.more_vert, color: diaryDarkGreen),
           onSelected: (value) {
             if (value == 'favorite') {
               onFavorite();
@@ -1037,7 +1273,7 @@ class DiaryEntryCard extends StatelessWidget {
                   children: [
                     Icon(
                       isFavorite ? Icons.star : Icons.star_border,
-                      color: const Color(0xFFE0A52B),
+                      color: diaryPinkAccent,
                     ),
                     const SizedBox(width: 10),
                     Text(
@@ -1052,7 +1288,7 @@ class DiaryEntryCard extends StatelessWidget {
                 value: 'edit',
                 child: Row(
                   children: [
-                    Icon(Icons.edit),
+                    Icon(Icons.edit, color: diaryDarkGreen),
                     SizedBox(width: 10),
                     Text('Edit'),
                   ],
@@ -1087,9 +1323,9 @@ class _EmptyDiaryMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String title;
-    String message;
-    IconData icon;
+    late final String title;
+    late final String message;
+    late final IconData icon;
 
     if (favoritesOnly) {
       title = 'No favourite entries';
@@ -1105,25 +1341,40 @@ class _EmptyDiaryMessage extends StatelessWidget {
       icon = Icons.menu_book_outlined;
     }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 60),
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 50),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: diaryBorderGreen),
+      ),
       child: Column(
         children: [
-          Icon(icon, size: 70, color: const Color(0xFF8AA18D)),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: const BoxDecoration(
+              color: diaryLightGreen,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 46, color: diaryDarkGreen),
+          ),
           const SizedBox(height: 16),
           Text(
             title,
+            textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF294D32),
+              color: diaryDarkGreen,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Color(0xFF5F6F63)),
+            style: const TextStyle(height: 1.5, color: diaryTextGrey),
           ),
         ],
       ),
