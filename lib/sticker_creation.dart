@@ -21,6 +21,29 @@ enum AdvancedStickerEffect {
   final String label;
 }
 
+enum StickerGradientPreset {
+  sunset('Sunset', [Color(0xffff4d8d), Color(0xffff9f43), Color(0xffffe66d)]),
+  ocean('Ocean', [Color(0xff36d1dc), Color(0xff4389ff), Color(0xff8c52ff)]),
+  blossom('Blossom', [Color(0xffff73b9), Color(0xffbd6bff), Color(0xff6a8dff)]),
+  spring('Spring', [Color(0xffffdf62), Color(0xff75d66f), Color(0xff38c9b0)]),
+  rainbow('Pastel Rainbow', [
+    Color(0xffff9ed2),
+    Color(0xffffc58a),
+    Color(0xffffef8a),
+    Color(0xffafe8a3),
+    Color(0xff8ee5d9),
+    Color(0xff91c7ff),
+    Color(0xffc2a2ff),
+  ]);
+
+  const StickerGradientPreset(this.label, this.colors);
+
+  final String label;
+  final List<Color> colors;
+
+  String get stickerId => 'gradient_$name';
+}
+
 enum StickerAnimation {
   none('No animation', null),
   fire('Fire', fireAnimationAsset),
@@ -31,7 +54,7 @@ enum StickerAnimation {
     'Red White & Blue Firework',
     'Animations/Red White & Blue Firework.json',
   ),
-  rewardLightEffect('Reward Light Effect', 'Animations/Reward light effect.json');
+  rewardLightEffect('Reward Light Effect', rewardLightAnimationAsset);
 
   const StickerAnimation(this.label, this.assetPath);
 
@@ -167,11 +190,14 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
   bool _dropShadowEnabled = false;
   double _dropShadowStrength = 0.6;
   AdvancedStickerEffect _advancedEffect = AdvancedStickerEffect.none;
+  bool _stickerTintEnabled = false;
+  StickerGradientPreset? _selectedGradient;
   StickerAnimation _stickerAnimation = StickerAnimation.none;
   bool _isGenerating = false;
   String? _errorMessage;
 
   String get selectedStickerId =>
+      _selectedGradient?.stickerId ??
       _preservedStickerId ??
       StickerColourWheel.encodeStickerId(_selectedStickerColour);
 
@@ -180,10 +206,33 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
     super.initState();
     final initialSticker = widget.initialSticker;
     if (initialSticker?.stickerBytes != null) {
-      _baseStickerBytes = initialSticker!.stickerBytes;
+      _baseStickerBytes =
+          initialSticker!.baseStickerBytes ?? initialSticker.stickerBytes;
       _stickerBytes = initialSticker.stickerBytes;
       _selectedStickerColour = StickerColourWheel.colourFromStickerId(
         initialSticker.stickerId,
+      );
+      _stickerTintEnabled =
+          initialSticker.stickerTintEnabled ??
+          StickerColourWheel.isColourStickerId(initialSticker.stickerId);
+      _selectedGradient = StickerGradientPreset.values
+          .where(
+            (preset) =>
+                preset.stickerId ==
+                (initialSticker.gradientColorId ??
+                    (initialSticker.stickerId?.startsWith('gradient_') == true
+                        ? initialSticker.stickerId
+                        : null)),
+          )
+          .firstOrNull;
+      _whiteOutlineEnabled = initialSticker.whiteOutlineEnabled;
+      _outlineThickness = initialSticker.outlineThickness;
+      _innerShadowEnabled = initialSticker.innerShadowEnabled;
+      _dropShadowEnabled = initialSticker.dropShadowEnabled;
+      _dropShadowStrength = initialSticker.dropShadowStrength;
+      _advancedEffect = AdvancedStickerEffect.values.firstWhere(
+        (effect) => effect.name == initialSticker.advancedEffectId,
+        orElse: () => AdvancedStickerEffect.none,
       );
       if (!StickerColourWheel.isColourStickerId(initialSticker.stickerId)) {
         _preservedStickerId = initialSticker.stickerId;
@@ -303,7 +352,6 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
           _StickerPreview(
             photo: _photos.isEmpty ? null : _photos[selectedPhotoIndex],
             stickerBytes: _stickerBytes,
-            stickerColour: _selectedStickerColour,
             animationAsset: _stickerAnimation.assetPath,
           ),
           const SizedBox(height: 18),
@@ -467,8 +515,7 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
                     : (_) {
                         if (_stickerAnimation == StickerAnimation.none) {
                           setState(
-                            () => _stickerAnimation =
-                                StickerAnimation.fire,
+                            () => _stickerAnimation = StickerAnimation.fire,
                           );
                         }
                       },
@@ -512,10 +559,48 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
             onColourSelected: (colour) {
               setState(() {
                 _selectedStickerColour = colour;
+                _selectedGradient = null;
+                _stickerTintEnabled = true;
                 _preservedStickerId = null;
               });
               unawaited(_refreshStickerEffects());
             },
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Gradient colours',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: StickerGradientPreset.values
+                .map(
+                  (preset) => ChoiceChip(
+                    avatar: Container(
+                      width: 22,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(colors: preset.colors),
+                      ),
+                    ),
+                    label: Text(preset.label),
+                    selected: _selectedGradient == preset,
+                    onSelected: _baseStickerBytes == null || _busy
+                        ? null
+                        : (_) {
+                            setState(() {
+                              _selectedGradient = preset;
+                              _stickerTintEnabled = false;
+                              _preservedStickerId = null;
+                            });
+                            unawaited(_refreshStickerEffects());
+                          },
+                  ),
+                )
+                .toList(),
           ),
           const SizedBox(height: 24),
           FilledButton.icon(
@@ -559,7 +644,10 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
               dropShadow: _dropShadowEnabled,
               dropShadowStrength: _dropShadowStrength,
               advancedEffect: _advancedEffect,
-              stickerTintColor: _selectedStickerColour,
+              stickerTintColor: _stickerTintEnabled
+                  ? _selectedStickerColour
+                  : null,
+              stickerGradientColors: _selectedGradient?.colors,
             );
       if (!mounted) return;
       setState(() {
@@ -588,7 +676,8 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
       dropShadow: _dropShadowEnabled,
       dropShadowStrength: _dropShadowStrength,
       advancedEffect: _advancedEffect,
-      stickerTintColor: _selectedStickerColour,
+      stickerTintColor: _stickerTintEnabled ? _selectedStickerColour : null,
+      stickerGradientColors: _selectedGradient?.colors,
     );
     if (!mounted) return;
     setState(() => _stickerBytes = renderedStickerBytes);
@@ -608,9 +697,23 @@ class _StickerCreationPageState extends State<StickerCreationPage> {
 
   void _saveSticker() {
     final stickerBytes = _stickerBytes;
-    if (stickerBytes == null || _photos.isEmpty) return;
+    final baseStickerBytes = _baseStickerBytes;
+    if (stickerBytes == null || baseStickerBytes == null || _photos.isEmpty) {
+      return;
+    }
     widget.onSaved(
-      _photos[selectedPhotoIndex],
+      _photos[selectedPhotoIndex].copyWith(
+        baseStickerBytes: baseStickerBytes,
+        whiteOutlineEnabled: _whiteOutlineEnabled,
+        outlineThickness: _outlineThickness,
+        innerShadowEnabled: _innerShadowEnabled,
+        dropShadowEnabled: _dropShadowEnabled,
+        dropShadowStrength: _dropShadowStrength,
+        advancedEffectId: _advancedEffect.name,
+        stickerTintEnabled: _stickerTintEnabled,
+        gradientColorId: _selectedGradient?.stickerId,
+        clearGradientColorId: _selectedGradient == null,
+      ),
       stickerBytes,
       selectedStickerId,
       _stickerAnimation.assetPath,
@@ -747,12 +850,14 @@ Future<Uint8List> applyStickerEffects(
   double dropShadowStrength = 0.6,
   AdvancedStickerEffect advancedEffect = AdvancedStickerEffect.none,
   Color? stickerTintColor,
+  List<Color>? stickerGradientColors,
 }) async {
   if (!whiteOutline &&
       !innerShadow &&
       !dropShadow &&
       advancedEffect == AdvancedStickerEffect.none &&
-      stickerTintColor == null) {
+      stickerTintColor == null &&
+      stickerGradientColors == null) {
     return stickerBytes;
   }
   try {
@@ -835,6 +940,14 @@ Future<Uint8List> applyStickerEffects(
         stickerTintColor,
       );
     }
+    if (stickerGradientColors != null) {
+      await _drawColourGradientSurface(
+        canvas,
+        image,
+        Offset(margin.toDouble(), margin.toDouble()),
+        stickerGradientColors,
+      );
+    }
     switch (advancedEffect) {
       case AdvancedStickerEffect.none:
         break;
@@ -898,6 +1011,35 @@ Future<void> _drawColourTintSurface(
       ).createShader(bounds)
       ..blendMode = BlendMode.plus;
     canvas.drawRect(bounds, glowPaint);
+  });
+}
+
+Future<void> _drawColourGradientSurface(
+  Canvas canvas,
+  ui.Image image,
+  Offset origin,
+  List<Color> colours,
+) async {
+  await _drawMaskedSurface(canvas, image, origin, (canvas, bounds) {
+    final gradientPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: colours
+            .map((colour) => colour.withValues(alpha: 0.56))
+            .toList(),
+      ).createShader(bounds)
+      ..blendMode = BlendMode.srcOver;
+    canvas.drawRect(bounds, gradientPaint);
+
+    final highlightPaint = Paint()
+      ..shader = RadialGradient(
+        center: const Alignment(-0.45, -0.55),
+        radius: 1.05,
+        colors: [Colors.white.withValues(alpha: 0.04), Colors.transparent],
+      ).createShader(bounds)
+      ..blendMode = BlendMode.plus;
+    canvas.drawRect(bounds, highlightPaint);
   });
 }
 
@@ -1224,13 +1366,11 @@ class _StickerPreview extends StatelessWidget {
   const _StickerPreview({
     required this.photo,
     required this.stickerBytes,
-    required this.stickerColour,
     required this.animationAsset,
   });
 
   final SavedFlowerPhoto? photo;
   final Uint8List? stickerBytes;
-  final Color stickerColour;
   final String? animationAsset;
 
   @override
@@ -1242,35 +1382,31 @@ class _StickerPreview extends StatelessWidget {
       );
     }
     final image = stickerBytes == null
-        ? Stack(
-            fit: StackFit.expand,
-            children: [
-              Image(
-                image: photo!.image,
-                fit: BoxFit.contain,
-                errorBuilder: (_, error, stack) => const Center(
-                  child: Text('Photo unavailable. Please choose another.'),
-                ),
-              ),
-              IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: stickerColour.withValues(alpha: 0.16),
-                  ),
-                ),
-              ),
-            ],
+        ? Image(
+            image: photo!.image,
+            fit: BoxFit.contain,
+            errorBuilder: (_, error, stack) => const Center(
+              child: Text('Photo unavailable. Please choose another.'),
+            ),
           )
         : Image.memory(stickerBytes!, fit: BoxFit.contain);
     return SizedBox(
       height: 220,
       child: Stack(
         fit: StackFit.expand,
+        key: const ValueKey('sticker-preview-animation-layers'),
         children: [
+          if (animationAsset == rewardLightAnimationAsset)
+            StickerAnimationOverlay(
+              key: ValueKey(animationAsset),
+              stickerBytes: stickerBytes,
+              animationAsset: animationAsset!,
+              opacity: 0.82,
+            ),
           image,
           if (animationAsset != null &&
-              (animationAsset != fireAnimationAsset ||
-                  stickerBytes != null))
+              animationAsset != rewardLightAnimationAsset &&
+              (animationAsset != fireAnimationAsset || stickerBytes != null))
             StickerAnimationOverlay(
               key: ValueKey(animationAsset),
               stickerBytes: stickerBytes,
@@ -1318,6 +1454,7 @@ class StickerColourWheel extends StatelessWidget {
       (stickerId == 'colour_change' ||
           stickerId == 'colour_variation' ||
           stickerId == 'bubble_border' ||
+          stickerId.startsWith('gradient_') ||
           stickerId.startsWith('colour_'));
 
   static Color colourFromStickerId(String? stickerId) {

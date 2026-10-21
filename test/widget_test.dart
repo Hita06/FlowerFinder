@@ -1,13 +1,18 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowerfinderscanner/homepage.dart';
 import 'package:flowerfinderscanner/main_navigation.dart';
+import 'package:flowerfinderscanner/diary_entry.dart';
+import 'package:flowerfinderscanner/diary_storage.dart';
+import 'package:flowerfinderscanner/pages/diary_page.dart';
 import 'package:flowerfinderscanner/profile_storage.dart';
 import 'package:flowerfinderscanner/sticker_creation.dart';
+import 'package:flowerfinderscanner/sticker_animation_overlay.dart';
 import 'package:flowerfinderscanner/sticker_storage.dart';
 import 'package:flowerfinderscanner/user_profile.dart';
 
@@ -15,12 +20,34 @@ import 'package:google_fonts/google_fonts.dart';
 
 late Directory _testStorageDirectory;
 
+class _MemoryDiaryStorage extends DiaryStorage {
+  final Map<String, List<DiaryEntry>> entriesByAccount = {};
+
+  @override
+  Future<List<DiaryEntry>?> loadEntries(String accountId) async {
+    final entries = entriesByAccount[accountId];
+    return entries
+        ?.map((entry) => DiaryEntry.fromJson(entry.toJson()))
+        .toList();
+  }
+
+  @override
+  Future<void> saveEntries(String accountId, List<DiaryEntry> entries) async {
+    entriesByAccount[accountId] = entries
+        .map((entry) => DiaryEntry.fromJson(entry.toJson()))
+        .toList();
+  }
+}
+
 MainNavigation _mainNavigation() {
   return MainNavigation(
     profileStorage: ProfileStorage(
       directoryProvider: () async => _testStorageDirectory,
     ),
     stickerStorage: StickerStorage(
+      directoryProvider: () async => _testStorageDirectory,
+    ),
+    diaryStorage: DiaryStorage(
       directoryProvider: () async => _testStorageDirectory,
     ),
   );
@@ -401,6 +428,90 @@ void main() {
     expect(diarySticker?.createdAt, DateTime(2026, 9, 18));
   });
 
+  testWidgets('diary opens a new entry with the generated sticker selected', (
+    WidgetTester tester,
+  ) async {
+    final stickerBytes = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    );
+    final sticker = GeneratedStickerAsset(
+      stickerBytes: stickerBytes,
+      stickerId: 'diary-rose',
+      label: 'Diary rose',
+    );
+    final diaryStorage = _MemoryDiaryStorage();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DiaryPage(
+          accountId: 'diary-test@example.com',
+          storage: diaryStorage,
+          stickerToAdd: sticker,
+          stickerRequestId: 1,
+        ),
+      ),
+    );
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 50)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add Diary Entry'), findsOneWidget);
+    expect(find.text('Diary rose'), findsOneWidget);
+    expect(find.byType(Image), findsWidgets);
+    expect(
+      tester.widget<EditableText>(find.byType(EditableText).first).autofocus,
+      isFalse,
+    );
+
+    await tester.enterText(find.byType(TextFormField).at(0), 'Rose');
+    await tester.enterText(find.byType(TextFormField).at(1), 'Garden');
+    expect(
+      tester
+          .widget<TextFormField>(find.byType(TextFormField).at(0))
+          .controller!
+          .text,
+      'Rose',
+    );
+    expect(
+      tester
+          .widget<TextFormField>(find.byType(TextFormField).at(1))
+          .controller!
+          .text,
+      'Garden',
+    );
+    final saveButton = find.widgetWithText(FilledButton, 'Save');
+    await tester.ensureVisible(saveButton);
+    await tester.tap(saveButton);
+    await tester.pumpAndSettle();
+    expect(find.text('Add Diary Entry'), findsNothing);
+    expect(find.text('Rose'), findsOneWidget);
+
+    final persistedEntries = await diaryStorage.loadEntries(
+      'diary-test@example.com',
+    );
+    expect(persistedEntries, hasLength(3));
+    expect(find.text('Rose'), findsOneWidget);
+    expect(find.byType(Image), findsWidgets);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DiaryPage(
+          accountId: 'diary-test@example.com',
+          storage: diaryStorage,
+        ),
+      ),
+    );
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 50)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Rose'), findsOneWidget);
+    expect(find.textContaining('Garden'), findsOneWidget);
+    expect(find.byType(Image), findsWidgets);
+  });
+
   testWidgets('sticker action dialog is safe without handoff callbacks', (
     WidgetTester tester,
   ) async {
@@ -669,9 +780,7 @@ void main() {
     );
     expect(
       tester
-          .widget<ChoiceChip>(
-            find.widgetWithText(ChoiceChip, 'Large square'),
-          )
+          .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Large square'))
           .selected,
       isTrue,
     );
@@ -749,9 +858,147 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Update sticker'));
     await tester.pumpAndSettle();
 
-    expect(savedPhoto, same(sticker));
+    expect(savedPhoto?.image, same(sticker.image));
+    expect(savedPhoto?.label, sticker.label);
+    expect(savedPhoto?.baseStickerBytes, sticker.stickerBytes);
     expect(savedBytes, stickerBytes);
     expect(savedStickerId, 'editable-sticker');
+  });
+
+  testWidgets('editing inner shadow starts from the saved base sticker', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 2000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final baseStickerBytes = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    );
+    final stickerBytes = (await tester.runAsync(
+      () => applyStickerEffects(baseStickerBytes, innerShadow: true),
+    ))!;
+    Uint8List? savedBytes;
+    final sticker = SavedFlowerPhoto(
+      image: MemoryImage(stickerBytes),
+      stickerId: 'original',
+      stickerBytes: stickerBytes,
+      baseStickerBytes: baseStickerBytes,
+      innerShadowEnabled: true,
+      stickerTintEnabled: false,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StickerCreationPage(
+          photos: [sticker],
+          initialSticker: sticker,
+          onSaved: (photo, bytes, stickerId, animationAsset) {
+            savedBytes = bytes;
+          },
+        ),
+      ),
+    );
+
+    final innerShadowTile = find.widgetWithText(SwitchListTile, 'Inner Shadow');
+    expect(tester.widget<SwitchListTile>(innerShadowTile).value, isTrue);
+    await tester.ensureVisible(innerShadowTile);
+    await tester.tap(
+      find.descendant(of: innerShadowTile, matching: find.byType(Switch)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('Update sticker'),
+      180,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Update sticker'));
+    await tester.pumpAndSettle();
+
+    expect(savedBytes, baseStickerBytes);
+  });
+
+  testWidgets('reward light effect renders behind the sticker preview', (
+    WidgetTester tester,
+  ) async {
+    final stickerBytes = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    );
+    final sticker = SavedFlowerPhoto(
+      image: MemoryImage(stickerBytes),
+      stickerBytes: stickerBytes,
+      animationAsset: 'Animations/Reward light effect.json',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StickerCreationPage(
+          photos: [sticker],
+          initialSticker: sticker,
+          onSaved: (photo, bytes, stickerId, animationAsset) {},
+        ),
+      ),
+    );
+
+    final previewLayers = tester.widget<Stack>(
+      find.byKey(const ValueKey('sticker-preview-animation-layers')),
+    );
+    expect(previewLayers.children.first, isA<StickerAnimationOverlay>());
+    expect(previewLayers.children.last, isA<Image>());
+  });
+
+  testWidgets('sticker editor offers selectable gradient colour presets', (
+    WidgetTester tester,
+  ) async {
+    final stickerBytes = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    );
+    final sticker = SavedFlowerPhoto(
+      image: MemoryImage(stickerBytes),
+      stickerBytes: stickerBytes,
+      baseStickerBytes: stickerBytes,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StickerCreationPage(
+          photos: [sticker],
+          initialSticker: sticker,
+          onSaved: (photo, bytes, stickerId, animationAsset) {},
+        ),
+      ),
+    );
+    await tester.scrollUntilVisible(
+      find.widgetWithText(ChoiceChip, 'Sunset'),
+      180,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Sunset'));
+    await tester.pump();
+
+    expect(
+      tester
+          .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Sunset'))
+          .selected,
+      isTrue,
+    );
+
+    await tester.scrollUntilVisible(
+      find.widgetWithText(ChoiceChip, 'Pastel Rainbow'),
+      180,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Pastel Rainbow'));
+    await tester.pump();
+    expect(
+      tester
+          .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Pastel Rainbow'))
+          .selected,
+      isTrue,
+    );
   });
 
   testWidgets('sticker animation can be added or removed while editing', (

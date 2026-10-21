@@ -222,6 +222,33 @@ void main() {
     );
   });
 
+  test('gradient presets produce visible colour transitions', () async {
+    final stickerBytes = await _transparentPngWithFlowerBounds(
+      canvasSize: 48,
+      flowerBounds: const Rect.fromLTWH(8, 8, 32, 32),
+    );
+
+    for (final preset in StickerGradientPreset.values) {
+      final gradientBytes = await applyStickerEffects(
+        stickerBytes,
+        stickerGradientColors: preset.colors,
+      );
+      final gradient = await _decodeRawRgba(gradientBytes);
+      final topLeft = (12 * gradient.width + 12) * 4;
+      final bottomRight = (35 * gradient.width + 35) * 4;
+      final channelDifference =
+          (gradient.pixels[topLeft] - gradient.pixels[bottomRight]).abs() +
+          (gradient.pixels[topLeft + 1] - gradient.pixels[bottomRight + 1])
+              .abs() +
+          (gradient.pixels[topLeft + 2] - gradient.pixels[bottomRight + 2])
+              .abs();
+
+      expect(gradient.width, 48, reason: preset.label);
+      expect(gradient.height, 48, reason: preset.label);
+      expect(channelDifference, greaterThan(40), reason: preset.label);
+    }
+  });
+
   test('rainbow prism advanced effect adds rainbow surface colour', () async {
     final stickerBytes = await _transparentPngWithFlowerBounds(
       canvasSize: 48,
