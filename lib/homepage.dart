@@ -362,7 +362,7 @@ class FlowerOfTheDayCard extends StatelessWidget {
     debugPrint(
       'Flower: ${flower.name}, image: ${flower.imagePath}',
     );
-
+    
     return Card(
       clipBehavior: Clip.antiAlias,
       color: Colors.white,
