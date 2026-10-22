@@ -12,7 +12,10 @@ import 'flower_storage_service.dart';
 import 'watering_reminder_page.dart';
 
 class SavedFlowersPage extends StatefulWidget {
-  const SavedFlowersPage({super.key});
+  const SavedFlowersPage({super.key, this.wateringCare = false});
+
+  // Home opens this list as a flower picker for watering reminders.
+  final bool wateringCare;
 
   @override
   State<SavedFlowersPage> createState() => _SavedFlowersPageState();
@@ -47,10 +50,7 @@ class _SavedFlowersPageState extends State<SavedFlowersPage> {
           flower['imageFileName'] as String?,
         );
 
-        resolvedFlowers.add({
-          ...flower,
-          'imagePath': imagePath,
-        });
+        resolvedFlowers.add({...flower, 'imagePath': imagePath});
       }
 
       if (!mounted) return;
@@ -186,9 +186,7 @@ class _SavedFlowersPageState extends State<SavedFlowersPage> {
 
   Widget _body() {
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: darkGreen),
-      );
+      return const Center(child: CircularProgressIndicator(color: darkGreen));
     }
 
     if (_error != null) {
@@ -217,11 +215,7 @@ class _SavedFlowersPageState extends State<SavedFlowersPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.local_florist_outlined,
-                size: 72,
-                color: darkGreen,
-              ),
+              Icon(Icons.local_florist_outlined, size: 72, color: darkGreen),
               SizedBox(height: 16),
               Text(
                 'No saved flowers yet',
@@ -249,8 +243,7 @@ class _SavedFlowersPageState extends State<SavedFlowersPage> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         itemCount: _flowers.length,
-        separatorBuilder: (context, index) =>
-            const SizedBox(height: 12),
+        separatorBuilder: (context, index) => const SizedBox(height: 12),
         itemBuilder: (context, index) {
           final flower = _flowers[index];
 
@@ -275,7 +268,13 @@ class _SavedFlowersPageState extends State<SavedFlowersPage> {
                 ),
                 onPressed: () => _openReminder(flower),
               ),
-              onTap: () => _openFlower(flower),
+              onTap: () {
+                if (widget.wateringCare) {
+                  _openReminder(flower);
+                } else {
+                  _openFlower(flower);
+                }
+              },
             ),
           );
         },
@@ -288,7 +287,7 @@ class _SavedFlowersPageState extends State<SavedFlowersPage> {
     return Scaffold(
       backgroundColor: creamBackground,
       appBar: AppBar(
-        title: const Text('Saved Flowers'),
+        title: Text(widget.wateringCare ? 'Water Care' : 'Saved Flowers'),
         centerTitle: true,
         backgroundColor: mainGreen,
         foregroundColor: Colors.black,
@@ -300,7 +299,18 @@ class _SavedFlowersPageState extends State<SavedFlowersPage> {
           ),
         ],
       ),
-      body: _body(),
+      body: Column(
+        children: [
+          if (widget.wateringCare)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: Text(
+                'Select a saved flower to set or change its watering reminder.',
+              ),
+            ),
+          Expanded(child: _body()),
+        ],
+      ),
       bottomNavigationBar: kDebugMode
           ? SafeArea(
               child: Padding(

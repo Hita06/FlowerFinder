@@ -8,11 +8,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
+import 'diary_storage.dart';
 import 'flower_search_page.dart';
 import 'homepage.dart';
-import 'diary_storage.dart';
 import 'pages/diary_page.dart';
 import 'profile_storage.dart';
+import 'saved_flowers_page.dart';
 import 'scanner_page.dart';
 import 'sticker_creation.dart';
 import 'sticker_storage.dart';
@@ -46,25 +47,31 @@ class _MainNavigationState extends State<MainNavigation> {
 
   final _profileKey = GlobalKey<UserProfilePageState>();
   final List<SavedFlowerPhoto> _savedFlowerPhotos = [];
+
   late final StickerStorage _stickerStorage =
       widget.stickerStorage ?? StickerStorage();
   late final DiaryStorage _diaryStorage = widget.diaryStorage ?? DiaryStorage();
   late final ProfileStorage _profileStorage =
       widget.profileStorage ?? const ProfileStorage();
+
   EditableProfileDetails? _savedProfileDetails;
   ProfileCollectionSettings _savedCollectionSettings =
       const ProfileCollectionSettings();
+
   Future<void> _profileWriteQueue = Future<void>.value();
   Future<void> _collectionWriteQueue = Future<void>.value();
   Future<void> _stickerWriteQueue = Future<void>.value();
   Future<void> _pendingProfileWrite = Future<void>.value();
   Future<void> _pendingCollectionWrite = Future<void>.value();
   Future<void> _pendingStickerWrite = Future<void>.value();
+
   Timer? _stickerWriteDebounce;
+
   int currentIndex = homeTab;
   int _diaryStickerRequestId = 0;
   GeneratedStickerAsset? _diaryStickerToAdd;
   int _accountLoadGeneration = 0;
+
   bool _profileLoaded = false;
   bool _collectionLoaded = false;
   bool _stickersLoaded = false;
@@ -74,9 +81,12 @@ class _MainNavigationState extends State<MainNavigation> {
 
   UserAccount get _account => _accountWithSavedProfile(_baseAccount);
 
+  String get _accountStorageId => _baseAccount.email;
+
   UserAccount _accountWithSavedProfile(UserAccount baseAccount) {
     final details = _savedProfileDetails;
     if (details == null) return baseAccount;
+
     return UserAccount(
       name: details.name ?? baseAccount.name,
       username: baseAccount.username,
@@ -85,7 +95,15 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 
-  String get _accountStorageId => _baseAccount.email;
+  @override
+  void initState() {
+    super.initState();
+
+    final generation = _accountLoadGeneration;
+    unawaited(_loadSavedProfile(generation));
+    unawaited(_loadSavedCollectionSettings(generation));
+    unawaited(_loadSavedStickers(generation));
+  }
 
   @override
   void dispose() {
@@ -94,18 +112,11 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    final generation = _accountLoadGeneration;
-    unawaited(_loadSavedProfile(generation));
-    unawaited(_loadSavedCollectionSettings(generation));
-    unawaited(_loadSavedStickers(generation));
-  }
-
-  @override
   void didUpdateWidget(covariant MainNavigation oldWidget) {
     super.didUpdateWidget(oldWidget);
+
     if (oldWidget.account?.email == widget.account?.email) return;
+
     if (_stickerWriteDebounce != null) {
       _stickerWriteDebounce!.cancel();
       _stickerWriteDebounce = null;
@@ -115,7 +126,9 @@ class _MainNavigationState extends State<MainNavigation> {
             UserProfilePageState.defaultAccount.email,
       );
     }
+
     final generation = ++_accountLoadGeneration;
+
     setState(() {
       _savedFlowerPhotos.clear();
       _savedProfileDetails = null;
@@ -124,6 +137,7 @@ class _MainNavigationState extends State<MainNavigation> {
       _collectionLoaded = false;
       _stickersLoaded = false;
     });
+
     unawaited(_loadSavedProfile(generation));
     unawaited(_loadSavedCollectionSettings(generation));
     unawaited(_loadSavedStickers(generation));
@@ -132,11 +146,13 @@ class _MainNavigationState extends State<MainNavigation> {
   Future<void> _loadSavedProfile(int generation) async {
     final accountId = _accountStorageId;
     final savedProfile = await _profileStorage.loadProfile(accountId);
+
     if (!mounted ||
         generation != _accountLoadGeneration ||
         accountId != _accountStorageId) {
       return;
     }
+
     setState(() {
       _savedProfileDetails = savedProfile;
       _profileLoaded = true;
@@ -146,11 +162,13 @@ class _MainNavigationState extends State<MainNavigation> {
   Future<void> _loadSavedCollectionSettings(int generation) async {
     final accountId = _accountStorageId;
     final settings = await _profileStorage.loadCollectionSettings(accountId);
+
     if (!mounted ||
         generation != _accountLoadGeneration ||
         accountId != _accountStorageId) {
       return;
     }
+
     setState(() {
       _savedCollectionSettings = settings;
       _collectionLoaded = true;
@@ -164,18 +182,23 @@ class _MainNavigationState extends State<MainNavigation> {
       profileColorId: account.profileColorId,
     );
     final accountId = _accountStorageId;
+
     setState(() {
       _savedProfileDetails = details;
     });
+
     final write = _profileWriteQueue.then(
       (_) => _profileStorage.saveProfile(accountId, details),
     );
-    // Recover the queue after a failure; the original Future reports it below.
+
+    // Allow later writes to continue if this write fails.
     _profileWriteQueue = write.then<void>(
       (_) {},
       onError: (Object error, StackTrace stackTrace) {},
     );
+
     _pendingProfileWrite = write;
+
     unawaited(
       write.then<void>(
         (_) {},
@@ -189,11 +212,13 @@ class _MainNavigationState extends State<MainNavigation> {
   Future<void> _loadSavedStickers(int generation) async {
     final accountId = _accountStorageId;
     final savedStickers = await _stickerStorage.loadStickers(accountId);
+
     if (!mounted ||
         generation != _accountLoadGeneration ||
         accountId != _accountStorageId) {
       return;
     }
+
     setState(() {
       _savedFlowerPhotos
         ..clear()
@@ -204,15 +229,20 @@ class _MainNavigationState extends State<MainNavigation> {
 
   void _persistSavedCollectionSettings(ProfileCollectionSettings settings) {
     final accountId = _accountStorageId;
+
     setState(() => _savedCollectionSettings = settings);
+
     final write = _collectionWriteQueue.then(
       (_) => _profileStorage.saveCollectionSettings(accountId, settings),
     );
+
     _collectionWriteQueue = write.then<void>(
       (_) {},
       onError: (Object error, StackTrace stackTrace) {},
     );
+
     _pendingCollectionWrite = write;
+
     unawaited(
       write.then<void>(
         (_) {},
@@ -225,6 +255,7 @@ class _MainNavigationState extends State<MainNavigation> {
 
   void _persistSavedStickers({bool debounce = false}) {
     _stickerWriteDebounce?.cancel();
+
     if (debounce) {
       _stickerWriteDebounce = Timer(const Duration(milliseconds: 300), () {
         _stickerWriteDebounce = null;
@@ -232,21 +263,26 @@ class _MainNavigationState extends State<MainNavigation> {
       });
       return;
     }
+
     _enqueueSavedStickerWrite();
   }
 
   void _enqueueSavedStickerWrite({String? accountId}) {
     final targetAccountId = accountId ?? _accountStorageId;
     final snapshot = List<SavedFlowerPhoto>.of(_savedFlowerPhotos);
+
     final write = _stickerWriteQueue.then(
       (_) => _stickerStorage.saveStickers(targetAccountId, snapshot),
     );
-    // Recover the queue after a failure; the original Future reports it below.
+
+    // Allow later writes to continue if this write fails.
     _stickerWriteQueue = write.then<void>(
       (_) {},
       onError: (Object error, StackTrace stackTrace) {},
     );
+
     _pendingStickerWrite = write;
+
     unawaited(
       write.then<void>(
         (_) {},
@@ -265,6 +301,7 @@ class _MainNavigationState extends State<MainNavigation> {
   ) {
     final index = _savedStickerIndex(sticker);
     if (index < 0) return;
+
     setState(() {
       _savedFlowerPhotos[index] = sticker.copyWith(
         boardPositionX: positionX,
@@ -272,12 +309,14 @@ class _MainNavigationState extends State<MainNavigation> {
         boardScale: scale,
       );
     });
+
     _persistSavedStickers(debounce: true);
   }
 
   int _savedStickerIndex(SavedFlowerPhoto sticker) {
     final directIndex = _savedFlowerPhotos.indexOf(sticker);
     if (directIndex >= 0) return directIndex;
+
     if (sticker.createdAt != null) {
       return _savedFlowerPhotos.indexWhere(
         (saved) =>
@@ -285,6 +324,7 @@ class _MainNavigationState extends State<MainNavigation> {
             saved.stickerId == sticker.stickerId,
       );
     }
+
     return _savedFlowerPhotos.indexWhere(
       (saved) => identical(saved.stickerBytes, sticker.stickerBytes),
     );
@@ -303,7 +343,9 @@ class _MainNavigationState extends State<MainNavigation> {
         context: ErrorDescription('while saving $dataType'),
       ),
     );
+
     if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Could not save your $dataType. Please try again.'),
@@ -316,6 +358,7 @@ class _MainNavigationState extends State<MainNavigation> {
       _savedFlowerPhotos.add(photo);
       currentIndex = profileTab;
     });
+
     _persistSavedStickers();
   }
 
@@ -323,6 +366,7 @@ class _MainNavigationState extends State<MainNavigation> {
     setState(() {
       _savedFlowerPhotos.remove(sticker);
     });
+
     _persistSavedStickers();
   }
 
@@ -330,8 +374,10 @@ class _MainNavigationState extends State<MainNavigation> {
     setState(() {
       final index = _savedFlowerPhotos.indexOf(sticker);
       if (index == -1) return;
+
       _savedFlowerPhotos[index] = sticker.copyWith(profileGridSizeId: sizeId);
     });
+
     _persistSavedStickers();
   }
 
@@ -340,38 +386,37 @@ class _MainNavigationState extends State<MainNavigation> {
       if (newIndex > oldIndex) {
         newIndex -= 1;
       }
+
       final sticker = _savedFlowerPhotos.removeAt(oldIndex);
       _savedFlowerPhotos.insert(newIndex, sticker);
     });
+
     _persistSavedStickers();
   }
 
-  // BOTTOM NAVIGATION
-
+  // Bottom navigation.
   void onNavTap(int index) {
     setState(() {
       currentIndex = index;
     });
   }
 
-  // Opens the Scanner tab from a homepage shortcut.
   void _openScanner() {
     setState(() {
       currentIndex = scannerTab;
     });
   }
 
-  // Opens the Diary tab from a homepage shortcut or sticker action.
-  void _openDiary() {
-    setState(() {
-      currentIndex = diaryTab;
-    });
+  // Opens saved flowers to set or change a watering reminder.
+  void _openWateringReminders() {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (context) => const SavedFlowersPage(wateringCare: true),
+      ),
+    );
   }
 
-  // STICKER CREATION
-
-  // Opens sticker creation from the Profile page and saves the
-  // completed sticker to the user's saved photos.
+  // Opens sticker creation from Profile.
   Future<void> _openStickerCreation() async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
@@ -393,6 +438,7 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 
+  // Opens sticker creation using a scanned or selected photo.
   Future<void> _openStickerCreationFromScanner(String imagePath) async {
     final scannedPhoto = SavedFlowerPhoto(
       image: FileImage(File(imagePath)),
@@ -429,6 +475,7 @@ class _MainNavigationState extends State<MainNavigation> {
             setState(() {
               final index = _savedFlowerPhotos.indexOf(sticker);
               if (index == -1) return;
+
               _savedFlowerPhotos[index] = photo.copyWith(
                 stickerId: stickerId,
                 stickerBytes: stickerBytes,
@@ -438,6 +485,7 @@ class _MainNavigationState extends State<MainNavigation> {
               );
               currentIndex = profileTab;
             });
+
             _persistSavedStickers();
           },
         ),
@@ -456,18 +504,22 @@ class _MainNavigationState extends State<MainNavigation> {
       );
 
       if (!mounted) return;
+
       final message = switch (result.status) {
         ShareResultStatus.success => 'Sticker shared successfully',
         ShareResultStatus.dismissed => 'Sharing cancelled',
         ShareResultStatus.unavailable =>
           'Sharing is not available on this device',
       };
+
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
         ..showSnackBar(SnackBar(content: Text(message)));
     } catch (error) {
       debugPrint('Sticker sharing error: $error');
+
       if (!mounted) return;
+
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
         ..showSnackBar(
@@ -484,21 +536,22 @@ class _MainNavigationState extends State<MainNavigation> {
     });
   }
 
-  // LOGOUT
-
-  // Signs the current user out through Firebase Authentication.
+  // Saves pending changes before signing out.
   Future<void> _handleLogout() async {
     _stickerWriteDebounce?.cancel();
     _enqueueSavedStickerWrite();
+
     try {
       await Future.wait([
         _pendingProfileWrite,
         _pendingCollectionWrite,
         _pendingStickerWrite,
       ]);
+
       await FirebaseAuth.instance.signOut();
     } catch (_) {
       if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Your changes could not be saved. Please try again.'),
@@ -507,26 +560,17 @@ class _MainNavigationState extends State<MainNavigation> {
     }
   }
 
-  // BUILD
-
   @override
   Widget build(BuildContext context) {
     final pages = [
-      // 0 - Home
       HomePage(
         profileName: _account.name,
         onOpenScanner: _openScanner,
-        onOpenWateringReminders: _openDiary,
+        onOpenWateringReminders: _openWateringReminders,
         onOpenRecentlyIdentified: _openScanner,
       ),
-
-      // 1 - Search
       const FlowerSearchPage(),
-
-      // 2 - Scanner
       ScannerPage(onAddSticker: _openStickerCreationFromScanner),
-
-      // 3 - Diary
       DiaryPage(
         accountId: _accountStorageId,
         storage: _diaryStorage,
@@ -564,8 +608,6 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 }
 
-// PROFILE TAB
-
 class _ProfileTab extends StatelessWidget {
   const _ProfileTab({
     required this.profileKey,
@@ -591,6 +633,7 @@ class _ProfileTab extends StatelessWidget {
   final List<SavedFlowerPhoto> savedFlowerPhotos;
   final ProfileCollectionSettings collectionSettings;
   final bool accountDataLoaded;
+
   final VoidCallback onCreateSticker;
   final ValueChanged<GeneratedStickerAsset> onShareSticker;
   final ValueChanged<GeneratedStickerAsset> onAddStickerToDiary;
