@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../diary_entry.dart';
 import '../diary_storage.dart';
+import '../recent_flowers_page.dart';
+import '../saved_flowers_page.dart';
 import '../user_profile.dart';
 
 const Color diaryMainGreen = Color(0xFF5BC68D);
@@ -37,51 +39,14 @@ class _DiaryPageState extends State<DiaryPage> {
 
   final TextEditingController _searchController = TextEditingController();
   late final DiaryStorage _diaryStorage = widget.storage ?? DiaryStorage();
+
+  final List<DiaryEntry> _entries = _defaultEntries();
+
   int _loadGeneration = 0;
   bool _entriesReady = false;
-
-  final List<DiaryEntry> _entries = [
-    DiaryEntry(
-      flowerName: 'Purple Orchid',
-      location: 'Near campus',
-      notes: 'A bright purple orchid growing beside the walking path.',
-      date: DateTime(2026, 9, 14),
-      sticker: '🌸',
-      isFavorite: true,
-    ),
-    DiaryEntry(
-      flowerName: 'Sunflower',
-      location: 'Community garden',
-      notes: 'A tall sunflower facing towards the afternoon sunlight.',
-      date: DateTime(2026, 9, 12),
-      sticker: '🌻',
-    ),
-  ];
-
   String _searchText = '';
   String _sortOption = 'Newest';
   bool _showFavoritesOnly = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadEntries();
-  }
-
-  @override
-  void didUpdateWidget(covariant DiaryPage oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.accountId != widget.accountId) {
-      _entries
-        ..clear()
-        ..addAll(_defaultEntries());
-      _entriesReady = false;
-      _loadEntries();
-    }
-    if (oldWidget.stickerRequestId != widget.stickerRequestId) {
-      _scheduleStickerEntryForm(widget.stickerRequestId, widget.stickerToAdd);
-    }
-  }
 
   static List<DiaryEntry> _defaultEntries() => [
     DiaryEntry(
@@ -101,16 +66,42 @@ class _DiaryPageState extends State<DiaryPage> {
     ),
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _loadEntries();
+  }
+
+  @override
+  void didUpdateWidget(covariant DiaryPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.accountId != widget.accountId) {
+      _entries
+        ..clear()
+        ..addAll(_defaultEntries());
+      _entriesReady = false;
+      _loadEntries();
+    }
+
+    if (oldWidget.stickerRequestId != widget.stickerRequestId) {
+      _scheduleStickerEntryForm(widget.stickerRequestId, widget.stickerToAdd);
+    }
+  }
+
   Future<void> _loadEntries() async {
     final generation = ++_loadGeneration;
     final accountId = widget.accountId;
+
     try {
       final savedEntries = await _diaryStorage.loadEntries(accountId);
+
       if (!mounted ||
           generation != _loadGeneration ||
           widget.accountId != accountId) {
         return;
       }
+
       setState(() {
         if (savedEntries != null) {
           _entries
@@ -128,10 +119,13 @@ class _DiaryPageState extends State<DiaryPage> {
           context: ErrorDescription('while loading diary entries'),
         ),
       );
+
       if (!mounted || generation != _loadGeneration) return;
+
       setState(() => _entriesReady = true);
       _showMessage('Diary entries could not be loaded.');
     }
+
     _scheduleStickerEntryForm(widget.stickerRequestId, widget.stickerToAdd);
   }
 
@@ -140,6 +134,7 @@ class _DiaryPageState extends State<DiaryPage> {
     GeneratedStickerAsset? sticker,
   ) {
     if (!_entriesReady || requestId == 0 || sticker == null) return;
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || widget.stickerRequestId != requestId) return;
       _showEntryForm(initialGeneratedSticker: sticker);
@@ -160,6 +155,7 @@ class _DiaryPageState extends State<DiaryPage> {
         return entry.flowerName.toLowerCase().contains(query) ||
             entry.location.toLowerCase().contains(query) ||
             entry.notes.toLowerCase().contains(query) ||
+            entry.weather.toLowerCase().contains(query) ||
             entry.sticker.toLowerCase().contains(query) ||
             (entry.generatedSticker?.label?.toLowerCase().contains(query) ??
                 false);
@@ -168,17 +164,11 @@ class _DiaryPageState extends State<DiaryPage> {
 
     final visibleEntries = entries.toList();
 
-    if (_sortOption == 'Newest') {
-      visibleEntries.sort(
-        (firstEntry, secondEntry) =>
-            secondEntry.date.compareTo(firstEntry.date),
-      );
-    } else {
-      visibleEntries.sort(
-        (firstEntry, secondEntry) =>
-            firstEntry.date.compareTo(secondEntry.date),
-      );
-    }
+    visibleEntries.sort(
+      (first, second) => _sortOption == 'Newest'
+          ? second.date.compareTo(first.date)
+          : first.date.compareTo(second.date),
+    );
 
     return visibleEntries;
   }
@@ -236,6 +226,8 @@ class _DiaryPageState extends State<DiaryPage> {
   }
 
   void _showMessage(String message) {
+    if (!mounted) return;
+
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
       ..showSnackBar(
@@ -247,8 +239,30 @@ class _DiaryPageState extends State<DiaryPage> {
       );
   }
 
+  Future<bool> _saveEntries() async {
+    final snapshot = List<DiaryEntry>.of(_entries);
+
+    try {
+      await _diaryStorage.saveEntries(widget.accountId, snapshot);
+      return true;
+    } catch (error, stackTrace) {
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stackTrace,
+          library: 'diary storage',
+          context: ErrorDescription('while saving diary entries'),
+        ),
+      );
+
+      _showMessage('Diary changes could not be saved.');
+      return false;
+    }
+  }
+
   void _toggleFavorite(DiaryEntry entry) {
     final previousValue = entry.isFavorite;
+
     setState(() {
       entry.isFavorite = !entry.isFavorite;
     });
@@ -266,23 +280,16 @@ class _DiaryPageState extends State<DiaryPage> {
     }());
   }
 
-  Future<bool> _saveEntries() async {
-    final snapshot = List<DiaryEntry>.of(_entries);
-    try {
-      await _diaryStorage.saveEntries(widget.accountId, snapshot);
-      return true;
-    } catch (error, stackTrace) {
-      FlutterError.reportError(
-        FlutterErrorDetails(
-          exception: error,
-          stack: stackTrace,
-          library: 'diary storage',
-          context: ErrorDescription('while saving diary entries'),
-        ),
-      );
-      if (mounted) _showMessage('Diary changes could not be saved.');
-      return false;
-    }
+  void _openSavedFlowers() {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(builder: (context) => const SavedFlowersPage()),
+    );
+  }
+
+  void _openRecentFlowers() {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(builder: (context) => const RecentFlowersPage()),
+    );
   }
 
   Future<void> _showEntryForm({
@@ -292,18 +299,21 @@ class _DiaryPageState extends State<DiaryPage> {
     final flowerNameController = TextEditingController(
       text: existingEntry?.flowerName ?? '',
     );
-
     final locationController = TextEditingController(
       text: existingEntry?.location ?? '',
     );
-
     final notesController = TextEditingController(
       text: existingEntry?.notes ?? '',
     );
+    final weatherController = TextEditingController(
+      text: existingEntry?.weather ?? '',
+    );
 
     final formKey = GlobalKey<FormState>();
+
     var selectedGeneratedSticker =
         initialGeneratedSticker ?? existingEntry?.generatedSticker;
+
     String selectedSticker = selectedGeneratedSticker == null
         ? existingEntry?.sticker ?? '🌸'
         : _generatedStickerOption;
@@ -370,7 +380,6 @@ class _DiaryPageState extends State<DiaryPage> {
                             if (value == null || value.trim().isEmpty) {
                               return 'Please enter a flower name';
                             }
-
                             return null;
                           },
                         ),
@@ -386,7 +395,6 @@ class _DiaryPageState extends State<DiaryPage> {
                             if (value == null || value.trim().isEmpty) {
                               return 'Please enter a location';
                             }
-
                             return null;
                           },
                         ),
@@ -403,8 +411,19 @@ class _DiaryPageState extends State<DiaryPage> {
                           ),
                         ),
                         const SizedBox(height: 16),
+                        TextFormField(
+                          controller: weatherController,
+                          maxLength: 100,
+                          decoration: _fieldDecoration(
+                            label: 'Weather (optional)',
+                            hint: 'For example, sunny and warm',
+                            icon: Icons.cloud_outlined,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           initialValue: selectedSticker,
+                          isExpanded: true,
                           decoration: _fieldDecoration(
                             label: 'Choose a sticker',
                             icon: Icons.emoji_emotions_outlined,
@@ -422,51 +441,51 @@ class _DiaryPageState extends State<DiaryPage> {
                                       fit: BoxFit.contain,
                                     ),
                                     const SizedBox(width: 8),
-                                    Text(
-                                      selectedGeneratedSticker!.label ??
-                                          'Saved sticker',
-                                      overflow: TextOverflow.ellipsis,
+                                    Expanded(
+                                      child: Text(
+                                        selectedGeneratedSticker!.label ??
+                                            'Saved sticker',
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
-                            DropdownMenuItem(
+                            const DropdownMenuItem(
                               value: '🌸',
                               child: Text('🌸 Blossom'),
                             ),
-                            DropdownMenuItem(
+                            const DropdownMenuItem(
                               value: '🌻',
                               child: Text('🌻 Sunflower'),
                             ),
-                            DropdownMenuItem(
+                            const DropdownMenuItem(
                               value: '🌹',
                               child: Text('🌹 Rose'),
                             ),
-                            DropdownMenuItem(
+                            const DropdownMenuItem(
                               value: '🌼',
                               child: Text('🌼 Daisy'),
                             ),
-                            DropdownMenuItem(
+                            const DropdownMenuItem(
                               value: '🌷',
                               child: Text('🌷 Tulip'),
                             ),
-                            DropdownMenuItem(
+                            const DropdownMenuItem(
                               value: '🪻',
                               child: Text('🪻 Hyacinth'),
                             ),
-                            DropdownMenuItem(
+                            const DropdownMenuItem(
                               value: '🍀',
                               child: Text('🍀 Lucky leaf'),
                             ),
-                            DropdownMenuItem(
+                            const DropdownMenuItem(
                               value: '🦋',
                               child: Text('🦋 Butterfly'),
                             ),
                           ],
                           onChanged: (value) {
-                            if (value == null) {
-                              return;
-                            }
+                            if (value == null) return;
 
                             setDialogState(() {
                               selectedSticker = value;
@@ -523,6 +542,7 @@ class _DiaryPageState extends State<DiaryPage> {
                     flowerNameController.clear();
                     locationController.clear();
                     notesController.clear();
+                    weatherController.clear();
 
                     setDialogState(() {
                       selectedSticker = '🌸';
@@ -533,16 +553,12 @@ class _DiaryPageState extends State<DiaryPage> {
                   label: const Text('Clear'),
                 ),
                 TextButton(
-                  onPressed: () {
-                    Navigator.pop(dialogContext);
-                  },
+                  onPressed: () => Navigator.pop(dialogContext),
                   child: const Text('Cancel'),
                 ),
                 FilledButton.icon(
                   onPressed: () {
-                    final isValid = formKey.currentState?.validate() ?? false;
-
-                    if (!isValid) {
+                    if (!(formKey.currentState?.validate() ?? false)) {
                       return;
                     }
 
@@ -552,6 +568,7 @@ class _DiaryPageState extends State<DiaryPage> {
                         flowerName: flowerNameController.text.trim(),
                         location: locationController.text.trim(),
                         notes: notesController.text.trim(),
+                        weather: weatherController.text.trim(),
                         sticker: selectedSticker,
                         generatedSticker: selectedGeneratedSticker,
                       ),
@@ -571,28 +588,35 @@ class _DiaryPageState extends State<DiaryPage> {
       },
     );
 
-    // Do not dispose the three dialog controllers here.
-    // Flutter may still be removing the dialog text fields.
-    if (result == null || !mounted) {
-      return;
-    }
+    // Wait for the dialog route to finish before disposing its controllers.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      flowerNameController.dispose();
+      locationController.dispose();
+      notesController.dispose();
+      weatherController.dispose();
+    });
+
+    if (result == null || !mounted) return;
 
     final addedEntry = existingEntry == null
         ? DiaryEntry(
             flowerName: result.flowerName,
             location: result.location,
             notes: result.notes,
+            weather: result.weather,
             date: DateTime.now(),
             sticker: result.generatedSticker?.label ?? result.sticker,
             generatedSticker: result.generatedSticker,
           )
         : null;
+
     final previousValues = existingEntry == null
         ? null
         : (
             flowerName: existingEntry.flowerName,
             location: existingEntry.location,
             notes: existingEntry.notes,
+            weather: existingEntry.weather,
             sticker: existingEntry.sticker,
             generatedSticker: existingEntry.generatedSticker,
           );
@@ -604,6 +628,7 @@ class _DiaryPageState extends State<DiaryPage> {
         existingEntry.flowerName = result.flowerName;
         existingEntry.location = result.location;
         existingEntry.notes = result.notes;
+        existingEntry.weather = result.weather;
         existingEntry.sticker =
             result.generatedSticker?.label ?? result.sticker;
         existingEntry.generatedSticker = result.generatedSticker;
@@ -612,6 +637,7 @@ class _DiaryPageState extends State<DiaryPage> {
 
     if (!await _saveEntries()) {
       if (!mounted) return;
+
       setState(() {
         if (addedEntry != null) {
           _entries.remove(addedEntry);
@@ -621,6 +647,7 @@ class _DiaryPageState extends State<DiaryPage> {
             ..flowerName = previous.flowerName
             ..location = previous.location
             ..notes = previous.notes
+            ..weather = previous.weather
             ..sticker = previous.sticker
             ..generatedSticker = previous.generatedSticker;
         }
@@ -636,66 +663,52 @@ class _DiaryPageState extends State<DiaryPage> {
   Future<void> _deleteEntry(DiaryEntry entry) async {
     final shouldDelete = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: diaryCream,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
-          ),
-          title: const Row(
-            children: [
-              Icon(Icons.delete_outline, color: Colors.red),
-              SizedBox(width: 10),
-              Expanded(child: Text('Delete diary entry?')),
-            ],
-          ),
-          content: Text(
-            'Are you sure you want to delete '
-            '${entry.flowerName}?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(dialogContext, false);
-              },
-              child: const Text('Cancel'),
-            ),
-            FilledButton.icon(
-              onPressed: () {
-                Navigator.pop(dialogContext, true);
-              },
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.red.shade700,
-                foregroundColor: Colors.white,
-              ),
-              icon: const Icon(Icons.delete),
-              label: const Text('Delete'),
-            ),
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: diaryCream,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        title: const Row(
+          children: [
+            Icon(Icons.delete_outline, color: Colors.red),
+            SizedBox(width: 10),
+            Expanded(child: Text('Delete diary entry?')),
           ],
-        );
-      },
+        ),
+        content: Text('Are you sure you want to delete ${entry.flowerName}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red.shade700,
+              foregroundColor: Colors.white,
+            ),
+            icon: const Icon(Icons.delete),
+            label: const Text('Delete'),
+          ),
+        ],
+      ),
     );
 
-    if (shouldDelete != true || !mounted) {
-      return;
-    }
+    if (shouldDelete != true || !mounted) return;
 
     final deletedIndex = _entries.indexOf(entry);
 
-    setState(() {
-      _entries.remove(entry);
-    });
+    setState(() => _entries.remove(entry));
 
     if (!await _saveEntries()) {
       if (!mounted) return;
+
       setState(() {
-        final restoreIndex = deletedIndex.clamp(0, _entries.length);
-        _entries.insert(restoreIndex, entry);
+        _entries.insert(deletedIndex.clamp(0, _entries.length), entry);
       });
       return;
     }
 
     if (!mounted) return;
+
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
       ..showSnackBar(
@@ -707,14 +720,10 @@ class _DiaryPageState extends State<DiaryPage> {
             label: 'Undo',
             textColor: diaryMainGreen,
             onPressed: () {
-              if (!mounted) {
-                return;
-              }
+              if (!mounted) return;
 
               setState(() {
-                final restoreIndex = deletedIndex.clamp(0, _entries.length);
-
-                _entries.insert(restoreIndex, entry);
+                _entries.insert(deletedIndex.clamp(0, _entries.length), entry);
               });
               unawaited(_saveEntries());
             },
@@ -726,139 +735,142 @@ class _DiaryPageState extends State<DiaryPage> {
   Future<void> _showEntryDetails(DiaryEntry entry) async {
     final selectedAction = await showDialog<String>(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: diaryCream,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
-          ),
-          title: Row(
-            children: [
-              _stickerImage(
-                entry.generatedSticker,
-                entry.sticker,
-                width: 40,
-                height: 40,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  entry.flowerName,
-                  style: const TextStyle(
-                    color: diaryDarkGreen,
-                    fontWeight: FontWeight.bold,
-                  ),
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: diaryCream,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        title: Row(
+          children: [
+            _stickerImage(
+              entry.generatedSticker,
+              entry.sticker,
+              width: 40,
+              height: 40,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                entry.flowerName,
+                style: const TextStyle(
+                  color: diaryDarkGreen,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-              if (entry.isFavorite)
-                const Icon(Icons.star, color: diaryPinkAccent),
-            ],
-          ),
-          content: SizedBox(
-            width: 420,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 110,
-                      height: 110,
-                      alignment: Alignment.center,
-                      decoration: const BoxDecoration(
-                        color: diaryLightGreen,
-                        shape: BoxShape.circle,
-                      ),
-                      child: _stickerImage(
-                        entry.generatedSticker,
-                        entry.sticker,
-                        width: 96,
-                        height: 96,
-                      ),
+            ),
+            if (entry.isFavorite)
+              const Icon(Icons.star, color: diaryPinkAccent),
+          ],
+        ),
+        content: SizedBox(
+          width: 420,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 110,
+                    height: 110,
+                    alignment: Alignment.center,
+                    decoration: const BoxDecoration(
+                      color: diaryLightGreen,
+                      shape: BoxShape.circle,
+                    ),
+                    child: _stickerImage(
+                      entry.generatedSticker,
+                      entry.sticker,
+                      width: 96,
+                      height: 96,
                     ),
                   ),
-                  const SizedBox(height: 20),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.location_on_outlined,
+                      color: diaryDarkGreen,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        entry.location,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.calendar_today_outlined,
+                      color: diaryDarkGreen,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(_formatDate(entry.date)),
+                  ],
+                ),
+                if (entry.weather.isNotEmpty) ...[
+                  const SizedBox(height: 16),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Icon(
-                        Icons.location_on_outlined,
+                        Icons.cloud_outlined,
                         color: diaryDarkGreen,
                         size: 20,
                       ),
                       const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          entry.location,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ),
+                      Expanded(child: Text('Weather: ${entry.weather}')),
                     ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.calendar_today_outlined,
-                        color: diaryDarkGreen,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(_formatDate(entry.date)),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  const Text(
-                    'Diary entry',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: diaryDarkGreen,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    entry.notes.isEmpty
-                        ? 'No diary notes were recorded.'
-                        : entry.notes,
-                    style: const TextStyle(height: 1.5, color: diaryTextGrey),
                   ),
                 ],
-              ),
+                const SizedBox(height: 18),
+                const Text(
+                  'Diary entry',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: diaryDarkGreen,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  entry.notes.isEmpty
+                      ? 'No diary notes were recorded.'
+                      : entry.notes,
+                  style: const TextStyle(height: 1.5, color: diaryTextGrey),
+                ),
+              ],
             ),
           ),
-          actions: [
-            TextButton.icon(
-              onPressed: () {
-                Navigator.pop(dialogContext, 'favorite');
-              },
-              icon: Icon(
-                entry.isFavorite ? Icons.star : Icons.star_border,
-                color: diaryPinkAccent,
-              ),
-              label: Text(entry.isFavorite ? 'Unfavourite' : 'Favourite'),
+        ),
+        actions: [
+          TextButton.icon(
+            onPressed: () => Navigator.pop(dialogContext, 'favorite'),
+            icon: Icon(
+              entry.isFavorite ? Icons.star : Icons.star_border,
+              color: diaryPinkAccent,
             ),
-            TextButton.icon(
-              onPressed: () {
-                Navigator.pop(dialogContext, 'edit');
-              },
-              icon: const Icon(Icons.edit),
-              label: const Text('Edit'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(dialogContext, 'close');
-              },
-              child: const Text('Close'),
-            ),
-          ],
-        );
-      },
+            label: Text(entry.isFavorite ? 'Unfavourite' : 'Favourite'),
+          ),
+          TextButton.icon(
+            onPressed: () => Navigator.pop(dialogContext, 'edit'),
+            icon: const Icon(Icons.edit),
+            label: const Text('Edit'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, 'close'),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
     );
 
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     if (selectedAction == 'favorite') {
       _toggleFavorite(entry);
@@ -877,7 +889,6 @@ class _DiaryPageState extends State<DiaryPage> {
   @override
   Widget build(BuildContext context) {
     final visibleEntries = _visibleEntries;
-
     final favoriteCount = _entries.where((entry) => entry.isFavorite).length;
 
     return Scaffold(
@@ -918,13 +929,28 @@ class _DiaryPageState extends State<DiaryPage> {
                         color: diaryTextGrey,
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: _openSavedFlowers,
+                          icon: const Icon(Icons.local_florist_outlined),
+                          label: const Text('Saved Flowers'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: _openRecentFlowers,
+                          icon: const Icon(Icons.history),
+                          label: const Text('Recently Viewed'),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 20),
                     TextField(
                       controller: _searchController,
                       onChanged: (value) {
-                        setState(() {
-                          _searchText = value;
-                        });
+                        setState(() => _searchText = value);
                       },
                       decoration: InputDecoration(
                         hintText: 'Search diary entries',
@@ -938,10 +964,7 @@ class _DiaryPageState extends State<DiaryPage> {
                                 tooltip: 'Clear search',
                                 onPressed: () {
                                   _searchController.clear();
-
-                                  setState(() {
-                                    _searchText = '';
-                                  });
+                                  setState(() => _searchText = '');
                                 },
                                 icon: const Icon(Icons.close),
                               ),
@@ -969,31 +992,9 @@ class _DiaryPageState extends State<DiaryPage> {
                     const SizedBox(height: 20),
                     DropdownButtonFormField<String>(
                       initialValue: _sortOption,
-                      decoration: InputDecoration(
-                        labelText: 'Sort entries',
-                        prefixIcon: const Icon(
-                          Icons.sort,
-                          color: diaryDarkGreen,
-                        ),
-                        filled: true,
-                        fillColor: Colors.white,
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(
-                            color: diaryBorderGreen,
-                            width: 1.5,
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(
-                            color: diaryMainGreen,
-                            width: 2,
-                          ),
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
+                      decoration: _fieldDecoration(
+                        label: 'Sort entries',
+                        icon: Icons.sort,
                       ),
                       items: const [
                         DropdownMenuItem(
@@ -1006,18 +1007,11 @@ class _DiaryPageState extends State<DiaryPage> {
                         ),
                       ],
                       onChanged: (value) {
-                        if (value == null) {
-                          return;
-                        }
-
-                        setState(() {
-                          _sortOption = value;
-                        });
+                        if (value == null) return;
+                        setState(() => _sortOption = value);
                       },
                     ),
                     const SizedBox(height: 16),
-
-                    // Uses Row and Switch rather than SwitchListTile.
                     Material(
                       color: Colors.white,
                       shape: RoundedRectangleBorder(
@@ -1069,9 +1063,7 @@ class _DiaryPageState extends State<DiaryPage> {
                               inactiveThumbColor: Colors.white,
                               inactiveTrackColor: const Color(0xFFB8C1BA),
                               onChanged: (value) {
-                                setState(() {
-                                  _showFavoritesOnly = value;
-                                });
+                                setState(() => _showFavoritesOnly = value);
                               },
                             ),
                           ],
@@ -1101,21 +1093,14 @@ class _DiaryPageState extends State<DiaryPage> {
                             flowerName: entry.flowerName,
                             location: entry.location,
                             date: _formatDate(entry.date),
+                            weather: entry.weather,
                             sticker: entry.sticker,
                             generatedSticker: entry.generatedSticker,
                             isFavorite: entry.isFavorite,
-                            onFavorite: () {
-                              _toggleFavorite(entry);
-                            },
-                            onTap: () {
-                              _showEntryDetails(entry);
-                            },
-                            onEdit: () {
-                              _showEntryForm(existingEntry: entry);
-                            },
-                            onDelete: () {
-                              _deleteEntry(entry);
-                            },
+                            onFavorite: () => _toggleFavorite(entry),
+                            onTap: () => _showEntryDetails(entry),
+                            onEdit: () => _showEntryForm(existingEntry: entry),
+                            onDelete: () => _deleteEntry(entry),
                           ),
                         ),
                       ),
@@ -1145,6 +1130,7 @@ class _DiaryFormResult {
     required this.flowerName,
     required this.location,
     required this.notes,
+    required this.weather,
     required this.sticker,
     required this.generatedSticker,
   });
@@ -1152,6 +1138,7 @@ class _DiaryFormResult {
   final String flowerName;
   final String location;
   final String notes;
+  final String weather;
   final String sticker;
   final GeneratedStickerAsset? generatedSticker;
 }
@@ -1170,6 +1157,7 @@ Widget _stickerImage(
       fit: BoxFit.contain,
     );
   }
+
   return SizedBox(
     width: width,
     height: height,
@@ -1187,6 +1175,7 @@ class DiaryEntryCard extends StatelessWidget {
     required this.date,
     required this.sticker,
     this.generatedSticker,
+    this.weather = '',
     required this.isFavorite,
     required this.onFavorite,
     required this.onTap,
@@ -1199,6 +1188,7 @@ class DiaryEntryCard extends StatelessWidget {
   final String date;
   final String sticker;
   final GeneratedStickerAsset? generatedSticker;
+  final String weather;
   final bool isFavorite;
   final VoidCallback onFavorite;
   final VoidCallback onTap;
@@ -1249,7 +1239,8 @@ class DiaryEntryCard extends StatelessWidget {
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 6),
           child: Text(
-            '$location\n$date',
+            '$location\n$date'
+            '${weather.isEmpty ? '' : '\nWeather: $weather'}',
             style: const TextStyle(height: 1.5, color: diaryTextGrey),
           ),
         ),
@@ -1265,47 +1256,43 @@ class DiaryEntryCard extends StatelessWidget {
               onDelete();
             }
           },
-          itemBuilder: (context) {
-            return [
-              PopupMenuItem(
-                value: 'favorite',
-                child: Row(
-                  children: [
-                    Icon(
-                      isFavorite ? Icons.star : Icons.star_border,
-                      color: diaryPinkAccent,
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      isFavorite
-                          ? 'Remove from favourites'
-                          : 'Add to favourites',
-                    ),
-                  ],
-                ),
+          itemBuilder: (context) => [
+            PopupMenuItem(
+              value: 'favorite',
+              child: Row(
+                children: [
+                  Icon(
+                    isFavorite ? Icons.star : Icons.star_border,
+                    color: diaryPinkAccent,
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    isFavorite ? 'Remove from favourites' : 'Add to favourites',
+                  ),
+                ],
               ),
-              const PopupMenuItem(
-                value: 'edit',
-                child: Row(
-                  children: [
-                    Icon(Icons.edit, color: diaryDarkGreen),
-                    SizedBox(width: 10),
-                    Text('Edit'),
-                  ],
-                ),
+            ),
+            const PopupMenuItem(
+              value: 'edit',
+              child: Row(
+                children: [
+                  Icon(Icons.edit, color: diaryDarkGreen),
+                  SizedBox(width: 10),
+                  Text('Edit'),
+                ],
               ),
-              const PopupMenuItem(
-                value: 'delete',
-                child: Row(
-                  children: [
-                    Icon(Icons.delete, color: Colors.red),
-                    SizedBox(width: 10),
-                    Text('Delete'),
-                  ],
-                ),
+            ),
+            const PopupMenuItem(
+              value: 'delete',
+              child: Row(
+                children: [
+                  Icon(Icons.delete, color: Colors.red),
+                  SizedBox(width: 10),
+                  Text('Delete'),
+                ],
               ),
-            ];
-          },
+            ),
+          ],
         ),
       ),
     );
@@ -1333,7 +1320,7 @@ class _EmptyDiaryMessage extends StatelessWidget {
       icon = Icons.star_border;
     } else if (isSearching) {
       title = 'No matching diary entries';
-      message = 'Try another flower name, location, note, or sticker.';
+      message = 'Try another flower name, location, note, weather, or sticker.';
       icon = Icons.search_off;
     } else {
       title = 'Start your flower diary';

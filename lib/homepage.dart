@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'weather_service.dart';
+
 import 'flower_library.dart';
 import 'theme.dart';
+import 'weather_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({
@@ -38,10 +39,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xfff8faf7),
-      appBar: AppBar(
-        centerTitle: true,
-        title: const Text('Flower Finder'),
-      ),
+      appBar: AppBar(centerTitle: true, title: const Text('Flower Finder')),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
@@ -59,13 +57,10 @@ class _HomePageState extends State<HomePage> {
             'and help your flowers thrive? 🌿',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
-
           const SizedBox(height: 24),
-
           const _SectionTitle(title: 'Weather'),
           const SizedBox(height: 10),
           const _WeatherCard(),
-
           const SizedBox(height: 24),
           const _SectionTitle(title: 'Plant Care'),
           const SizedBox(height: 10),
@@ -73,9 +68,8 @@ class _HomePageState extends State<HomePage> {
             icon: Icons.water_drop_outlined,
             title: 'Watering Reminders',
             subtitle: 'Check which plants need watering.',
-            onTap: null,
+            onTap: widget.onOpenWateringReminders,
           ),
-
           const SizedBox(height: 24),
           const _SectionTitle(title: 'Identify a Flower'),
           const SizedBox(height: 10),
@@ -85,7 +79,6 @@ class _HomePageState extends State<HomePage> {
             subtitle: 'Take a photo to identify a flower.',
             onTap: widget.onOpenScanner,
           ),
-
           const SizedBox(height: 24),
           const _SectionTitle(title: 'Recently Identified'),
           const SizedBox(height: 10),
@@ -93,9 +86,8 @@ class _HomePageState extends State<HomePage> {
             icon: Icons.history,
             title: 'Recently Identified Flowers',
             subtitle: 'View flowers you have identified recently.',
-            onTap: null, // Replace with onOpenRecentlyIdentified when implemented
+            onTap: widget.onOpenRecentlyIdentified,
           ),
-
           const SizedBox(height: 24),
           const _SectionTitle(title: 'Flower of the Day'),
           const SizedBox(height: 10),
@@ -116,10 +108,9 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: Theme.of(context)
-          .textTheme
-          .titleLarge
-          ?.copyWith(fontWeight: FontWeight.w800),
+      style: Theme.of(
+        context,
+      ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
     );
   }
 }
@@ -148,7 +139,7 @@ class _WeatherCardState extends State<_WeatherCard> {
     try {
       await _weatherFuture;
     } catch (_) {
-      // The FutureBuilder below displays the error and retry option.
+      // The FutureBuilder displays the error and retry option.
     }
   }
 
@@ -163,8 +154,7 @@ class _WeatherCardState extends State<_WeatherCard> {
       child: FutureBuilder<WeatherData>(
         future: _weatherFuture,
         builder: (context, snapshot) {
-          final isLoading =
-              snapshot.connectionState == ConnectionState.waiting;
+          final isLoading = snapshot.connectionState == ConnectionState.waiting;
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -219,10 +209,7 @@ class _WeatherCardState extends State<_WeatherCard> {
       children: [
         Row(
           children: [
-            Text(
-              weather.emoji,
-              style: const TextStyle(fontSize: 38),
-            ),
+            Text(weather.emoji, style: const TextStyle(fontSize: 38)),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -260,11 +247,7 @@ class _WeatherCardState extends State<_WeatherCard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Icon(
-          Icons.cloud_off_outlined,
-          color: AppColors.green,
-          size: 36,
-        ),
+        const Icon(Icons.cloud_off_outlined, color: AppColors.green, size: 36),
         const SizedBox(height: 8),
         Text(
           'Weather is currently unavailable.',
@@ -319,21 +302,14 @@ class _ShortcutCard extends StatelessWidget {
                   color: AppColors.cream,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(
-                  icon,
-                  color: AppColors.green,
-                  size: 28,
-                ),
+                child: Icon(icon, color: AppColors.green, size: 28),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
+                    Text(title, style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
@@ -342,8 +318,7 @@ class _ShortcutCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (onTap != null)
-                const Icon(Icons.arrow_forward_ios, size: 16),
+              if (onTap != null) const Icon(Icons.arrow_forward_ios, size: 16),
             ],
           ),
         ),
@@ -359,17 +334,13 @@ class FlowerOfTheDayCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final flower = FlowerLibrary.getFlowerOfTheDay();
 
-    debugPrint(
-      'Flower: ${flower.name}, image: ${flower.imagePath}',
-    );
-    
+    debugPrint('Flower: ${flower.name}, image: ${flower.imagePath}');
+
     return Card(
       clipBehavior: Clip.antiAlias,
       color: Colors.white,
       elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -377,25 +348,17 @@ class FlowerOfTheDayCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                const Icon(
-                  Icons.local_florist,
-                  color: AppColors.darkGreen,
-                ),
+                const Icon(Icons.local_florist, color: AppColors.darkGreen),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'Flower of the Day',
-                    style: Theme.of(context)
-                        .textTheme.titleLarge
-                        ?.copyWith(
-                          color: AppColors.darkGreen,
-                        ),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: AppColors.darkGreen,
+                    ),
                   ),
                 ),
-                const Icon(
-                  Icons.auto_awesome,
-                  color: AppColors.pink,
-                ),
+                const Icon(Icons.auto_awesome, color: AppColors.pink),
               ],
             ),
           ),
@@ -426,20 +389,16 @@ class FlowerOfTheDayCard extends StatelessWidget {
               children: [
                 Text(
                   flower.name,
-                  style: Theme.of(context)
-                      .textTheme.headlineMedium
-                      ?.copyWith(
-                        color: AppColors.darkGreen,
-                      ),
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    color: AppColors.darkGreen,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   flower.scientificName,
-                  style: Theme.of(context)
-                      .textTheme.bodyMedium
-                      ?.copyWith(
-                        fontStyle: FontStyle.italic,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic),
                 ),
                 const SizedBox(height: 10),
                 Text(
