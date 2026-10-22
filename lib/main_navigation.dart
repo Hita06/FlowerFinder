@@ -405,14 +405,12 @@ class _MainNavigationState extends State<MainNavigation> {
     });
   }
 
-  // Opens the recently viewed flower history.
   void _openRecentlyViewed() {
     Navigator.of(context).push<void>(
       MaterialPageRoute<void>(builder: (context) => const RecentFlowersPage()),
     );
   }
 
-  // Opens saved flowers to set or change a watering reminder.
   void _openWateringReminders() {
     Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
@@ -670,6 +668,17 @@ class _ProfileTab extends StatelessWidget {
           icon: const Icon(Icons.logout),
         ),
         actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(
+                  builder: (context) => const RecentFlowersPage(),
+                ),
+              );
+            },
+            tooltip: 'Recently viewed flowers',
+            icon: const Icon(Icons.history),
+          ),
           IconButton(
             onPressed: accountDataLoaded ? onCreateSticker : null,
             tooltip: 'Create sticker',
