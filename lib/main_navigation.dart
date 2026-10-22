@@ -1,5 +1,5 @@
-// This file manages the main navigation of the app, including the bottom
-// navigation bar and the pages for Home, Search, Scanner, Diary, and Profile.
+// FlowerFinder - Main Navigation
+// Manages Home, Search, Scanner, Diary and Profile.
 
 import 'dart:async';
 import 'dart:io';
@@ -13,6 +13,7 @@ import 'flower_search_page.dart';
 import 'homepage.dart';
 import 'pages/diary_page.dart';
 import 'profile_storage.dart';
+import 'recent_flowers_page.dart';
 import 'saved_flowers_page.dart';
 import 'scanner_page.dart';
 import 'sticker_creation.dart';
@@ -39,7 +40,6 @@ class MainNavigation extends StatefulWidget {
 }
 
 class _MainNavigationState extends State<MainNavigation> {
-  // Tab indexes used when navigating between the main sections.
   static const homeTab = 0;
   static const scannerTab = 2;
   static const diaryTab = 3;
@@ -275,7 +275,6 @@ class _MainNavigationState extends State<MainNavigation> {
       (_) => _stickerStorage.saveStickers(targetAccountId, snapshot),
     );
 
-    // Allow later writes to continue if this write fails.
     _stickerWriteQueue = write.then<void>(
       (_) {},
       onError: (Object error, StackTrace stackTrace) {},
@@ -394,7 +393,6 @@ class _MainNavigationState extends State<MainNavigation> {
     _persistSavedStickers();
   }
 
-  // Bottom navigation.
   void onNavTap(int index) {
     setState(() {
       currentIndex = index;
@@ -407,6 +405,13 @@ class _MainNavigationState extends State<MainNavigation> {
     });
   }
 
+  // Opens the recently viewed flower history.
+  void _openRecentlyViewed() {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(builder: (context) => const RecentFlowersPage()),
+    );
+  }
+
   // Opens saved flowers to set or change a watering reminder.
   void _openWateringReminders() {
     Navigator.of(context).push<void>(
@@ -416,7 +421,6 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 
-  // Opens sticker creation from Profile.
   Future<void> _openStickerCreation() async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
@@ -438,7 +442,6 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 
-  // Opens sticker creation using a scanned or selected photo.
   Future<void> _openStickerCreationFromScanner(String imagePath) async {
     final scannedPhoto = SavedFlowerPhoto(
       image: FileImage(File(imagePath)),
@@ -536,7 +539,6 @@ class _MainNavigationState extends State<MainNavigation> {
     });
   }
 
-  // Saves pending changes before signing out.
   Future<void> _handleLogout() async {
     _stickerWriteDebounce?.cancel();
     _enqueueSavedStickerWrite();
@@ -567,7 +569,7 @@ class _MainNavigationState extends State<MainNavigation> {
         profileName: _account.name,
         onOpenScanner: _openScanner,
         onOpenWateringReminders: _openWateringReminders,
-        onOpenRecentlyIdentified: _openScanner,
+        onOpenRecentlyIdentified: _openRecentlyViewed,
       ),
       const FlowerSearchPage(),
       ScannerPage(onAddSticker: _openStickerCreationFromScanner),

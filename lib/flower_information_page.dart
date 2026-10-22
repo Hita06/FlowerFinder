@@ -1,17 +1,16 @@
 // FlowerFinder G3 - Flower Information Storage
 // Created by Hita
+// G10 sharing integration added by Erin.
 
 import 'dart:io';
-// G10 sharing integration added by Erin.
-// This page displays and shares information about an identified flower.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
-import 'services/flower_share_service.dart';
-
 import 'flower_storage_service.dart';
+import 'recent_flowers_service.dart';
+import 'services/flower_share_service.dart';
 
 const Color mainGreen = Color(0xFF5BC68D);
 const Color darkGreen = Color(0xFF276749);
@@ -122,9 +121,7 @@ class FlowerInformationPage extends StatelessWidget {
         careTips: careTips,
       );
 
-      if (!context.mounted) {
-        return;
-      }
+      if (!context.mounted) return;
 
       if (result.status == ShareResultStatus.success) {
         _showMessage(context, 'Flower information shared successfully');
@@ -134,9 +131,7 @@ class FlowerInformationPage extends StatelessWidget {
         _showMessage(context, 'Sharing is not available on this device');
       }
     } catch (error) {
-      if (!context.mounted) {
-        return;
-      }
+      if (!context.mounted) return;
 
       _showMessage(context, 'Unable to share this flower information');
     }
@@ -149,15 +144,11 @@ class FlowerInformationPage extends StatelessWidget {
     try {
       await Clipboard.setData(ClipboardData(text: shareText));
 
-      if (!context.mounted) {
-        return;
-      }
+      if (!context.mounted) return;
 
       _showMessage(context, 'Flower information copied to clipboard');
     } catch (error) {
-      if (!context.mounted) {
-        return;
-      }
+      if (!context.mounted) return;
 
       _showMessage(context, 'Unable to copy flower information');
     }
@@ -229,9 +220,7 @@ class FlowerInformationPage extends StatelessWidget {
       },
     );
 
-    if (!context.mounted) {
-      return;
-    }
+    if (!context.mounted) return;
 
     if (selectedAction == _SharePreviewAction.copy) {
       await _copyFlowerInformation(context, shareText);
@@ -250,8 +239,6 @@ class FlowerInformationPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: creamBackground,
-
-      // Displays the page title and sharing action.
       appBar: AppBar(
         title: const Text(
           'Flower Information',
@@ -353,7 +340,6 @@ class FlowerInformationPage extends StatelessWidget {
             const SizedBox(height: 20),
             _SaveFlowerButton(flower: this),
             const SizedBox(height: 25),
-
             // Opens a preview before sharing.
             SizedBox(
               width: double.infinity,
@@ -376,7 +362,6 @@ class FlowerInformationPage extends StatelessWidget {
                 ),
               ),
             ),
-
             const SizedBox(height: 20),
           ],
         ),
@@ -402,6 +387,27 @@ class _SaveFlowerButtonState extends State<_SaveFlowerButton> {
   void initState() {
     super.initState();
     _isSaved = widget.flower.isAlreadySaved;
+    _recordFlowerView();
+  }
+
+  // Records a view separately from explicitly saving a flower.
+  Future<void> _recordFlowerView() async {
+    final flower = widget.flower;
+
+    try {
+      await RecentFlowersService().recordView(
+        flowerName: flower.flowerName,
+        scientificName: flower.scientificName,
+        description: flower.description,
+        flowerType: flower.flowerType,
+        flowerColour: flower.flowerColour,
+        season: flower.season,
+        careTips: flower.careTips,
+        imagePath: flower.imagePath,
+      );
+    } catch (error) {
+      debugPrint('Could not save recently viewed flower: $error');
+    }
   }
 
   Future<void> _saveFlower() async {
