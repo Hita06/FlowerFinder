@@ -12,6 +12,7 @@ class DiaryEntry {
     required this.sticker,
     this.generatedSticker,
     this.isFavorite = false,
+    this.weather = '',
   });
 
   String flowerName;
@@ -22,6 +23,9 @@ class DiaryEntry {
   GeneratedStickerAsset? generatedSticker;
   bool isFavorite;
 
+  // Stores the weather recorded for this entry.
+  String weather;
+
   Map<String, Object?> toJson() => {
     'flowerName': flowerName,
     'location': location,
@@ -29,6 +33,7 @@ class DiaryEntry {
     'date': date.toIso8601String(),
     'sticker': sticker,
     'isFavorite': isFavorite,
+    'weather': weather,
     'generatedSticker': generatedSticker == null
         ? null
         : {
@@ -46,6 +51,7 @@ class DiaryEntry {
     final notes = json['notes'];
     final dateValue = json['date'];
     final sticker = json['sticker'];
+
     if (flowerName is! String ||
         location is! String ||
         notes is! String ||
@@ -55,17 +61,20 @@ class DiaryEntry {
     }
 
     final date = DateTime.tryParse(dateValue);
+
     if (date == null) {
       throw const FormatException('Invalid diary entry date');
     }
 
     GeneratedStickerAsset? generatedSticker;
     final generatedValue = json['generatedSticker'];
+
     if (generatedValue != null) {
       if (generatedValue is! Map<String, dynamic> ||
           generatedValue['stickerBytes'] is! String) {
         throw const FormatException('Invalid generated diary sticker');
       }
+
       try {
         generatedSticker = GeneratedStickerAsset(
           stickerBytes: Uint8List.fromList(
@@ -93,6 +102,8 @@ class DiaryEntry {
       sticker: sticker,
       generatedSticker: generatedSticker,
       isFavorite: json['isFavorite'] == true,
+      // Older entries have no weather field and still load normally.
+      weather: json['weather'] is String ? json['weather'] as String : '',
     );
   }
 }
