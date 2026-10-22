@@ -78,11 +78,22 @@ class StickerStorage {
       'stickerId': photo.stickerId,
       'createdAt': photo.createdAt?.toIso8601String(),
       'stickerBytes': base64Encode(photo.stickerBytes!),
+      'baseStickerBytes': photo.baseStickerBytes == null
+          ? null
+          : base64Encode(photo.baseStickerBytes!),
       'profileGridSize': photo.profileGridSizeId,
       'animationAsset': photo.animationAsset,
       'boardPositionX': photo.boardPositionX,
       'boardPositionY': photo.boardPositionY,
       'boardScale': photo.boardScale,
+      'whiteOutlineEnabled': photo.whiteOutlineEnabled,
+      'outlineThickness': photo.outlineThickness,
+      'innerShadowEnabled': photo.innerShadowEnabled,
+      'dropShadowEnabled': photo.dropShadowEnabled,
+      'dropShadowStrength': photo.dropShadowStrength,
+      'advancedEffectId': photo.advancedEffectId,
+      'stickerTintEnabled': photo.stickerTintEnabled,
+      'gradientColorId': photo.gradientColorId,
     };
   }
 
@@ -91,11 +102,18 @@ class StickerStorage {
     if (encodedBytes is! String) return null;
     try {
       final stickerBytes = base64Decode(encodedBytes);
+      final encodedBaseBytes = entry['baseStickerBytes'];
+      final baseStickerBytes = encodedBaseBytes is String
+          ? base64Decode(encodedBaseBytes)
+          : null;
       return SavedFlowerPhoto(
         image: MemoryImage(Uint8List.fromList(stickerBytes)),
         label: entry['label'] as String?,
         stickerId: entry['stickerId'] as String?,
         stickerBytes: Uint8List.fromList(stickerBytes),
+        baseStickerBytes: baseStickerBytes == null
+            ? null
+            : Uint8List.fromList(baseStickerBytes),
         createdAt: DateTime.tryParse(entry['createdAt']?.toString() ?? ''),
         profileGridSizeId: entry['profileGridSize'] as String?,
         animationAsset:
@@ -105,6 +123,15 @@ class StickerStorage {
         boardPositionX: (entry['boardPositionX'] as num?)?.toDouble(),
         boardPositionY: (entry['boardPositionY'] as num?)?.toDouble(),
         boardScale: (entry['boardScale'] as num?)?.toDouble(),
+        whiteOutlineEnabled: entry['whiteOutlineEnabled'] as bool? ?? false,
+        outlineThickness: (entry['outlineThickness'] as num?)?.toDouble() ?? 8,
+        innerShadowEnabled: entry['innerShadowEnabled'] as bool? ?? false,
+        dropShadowEnabled: entry['dropShadowEnabled'] as bool? ?? false,
+        dropShadowStrength:
+            (entry['dropShadowStrength'] as num?)?.toDouble() ?? 0.6,
+        advancedEffectId: entry['advancedEffectId'] as String?,
+        stickerTintEnabled: entry['stickerTintEnabled'] as bool?,
+        gradientColorId: entry['gradientColorId'] as String?,
       );
     } catch (_) {
       return null;

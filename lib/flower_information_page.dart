@@ -1,23 +1,34 @@
-// FlowerFinder G5 - Flower Information Page
+// FlowerFinder G3 - Flower Information Storage
 // Created by Hita
 // G10 sharing integration added by Erin.
-// This page displays and shares information about an identified flower.
+
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
+import 'flower_storage_service.dart';
+import 'recent_flowers_service.dart';
 import 'services/flower_share_service.dart';
 
-// Colours used to match the shared FlowerFinder theme.
 const Color mainGreen = Color(0xFF5BC68D);
 const Color darkGreen = Color(0xFF276749);
 const Color creamBackground = Color(0xFFFFF9F2);
 const Color lightGreen = Color(0xFFE4F3E8);
 const Color pinkAccent = Color(0xFFF7A8C4);
 
-// Creates the Flower Information page.
 class FlowerInformationPage extends StatelessWidget {
+  final String flowerName;
+  final String scientificName;
+  final String description;
+  final String flowerType;
+  final String flowerColour;
+  final String season;
+  final String careTips;
+  final String? imagePath;
+  final bool isAlreadySaved;
+
   const FlowerInformationPage({
     super.key,
     required this.flowerName,
@@ -27,16 +38,56 @@ class FlowerInformationPage extends StatelessWidget {
     required this.flowerColour,
     required this.season,
     required this.careTips,
+    this.imagePath,
+    this.isAlreadySaved = false,
   });
 
-  // Stores the information received for the identified flower.
-  final String flowerName;
-  final String scientificName;
-  final String description;
-  final String flowerType;
-  final String flowerColour;
-  final String season;
-  final String careTips;
+  Widget _informationCard({
+    required String title,
+    required IconData icon,
+    required Widget content,
+    bool isCareCard = false,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: isCareCard ? Border.all(color: pinkAccent, width: 2) : null,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: isCareCard ? pinkAccent : darkGreen),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: darkGreen,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          content,
+        ],
+      ),
+    );
+  }
 
   static const FlowerShareService _shareService = FlowerShareService();
 
@@ -70,9 +121,7 @@ class FlowerInformationPage extends StatelessWidget {
         careTips: careTips,
       );
 
-      if (!context.mounted) {
-        return;
-      }
+      if (!context.mounted) return;
 
       if (result.status == ShareResultStatus.success) {
         _showMessage(context, 'Flower information shared successfully');
@@ -82,9 +131,7 @@ class FlowerInformationPage extends StatelessWidget {
         _showMessage(context, 'Sharing is not available on this device');
       }
     } catch (error) {
-      if (!context.mounted) {
-        return;
-      }
+      if (!context.mounted) return;
 
       _showMessage(context, 'Unable to share this flower information');
     }
@@ -97,15 +144,11 @@ class FlowerInformationPage extends StatelessWidget {
     try {
       await Clipboard.setData(ClipboardData(text: shareText));
 
-      if (!context.mounted) {
-        return;
-      }
+      if (!context.mounted) return;
 
       _showMessage(context, 'Flower information copied to clipboard');
     } catch (error) {
-      if (!context.mounted) {
-        return;
-      }
+      if (!context.mounted) return;
 
       _showMessage(context, 'Unable to copy flower information');
     }
@@ -177,9 +220,7 @@ class FlowerInformationPage extends StatelessWidget {
       },
     );
 
-    if (!context.mounted) {
-      return;
-    }
+    if (!context.mounted) return;
 
     if (selectedAction == _SharePreviewAction.copy) {
       await _copyFlowerInformation(context, shareText);
@@ -190,10 +231,14 @@ class FlowerInformationPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const detailStyle = TextStyle(
+      fontSize: 17,
+      height: 1.7,
+      color: Color(0xFF555555),
+    );
+
     return Scaffold(
       backgroundColor: creamBackground,
-
-      // Displays the page title and sharing action.
       appBar: AppBar(
         title: const Text(
           'Flower Information',
@@ -213,31 +258,35 @@ class FlowerInformationPage extends StatelessWidget {
           ),
         ],
       ),
-
-      // Allows the user to scroll through the flower information.
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Displays a temporary flower image area.
+            // Shows the scanned or saved photo.
             Container(
               width: double.infinity,
               height: 230,
+              clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
                 color: lightGreen,
                 borderRadius: BorderRadius.circular(25),
               ),
-              child: const Icon(
-                Icons.local_florist,
-                size: 120,
-                color: darkGreen,
-              ),
+              child: imagePath == null
+                  ? const Icon(Icons.local_florist, size: 120, color: darkGreen)
+                  : Image.file(
+                      File(imagePath!),
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Icon(
+                          Icons.local_florist,
+                          size: 120,
+                          color: darkGreen,
+                        );
+                      },
+                    ),
             ),
-
             const SizedBox(height: 24),
-
-            // Displays the identified flower name.
             Text(
               flowerName,
               style: const TextStyle(
@@ -246,10 +295,7 @@ class FlowerInformationPage extends StatelessWidget {
                 color: darkGreen,
               ),
             ),
-
             const SizedBox(height: 6),
-
-            // Displays the scientific flower name.
             Text(
               scientificName,
               style: const TextStyle(
@@ -258,167 +304,42 @@ class FlowerInformationPage extends StatelessWidget {
                 color: Colors.grey,
               ),
             ),
-
             const SizedBox(height: 24),
-
-            // Displays general information about the flower.
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.info_outline, color: darkGreen),
-                      SizedBox(width: 10),
-                      Text(
-                        'About',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: darkGreen,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    description,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      height: 1.5,
-                      color: Color(0xFF555555),
-                    ),
-                  ),
-                ],
+            _informationCard(
+              title: 'About',
+              icon: Icons.info_outline,
+              content: Text(
+                description,
+                style: const TextStyle(
+                  fontSize: 17,
+                  height: 1.5,
+                  color: Color(0xFF555555),
+                ),
               ),
             ),
-
             const SizedBox(height: 18),
-
-            // Displays the main flower details.
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
+            _informationCard(
+              title: 'Flower Details',
+              icon: Icons.local_florist_outlined,
+              content: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.local_florist_outlined, color: darkGreen),
-                      SizedBox(width: 10),
-                      Text(
-                        'Flower Details',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: darkGreen,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    'Type: $flowerType',
-                    style: const TextStyle(
-                      fontSize: 17,
-                      height: 1.7,
-                      color: Color(0xFF555555),
-                    ),
-                  ),
-                  Text(
-                    'Colour: $flowerColour',
-                    style: const TextStyle(
-                      fontSize: 17,
-                      height: 1.7,
-                      color: Color(0xFF555555),
-                    ),
-                  ),
-                  Text(
-                    'Season: $season',
-                    style: const TextStyle(
-                      fontSize: 17,
-                      height: 1.7,
-                      color: Color(0xFF555555),
-                    ),
-                  ),
+                  Text('Type: $flowerType', style: detailStyle),
+                  Text('Colour: $flowerColour', style: detailStyle),
+                  Text('Season: $season', style: detailStyle),
                 ],
               ),
             ),
-
             const SizedBox(height: 18),
-
-            // Displays basic care information.
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: pinkAccent, width: 2),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.favorite_outline, color: pinkAccent),
-                      SizedBox(width: 10),
-                      Text(
-                        'Care Tips',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: darkGreen,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    careTips,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      height: 1.7,
-                      color: Color(0xFF555555),
-                    ),
-                  ),
-                ],
-              ),
+            _informationCard(
+              title: 'Care Tips',
+              icon: Icons.favorite_outline,
+              isCareCard: true,
+              content: Text(careTips, style: detailStyle),
             ),
-
+            const SizedBox(height: 20),
+            _SaveFlowerButton(flower: this),
             const SizedBox(height: 25),
-
             // Opens a preview before sharing.
             SizedBox(
               width: double.infinity,
@@ -441,9 +362,116 @@ class FlowerInformationPage extends StatelessWidget {
                 ),
               ),
             ),
-
             const SizedBox(height: 20),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SaveFlowerButton extends StatefulWidget {
+  final FlowerInformationPage flower;
+
+  const _SaveFlowerButton({required this.flower});
+
+  @override
+  State<_SaveFlowerButton> createState() => _SaveFlowerButtonState();
+}
+
+class _SaveFlowerButtonState extends State<_SaveFlowerButton> {
+  bool _isSaving = false;
+  bool _isSaved = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _isSaved = widget.flower.isAlreadySaved;
+    _recordFlowerView();
+  }
+
+  // Records a view separately from explicitly saving a flower.
+  Future<void> _recordFlowerView() async {
+    final flower = widget.flower;
+
+    try {
+      await RecentFlowersService().recordView(
+        flowerName: flower.flowerName,
+        scientificName: flower.scientificName,
+        description: flower.description,
+        flowerType: flower.flowerType,
+        flowerColour: flower.flowerColour,
+        season: flower.season,
+        careTips: flower.careTips,
+        imagePath: flower.imagePath,
+      );
+    } catch (error) {
+      debugPrint('Could not save recently viewed flower: $error');
+    }
+  }
+
+  Future<void> _saveFlower() async {
+    if (_isSaving || _isSaved) return;
+
+    setState(() => _isSaving = true);
+
+    try {
+      final flower = widget.flower;
+
+      await FlowerStorageService().saveFlower(
+        flowerName: flower.flowerName,
+        scientificName: flower.scientificName,
+        description: flower.description,
+        flowerType: flower.flowerType,
+        flowerColour: flower.flowerColour,
+        season: flower.season,
+        careTips: flower.careTips,
+        imagePath: flower.imagePath,
+      );
+
+      if (!mounted) return;
+
+      setState(() => _isSaved = true);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Flower saved successfully!')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not save this flower. Please try again.'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: _isSaving || _isSaved ? null : _saveFlower,
+        icon: Icon(_isSaved ? Icons.check : Icons.save_outlined),
+        label: Text(
+          _isSaving
+              ? 'Saving...'
+              : _isSaved
+              ? 'Flower Saved'
+              : 'Save Flower',
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: darkGreen,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
         ),
       ),
     );
