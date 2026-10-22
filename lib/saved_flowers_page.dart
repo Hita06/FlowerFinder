@@ -1,20 +1,19 @@
-// FlowerFinder - Saved Flowers
+// FlowerFinder - Saved Flowers and Water Care
 // Created by Hita
-// Includes debug-only sample data for reminder testing.
 
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'flower_information_page.dart';
 import 'flower_storage_service.dart';
+import 'local_reminder_scheduler.dart';
 import 'watering_reminder_page.dart';
 
 class SavedFlowersPage extends StatefulWidget {
   const SavedFlowersPage({super.key, this.wateringCare = false});
 
-  // Home opens this list as a flower picker for watering reminders.
   final bool wateringCare;
 
   @override
@@ -26,7 +25,7 @@ class _SavedFlowersPageState extends State<SavedFlowersPage> {
 
   List<Map<String, dynamic>> _flowers = [];
   bool _isLoading = true;
-  bool _addingSample = false;
+  bool _deleting = false;
   String? _error;
 
   @override
@@ -43,20 +42,19 @@ class _SavedFlowersPageState extends State<SavedFlowersPage> {
 
     try {
       final flowers = await _storage.loadFlowers();
-      final resolvedFlowers = <Map<String, dynamic>>[];
+      final resolved = <Map<String, dynamic>>[];
 
       for (final flower in flowers) {
         final imagePath = await _storage.resolveImagePath(
           flower['imageFileName'] as String?,
         );
-
-        resolvedFlowers.add({...flower, 'imagePath': imagePath});
+        resolved.add({...flower, 'imagePath': imagePath});
       }
 
       if (!mounted) return;
 
       setState(() {
-        _flowers = resolvedFlowers;
+        _flowers = resolved;
         _isLoading = false;
       });
     } catch (_) {
@@ -69,57 +67,12 @@ class _SavedFlowersPageState extends State<SavedFlowersPage> {
     }
   }
 
-  Future<void> _addSample() async {
-    if (!kDebugMode || _addingSample || _isLoading) return;
-
-    setState(() => _addingSample = true);
-
-    try {
-      const sampleName = 'Rose — TEST SAMPLE';
-      final existing = await _storage.loadFlowers();
-
-      if (!existing.any((flower) => flower['flowerName'] == sampleName)) {
-        await _storage.saveFlower(
-          flowerName: sampleName,
-          scientificName: 'Test data',
-          description:
-              'Sample record for testing watering reminders. '
-              'This flower was not identified by PlantNet.',
-          flowerType: 'Test sample',
-          flowerColour: 'Not verified',
-          season: 'Not verified',
-          careTips:
-              'Use this sample to test notification scheduling '
-              'and cancellation.',
-        );
-      }
-
-      if (!mounted) return;
-      await _loadFlowers();
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Test sample ready. Tap its bell to test reminders.'),
-        ),
-      );
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not save the test sample.')),
-      );
-    } finally {
-      if (mounted) setState(() => _addingSample = false);
-    }
-  }
-
   String _text(Map<String, dynamic> flower, String field) {
     return flower[field]?.toString() ?? 'Not available';
   }
 
   Future<void> _openFlower(Map<String, dynamic> flower) async {
-    await Navigator.push<void>(
-      context,
+    await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
         builder: (context) => FlowerInformationPage(
           flowerName: _text(flower, 'flowerName'),
@@ -135,24 +88,18 @@ class _SavedFlowersPageState extends State<SavedFlowersPage> {
       ),
     );
 
-    if (!mounted) return;
-    await _loadFlowers();
+    if (mounted) await _loadFlowers();
   }
 
   Future<void> _openReminder(Map<String, dynamic> flower) async {
     final plantId = flower['id']?.toString();
 
     if (plantId == null || plantId.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('This flower needs a saved ID for reminders.'),
-        ),
-      );
+      _message('This flower needs a saved ID for reminders.');
       return;
     }
 
-    await Navigator.push<void>(
-      context,
+    await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
         builder: (context) => WateringReminderPage(
           plantId: plantId,
@@ -160,6 +107,79 @@ class _SavedFlowersPageState extends State<SavedFlowersPage> {
         ),
       ),
     );
+  }
+
+  void _message(String text) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  }
+
+  Future<void> _deleteFlower(Map<String, dynamic> flower) async {
+    if (_deleting) return;
+
+    final plantId = flower['id']?.toString();
+    if (plantId == null || plantId.trim().isEmpty) {
+      _message('This flower has no saved ID.');
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete saved flower?'),
+        content: Text(
+          'Delete ${_text(flower, 'flowerName')} from Saved Flowers '
+          'and Water Care? Its watering reminder will also be cancelled.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Keep Flower'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _deleting = true);
+
+    try {
+      final preferences = await SharedPreferences.getInstance();
+
+      // Cancel first so a deleted flower cannot leave an active reminder.
+      if (preferences.containsKey('watering.notificationId.$plantId')) {
+        await LocalReminderScheduler.instance.cancel(plantId: plantId);
+      }
+
+      final settingsKey = 'watering.settings.$plantId';
+      if (preferences.containsKey(settingsKey)) {
+        final removed = await preferences.remove(settingsKey);
+        if (!removed) {
+          throw StateError('Could not remove reminder settings.');
+        }
+      }
+
+      await _storage.deleteFlower(plantId);
+
+      if (!mounted) return;
+      await _loadFlowers();
+      if (!mounted) return;
+
+      _message('Saved flower deleted.');
+    } catch (_) {
+      if (!mounted) return;
+
+      _message(
+        'Deletion could not be completed. Please try again. '
+        'The reminder may already be cancelled.',
+      );
+    } finally {
+      if (mounted) setState(() => _deleting = false);
+    }
   }
 
   Widget _thumbnail(String? imagePath) {
@@ -191,19 +211,16 @@ class _SavedFlowersPageState extends State<SavedFlowersPage> {
 
     if (_error != null) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(_error!, textAlign: TextAlign.center),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: _loadFlowers,
-                child: const Text('Try Again'),
-              ),
-            ],
-          ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(_error!),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: _loadFlowers,
+              child: const Text('Try Again'),
+            ),
+          ],
         ),
       );
     }
@@ -260,13 +277,23 @@ class _SavedFlowersPageState extends State<SavedFlowersPage> {
                 ),
               ),
               subtitle: Text(_text(flower, 'scientificName')),
-              trailing: IconButton(
-                tooltip: 'Watering reminder',
-                icon: const Icon(
-                  Icons.notifications_active_outlined,
-                  color: darkGreen,
-                ),
-                onPressed: () => _openReminder(flower),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    tooltip: 'Watering reminder',
+                    icon: const Icon(
+                      Icons.notifications_active_outlined,
+                      color: darkGreen,
+                    ),
+                    onPressed: () => _openReminder(flower),
+                  ),
+                  IconButton(
+                    tooltip: 'Delete saved flower',
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    onPressed: () => _deleteFlower(flower),
+                  ),
+                ],
               ),
               onTap: () {
                 if (widget.wateringCare) {
@@ -294,39 +321,28 @@ class _SavedFlowersPageState extends State<SavedFlowersPage> {
         actions: [
           IconButton(
             tooltip: 'Refresh saved flowers',
-            onPressed: _isLoading || _addingSample ? null : _loadFlowers,
+            onPressed: _isLoading || _deleting ? null : _loadFlowers,
             icon: const Icon(Icons.refresh),
           ),
         ],
       ),
-      body: Column(
-        children: [
-          if (widget.wateringCare)
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: Text(
-                'Select a saved flower to set or change its watering reminder.',
-              ),
-            ),
-          Expanded(child: _body()),
-        ],
-      ),
-      bottomNavigationBar: kDebugMode
-          ? SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: OutlinedButton.icon(
-                  onPressed: _isLoading || _addingSample ? null : _addSample,
-                  icon: const Icon(Icons.science_outlined),
-                  label: Text(
-                    _addingSample
-                        ? 'Saving sample…'
-                        : 'Add sample flower (debug testing)',
-                  ),
+      body: AbsorbPointer(
+        absorbing: _deleting,
+        child: Column(
+          children: [
+            if (_deleting) const LinearProgressIndicator(),
+            if (widget.wateringCare)
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
+                child: Text(
+                  'Select a flower to manage its reminder, '
+                  'or use the trash icon to delete it.',
                 ),
               ),
-            )
-          : null,
+            Expanded(child: _body()),
+          ],
+        ),
+      ),
     );
   }
 }

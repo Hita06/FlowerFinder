@@ -15,9 +15,7 @@ class FlowerStorageService {
     final directory = await _storageDirectory();
     final file = File('${directory.path}/flowers.json');
 
-    if (!await file.exists()) {
-      return [];
-    }
+    if (!await file.exists()) return [];
 
     final decoded = jsonDecode(await file.readAsString()) as List<dynamic>;
 
@@ -69,10 +67,39 @@ class FlowerStorageService {
     await file.writeAsString(jsonEncode(flowers), flush: true);
   }
 
-  Future<String?> resolveImagePath(String? imageFileName) async {
-    if (imageFileName == null) {
-      return null;
+  Future<void> deleteFlower(String plantId) async {
+    if (plantId.trim().isEmpty) {
+      throw ArgumentError('A saved flower ID is required.');
     }
+
+    final directory = await _storageDirectory();
+    final flowers = await loadFlowers();
+    final removed = flowers
+        .where((flower) => flower['id']?.toString() == plantId)
+        .toList();
+
+    flowers.removeWhere((flower) => flower['id']?.toString() == plantId);
+
+    final file = File('${directory.path}/flowers.json');
+    await file.writeAsString(jsonEncode(flowers), flush: true);
+
+    // The record has been deleted even if photo cleanup fails.
+    for (final flower in removed) {
+      final name = flower['imageFileName'];
+      if (name is String &&
+          !flowers.any((item) => item['imageFileName'] == name)) {
+        try {
+          final image = File('${directory.path}/$name');
+          if (await image.exists()) await image.delete();
+        } on FileSystemException {
+          // An unused photo can be cleaned up later.
+        }
+      }
+    }
+  }
+
+  Future<String?> resolveImagePath(String? imageFileName) async {
+    if (imageFileName == null) return null;
 
     final directory = await _storageDirectory();
     final file = File('${directory.path}/$imageFileName');
