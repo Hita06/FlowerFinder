@@ -6,9 +6,11 @@ import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 
 import 'flower_search_page.dart';
 import 'homepage.dart';
+import 'diary_storage.dart';
 import 'pages/diary_page.dart';
 import 'profile_storage.dart';
 import 'scanner_page.dart';
@@ -24,11 +26,13 @@ class MainNavigation extends StatefulWidget {
     this.account,
     this.profileStorage,
     this.stickerStorage,
+    this.diaryStorage,
   });
 
   final UserAccount? account;
   final ProfileStorage? profileStorage;
   final StickerStorage? stickerStorage;
+  final DiaryStorage? diaryStorage;
 
   @override
   State<MainNavigation> createState() => _MainNavigationState();
@@ -47,6 +51,7 @@ class _MainNavigationState extends State<MainNavigation> {
       WhatsAppStickerService();
   late final StickerStorage _stickerStorage =
       widget.stickerStorage ?? StickerStorage();
+  late final DiaryStorage _diaryStorage = widget.diaryStorage ?? DiaryStorage();
   late final ProfileStorage _profileStorage =
       widget.profileStorage ?? const ProfileStorage();
   EditableProfileDetails? _savedProfileDetails;
@@ -60,6 +65,8 @@ class _MainNavigationState extends State<MainNavigation> {
   Future<void> _pendingStickerWrite = Future<void>.value();
   Timer? _stickerWriteDebounce;
   int currentIndex = homeTab;
+  int _diaryStickerRequestId = 0;
+  GeneratedStickerAsset? _diaryStickerToAdd;
   int _accountLoadGeneration = 0;
   bool _profileLoaded = false;
   bool _collectionLoaded = false;
@@ -425,7 +432,7 @@ class _MainNavigationState extends State<MainNavigation> {
             setState(() {
               final index = _savedFlowerPhotos.indexOf(sticker);
               if (index == -1) return;
-              _savedFlowerPhotos[index] = sticker.copyWith(
+              _savedFlowerPhotos[index] = photo.copyWith(
                 stickerId: stickerId,
                 stickerBytes: stickerBytes,
                 createdAt: DateTime.now(),
@@ -441,10 +448,35 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 
-  void _handleShareSticker(GeneratedStickerAsset sticker) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Sticker is ready for sharing.')),
-    );
+  Future<void> _handleShareSticker(GeneratedStickerAsset sticker) async {
+    try {
+      final result = await SharePlus.instance.share(
+        ShareParams(
+          title: 'FlowerFinder sticker',
+          files: [XFile.fromData(sticker.stickerBytes, mimeType: 'image/png')],
+          fileNameOverrides: ['flowerfinder_sticker.png'],
+        ),
+      );
+
+      if (!mounted) return;
+      final message = switch (result.status) {
+        ShareResultStatus.success => 'Sticker shared successfully',
+        ShareResultStatus.dismissed => 'Sharing cancelled',
+        ShareResultStatus.unavailable =>
+          'Sharing is not available on this device',
+      };
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(content: Text(message)));
+    } catch (error) {
+      debugPrint('Sticker sharing error: $error');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          const SnackBar(content: Text('Unable to share this sticker')),
+        );
+    }
   }
 
   // Adds saved stickers with animations to WhatsApp as one animated pack.
@@ -477,11 +509,11 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 
   void _handleAddStickerToDiary(GeneratedStickerAsset sticker) {
-    _openDiary();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Sticker selected for Diary integration.')),
-    );
+    setState(() {
+      _diaryStickerToAdd = sticker;
+      _diaryStickerRequestId += 1;
+      currentIndex = diaryTab;
+    });
   }
 
   // LOGOUT
@@ -527,7 +559,12 @@ class _MainNavigationState extends State<MainNavigation> {
       ScannerPage(onAddSticker: _openStickerCreationFromScanner),
 
       // 3 - Diary
-      const DiaryPage(),
+      DiaryPage(
+        accountId: _accountStorageId,
+        storage: _diaryStorage,
+        stickerToAdd: _diaryStickerToAdd,
+        stickerRequestId: _diaryStickerRequestId,
+      ),
       _ProfileTab(
         profileKey: _profileKey,
         account: _account,

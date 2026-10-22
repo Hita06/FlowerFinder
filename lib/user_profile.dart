@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'sticker_animation_assets.dart';
 import 'sticker_animation_overlay.dart';
 
 class UserAccount {
@@ -105,35 +106,63 @@ class SavedFlowerPhoto {
     this.label,
     this.stickerId,
     this.stickerBytes,
+    this.baseStickerBytes,
     this.createdAt,
     this.profileGridSizeId,
     this.animationAsset,
     this.boardPositionX,
     this.boardPositionY,
     this.boardScale,
+    this.whiteOutlineEnabled = false,
+    this.outlineThickness = 8,
+    this.innerShadowEnabled = false,
+    this.dropShadowEnabled = false,
+    this.dropShadowStrength = 0.6,
+    this.advancedEffectId,
+    this.stickerTintEnabled,
+    this.gradientColorId,
   });
 
   final ImageProvider image;
   final String? label;
   final String? stickerId;
   final Uint8List? stickerBytes;
+  final Uint8List? baseStickerBytes;
   final DateTime? createdAt;
   final String? profileGridSizeId;
   final String? animationAsset;
   final double? boardPositionX;
   final double? boardPositionY;
   final double? boardScale;
+  final bool whiteOutlineEnabled;
+  final double outlineThickness;
+  final bool innerShadowEnabled;
+  final bool dropShadowEnabled;
+  final double dropShadowStrength;
+  final String? advancedEffectId;
+  final bool? stickerTintEnabled;
+  final String? gradientColorId;
 
   SavedFlowerPhoto copyWith({
     String? label,
     String? stickerId,
     Uint8List? stickerBytes,
+    Uint8List? baseStickerBytes,
     DateTime? createdAt,
     String? profileGridSizeId,
     String? animationAsset,
     double? boardPositionX,
     double? boardPositionY,
     double? boardScale,
+    bool? whiteOutlineEnabled,
+    double? outlineThickness,
+    bool? innerShadowEnabled,
+    bool? dropShadowEnabled,
+    double? dropShadowStrength,
+    String? advancedEffectId,
+    bool? stickerTintEnabled,
+    String? gradientColorId,
+    bool clearGradientColorId = false,
     bool clearAnimationAsset = false,
   }) {
     return SavedFlowerPhoto(
@@ -141,6 +170,7 @@ class SavedFlowerPhoto {
       label: label ?? this.label,
       stickerId: stickerId ?? this.stickerId,
       stickerBytes: stickerBytes ?? this.stickerBytes,
+      baseStickerBytes: baseStickerBytes ?? this.baseStickerBytes,
       createdAt: createdAt ?? this.createdAt,
       profileGridSizeId: profileGridSizeId ?? this.profileGridSizeId,
       animationAsset: clearAnimationAsset
@@ -149,6 +179,16 @@ class SavedFlowerPhoto {
       boardPositionX: boardPositionX ?? this.boardPositionX,
       boardPositionY: boardPositionY ?? this.boardPositionY,
       boardScale: boardScale ?? this.boardScale,
+      whiteOutlineEnabled: whiteOutlineEnabled ?? this.whiteOutlineEnabled,
+      outlineThickness: outlineThickness ?? this.outlineThickness,
+      innerShadowEnabled: innerShadowEnabled ?? this.innerShadowEnabled,
+      dropShadowEnabled: dropShadowEnabled ?? this.dropShadowEnabled,
+      dropShadowStrength: dropShadowStrength ?? this.dropShadowStrength,
+      advancedEffectId: advancedEffectId ?? this.advancedEffectId,
+      stickerTintEnabled: stickerTintEnabled ?? this.stickerTintEnabled,
+      gradientColorId: clearGradientColorId
+          ? null
+          : gradientColorId ?? this.gradientColorId,
     );
   }
 }
@@ -192,11 +232,20 @@ class _StickerImageWithAnimation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rewardIsBehind = animationAsset == rewardLightAnimationAsset;
     return Stack(
       fit: StackFit.expand,
+      key: const ValueKey('profile-sticker-animation-layers'),
       children: [
+        if (rewardIsBehind && animationAsset != null)
+          StickerAnimationOverlay(
+            key: ValueKey(animationAsset),
+            stickerBytes: stickerBytes,
+            animationAsset: animationAsset!,
+            opacity: 0.78,
+          ),
         Image.memory(stickerBytes, fit: BoxFit.contain),
-        if (animationAsset != null)
+        if (!rewardIsBehind && animationAsset != null)
           StickerAnimationOverlay(
             key: ValueKey(animationAsset),
             stickerBytes: stickerBytes,
@@ -2005,8 +2054,8 @@ class _StickerActionDialog extends StatelessWidget {
           onPressed: onShareSticker == null
               ? null
               : () {
-                  onShareSticker!(asset);
                   Navigator.pop(context);
+                  onShareSticker!(asset);
                 },
           icon: const Icon(Icons.ios_share),
           label: const Text('Share Sticker'),

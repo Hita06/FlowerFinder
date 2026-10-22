@@ -32,12 +32,21 @@ void main() {
       label: 'Saved rose',
       stickerId: 'colour_change',
       stickerBytes: stickerBytes,
+      baseStickerBytes: stickerBytes,
       createdAt: DateTime(2026, 10, 8),
       profileGridSizeId: 'large',
       animationAsset: fireAnimationAsset,
       boardPositionX: 0.3,
       boardPositionY: 0.4,
       boardScale: 1.2,
+      whiteOutlineEnabled: true,
+      outlineThickness: 12,
+      innerShadowEnabled: true,
+      dropShadowEnabled: true,
+      dropShadowStrength: 0.8,
+      advancedEffectId: 'rainbowPrism',
+      stickerTintEnabled: false,
+      gradientColorId: 'gradient_rainbow',
     );
 
     await storage.saveStickers('linda@example.com', [sticker]);
@@ -49,12 +58,21 @@ void main() {
     expect(lindaStickers.single.label, 'Saved rose');
     expect(lindaStickers.single.stickerId, 'colour_change');
     expect(lindaStickers.single.stickerBytes, stickerBytes);
+    expect(lindaStickers.single.baseStickerBytes, stickerBytes);
     expect(lindaStickers.single.createdAt, DateTime(2026, 10, 8));
     expect(lindaStickers.single.profileGridSizeId, 'large');
     expect(lindaStickers.single.animationAsset, fireAnimationAsset);
     expect(lindaStickers.single.boardPositionX, 0.3);
     expect(lindaStickers.single.boardPositionY, 0.4);
     expect(lindaStickers.single.boardScale, 1.2);
+    expect(lindaStickers.single.whiteOutlineEnabled, isTrue);
+    expect(lindaStickers.single.outlineThickness, 12);
+    expect(lindaStickers.single.innerShadowEnabled, isTrue);
+    expect(lindaStickers.single.dropShadowEnabled, isTrue);
+    expect(lindaStickers.single.dropShadowStrength, 0.8);
+    expect(lindaStickers.single.advancedEffectId, 'rainbowPrism');
+    expect(lindaStickers.single.stickerTintEnabled, isFalse);
+    expect(lindaStickers.single.gradientColorId, 'gradient_rainbow');
     expect(otherStickers, isEmpty);
   });
 
