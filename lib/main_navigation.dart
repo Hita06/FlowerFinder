@@ -48,12 +48,9 @@ class _MainNavigationState extends State<MainNavigation> {
 
   final _profileKey = GlobalKey<UserProfilePageState>();
   final List<SavedFlowerPhoto> _savedFlowerPhotos = [];
-<<<<<<< HEAD
+  
   final WhatsAppStickerService _whatsAppStickerService =
       WhatsAppStickerService();
-=======
-
->>>>>>> 6852dcbc0e79adc6b5952025ceffb18eece7b67d
   late final StickerStorage _stickerStorage =
       widget.stickerStorage ?? StickerStorage();
   late final DiaryStorage _diaryStorage = widget.diaryStorage ?? DiaryStorage();
@@ -621,6 +618,7 @@ class _MainNavigationState extends State<MainNavigation> {
             _profileLoaded && _collectionLoaded && _stickersLoaded,
         onCreateSticker: _openStickerCreation,
         onAddStickerPackToWhatsApp: _addFlowerStickersToWhatsApp,
+        onOpenRecentlyViewed: _openRecentlyViewed,
         onShareSticker: _handleShareSticker,
         onAddStickerToDiary: _handleAddStickerToDiary,
         onDeleteSticker: _deleteSavedSticker,
@@ -653,6 +651,7 @@ class _ProfileTab extends StatelessWidget {
     required this.accountDataLoaded,
     required this.onCreateSticker,
     required this.onAddStickerPackToWhatsApp,
+    required this.onOpenRecentlyViewed,
     required this.onShareSticker,
     required this.onAddStickerToDiary,
     required this.onDeleteSticker,
@@ -673,6 +672,7 @@ class _ProfileTab extends StatelessWidget {
 
   final VoidCallback onCreateSticker;
   final VoidCallback onAddStickerPackToWhatsApp;
+  final VoidCallback onOpenRecentlyViewed;
   final ValueChanged<GeneratedStickerAsset> onShareSticker;
   final ValueChanged<GeneratedStickerAsset> onAddStickerToDiary;
   final ValueChanged<SavedFlowerPhoto> onDeleteSticker;
@@ -691,10 +691,65 @@ class _ProfileTab extends StatelessWidget {
   final ValueChanged<UserAccount> onProfileChanged;
   final Future<void> Function() onLogout;
 
+  Future<void> _showProfileActions(BuildContext context) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: const Color(0xfff8faf7),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(
+                  Icons.add_photo_alternate_outlined,
+                  color: Color(0xff2f6b4f),
+                ),
+                title: const Text('Create sticker'),
+                subtitle: const Text('Make a new sticker for your collection'),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  onCreateSticker();
+                },
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.chat_outlined,
+                  color: Color(0xff2f6b4f),
+                ),
+                title: const Text('Add sticker pack to WhatsApp'),
+                subtitle: const Text(
+                  'Export your animated stickers to WhatsApp',
+                ),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  onAddStickerPackToWhatsApp();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xfff8faf7),
+      floatingActionButton: FloatingActionButton(
+        onPressed: accountDataLoaded
+            ? () => _showProfileActions(context)
+            : null,
+        backgroundColor: const Color(0xff5bbf9f),
+        foregroundColor: Colors.white,
+        elevation: 4,
+        shape: const CircleBorder(),
+        tooltip: 'Sticker actions',
+        child: const Icon(Icons.add, size: 30),
+      ),
       appBar: AppBar(
         centerTitle: true,
         title: const Text('Profile'),
@@ -707,21 +762,9 @@ class _ProfileTab extends StatelessWidget {
         ),
         actions: [
           IconButton(
-<<<<<<< HEAD
-            onPressed: accountDataLoaded ? onAddStickerPackToWhatsApp : null,
-            tooltip: 'Add sticker pack to WhatsApp',
-            icon: const Icon(Icons.chat_outlined),
-=======
-            onPressed: () {
-              Navigator.of(context).push<void>(
-                MaterialPageRoute<void>(
-                  builder: (context) => const RecentFlowersPage(),
-                ),
-              );
-            },
+            onPressed: onOpenRecentlyViewed,
             tooltip: 'Recently viewed flowers',
             icon: const Icon(Icons.history),
->>>>>>> 6852dcbc0e79adc6b5952025ceffb18eece7b67d
           ),
           IconButton(
             onPressed: accountDataLoaded ? onCreateSticker : null,
