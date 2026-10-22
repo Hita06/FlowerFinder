@@ -1,8 +1,8 @@
 #!/bin/sh
 # This is a generated file; do not edit or check into version control.
 export "FLUTTER_ROOT=C:\Users\irisc\develop\flutter"
-export "FLUTTER_APPLICATION_PATH=C:\Users\irisc\FlowerFinder-Login-Git"
-export "FLUTTER_FRAMEWORK_SWIFT_PACKAGE_PATH=C:\Users\irisc\FlowerFinder-Login-Git\macos\Flutter\ephemeral\Packages\.packages\FlutterFramework"
+export "FLUTTER_APPLICATION_PATH=C:\Users\irisc\FlowerFinder-PR"
+export "FLUTTER_FRAMEWORK_SWIFT_PACKAGE_PATH=C:\Users\irisc\FlowerFinder-PR\macos\Flutter\ephemeral\Packages\.packages\FlutterFramework"
 export "COCOAPODS_PARALLEL_CODE_SIGN=true"
 export "FLUTTER_BUILD_DIR=build"
 export "FLUTTER_BUILD_NAME=1.0.0"

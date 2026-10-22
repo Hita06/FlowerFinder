@@ -276,9 +276,8 @@ class _LoginPageState extends State<LoginPage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.green,
                       foregroundColor: Colors.white,
-                      disabledBackgroundColor: AppColors.green.withValues(
-                        alpha: 0.6,
-                      ),
+                      disabledBackgroundColor:
+                          AppColors.green.withValues(alpha: 0.6),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
@@ -620,7 +619,8 @@ class _SignUpPopupState extends State<SignUpPopup> {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Colors.red.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius:
+                      BorderRadius.circular(12),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -647,13 +647,16 @@ class _SignUpPopupState extends State<SignUpPopup> {
               child: ElevatedButton(
                 onPressed: isCreatingAccount ? null : createAccount,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.green,
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: AppColors.green.withValues(
-                    alpha: 0.6,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                  backgroundColor:
+                      AppColors.green,
+                  foregroundColor:
+                      Colors.white,
+                  disabledBackgroundColor:
+                      AppColors.green.withValues(alpha: 0.6),
+                  shape:
+                      RoundedRectangleBorder(
+                    borderRadius:
+                        BorderRadius.circular(16),
                   ),
                 ),
                 child: isCreatingAccount

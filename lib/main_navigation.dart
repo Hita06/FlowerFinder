@@ -18,6 +18,7 @@ import 'saved_flowers_page.dart';
 import 'scanner_page.dart';
 import 'sticker_creation.dart';
 import 'sticker_storage.dart';
+import 'services/whatsapp_sticker_service.dart';
 import 'user_profile.dart';
 import 'widgets/bottom_nav.dart';
 
@@ -47,7 +48,9 @@ class _MainNavigationState extends State<MainNavigation> {
 
   final _profileKey = GlobalKey<UserProfilePageState>();
   final List<SavedFlowerPhoto> _savedFlowerPhotos = [];
-
+  
+  final WhatsAppStickerService _whatsAppStickerService =
+      WhatsAppStickerService();
   late final StickerStorage _stickerStorage =
       widget.stickerStorage ?? StickerStorage();
   late final DiaryStorage _diaryStorage = widget.diaryStorage ?? DiaryStorage();
@@ -529,6 +532,35 @@ class _MainNavigationState extends State<MainNavigation> {
     }
   }
 
+  // Adds saved stickers with animations to WhatsApp as one animated pack.
+  Future<void> _addFlowerStickersToWhatsApp() async {
+    final savedStickers = _savedFlowerPhotos
+        .where(
+          (photo) =>
+              photo.stickerBytes != null &&
+              photo.stickerBytes!.isNotEmpty &&
+              photo.animationAsset != null,
+        )
+        .toList();
+
+    try {
+      await _whatsAppStickerService.addSavedStickersToWhatsApp(
+        stickers: savedStickers,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('WhatsApp has been asked to add Flower Finder Blooms.'),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not add sticker pack: $error')),
+      );
+    }
+  }
+
   void _handleAddStickerToDiary(GeneratedStickerAsset sticker) {
     setState(() {
       _diaryStickerToAdd = sticker;
@@ -585,6 +617,8 @@ class _MainNavigationState extends State<MainNavigation> {
         accountDataLoaded:
             _profileLoaded && _collectionLoaded && _stickersLoaded,
         onCreateSticker: _openStickerCreation,
+        onAddStickerPackToWhatsApp: _addFlowerStickersToWhatsApp,
+        onOpenRecentlyViewed: _openRecentlyViewed,
         onShareSticker: _handleShareSticker,
         onAddStickerToDiary: _handleAddStickerToDiary,
         onDeleteSticker: _deleteSavedSticker,
@@ -616,6 +650,8 @@ class _ProfileTab extends StatelessWidget {
     required this.collectionSettings,
     required this.accountDataLoaded,
     required this.onCreateSticker,
+    required this.onAddStickerPackToWhatsApp,
+    required this.onOpenRecentlyViewed,
     required this.onShareSticker,
     required this.onAddStickerToDiary,
     required this.onDeleteSticker,
@@ -635,6 +671,8 @@ class _ProfileTab extends StatelessWidget {
   final bool accountDataLoaded;
 
   final VoidCallback onCreateSticker;
+  final VoidCallback onAddStickerPackToWhatsApp;
+  final VoidCallback onOpenRecentlyViewed;
   final ValueChanged<GeneratedStickerAsset> onShareSticker;
   final ValueChanged<GeneratedStickerAsset> onAddStickerToDiary;
   final ValueChanged<SavedFlowerPhoto> onDeleteSticker;
@@ -653,10 +691,65 @@ class _ProfileTab extends StatelessWidget {
   final ValueChanged<UserAccount> onProfileChanged;
   final Future<void> Function() onLogout;
 
+  Future<void> _showProfileActions(BuildContext context) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: const Color(0xfff8faf7),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(
+                  Icons.add_photo_alternate_outlined,
+                  color: Color(0xff2f6b4f),
+                ),
+                title: const Text('Create sticker'),
+                subtitle: const Text('Make a new sticker for your collection'),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  onCreateSticker();
+                },
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.chat_outlined,
+                  color: Color(0xff2f6b4f),
+                ),
+                title: const Text('Add sticker pack to WhatsApp'),
+                subtitle: const Text(
+                  'Export your animated stickers to WhatsApp',
+                ),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  onAddStickerPackToWhatsApp();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xfff8faf7),
+      floatingActionButton: FloatingActionButton(
+        onPressed: accountDataLoaded
+            ? () => _showProfileActions(context)
+            : null,
+        backgroundColor: const Color(0xff5bbf9f),
+        foregroundColor: Colors.white,
+        elevation: 4,
+        shape: const CircleBorder(),
+        tooltip: 'Sticker actions',
+        child: const Icon(Icons.add, size: 30),
+      ),
       appBar: AppBar(
         centerTitle: true,
         title: const Text('Profile'),
@@ -669,13 +762,7 @@ class _ProfileTab extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            onPressed: () {
-              Navigator.of(context).push<void>(
-                MaterialPageRoute<void>(
-                  builder: (context) => const RecentFlowersPage(),
-                ),
-              );
-            },
+            onPressed: onOpenRecentlyViewed,
             tooltip: 'Recently viewed flowers',
             icon: const Icon(Icons.history),
           ),
