@@ -14,6 +14,7 @@ import 'profile_storage.dart';
 import 'scanner_page.dart';
 import 'sticker_creation.dart';
 import 'sticker_storage.dart';
+import 'services/whatsapp_sticker_service.dart';
 import 'user_profile.dart';
 import 'widgets/bottom_nav.dart';
 
@@ -42,6 +43,8 @@ class _MainNavigationState extends State<MainNavigation> {
 
   final _profileKey = GlobalKey<UserProfilePageState>();
   final List<SavedFlowerPhoto> _savedFlowerPhotos = [];
+  final WhatsAppStickerService _whatsAppStickerService =
+      WhatsAppStickerService();
   late final StickerStorage _stickerStorage =
       widget.stickerStorage ?? StickerStorage();
   late final ProfileStorage _profileStorage =
@@ -444,6 +447,35 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 
+  // Adds saved stickers with animations to WhatsApp as one animated pack.
+  Future<void> _addFlowerStickersToWhatsApp() async {
+    final savedStickers = _savedFlowerPhotos
+        .where(
+          (photo) =>
+              photo.stickerBytes != null &&
+              photo.stickerBytes!.isNotEmpty &&
+              photo.animationAsset != null,
+        )
+        .toList();
+
+    try {
+      await _whatsAppStickerService.addSavedStickersToWhatsApp(
+        stickers: savedStickers,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('WhatsApp has been asked to add Flower Finder Blooms.'),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not add sticker pack: $error')),
+      );
+    }
+  }
+
   void _handleAddStickerToDiary(GeneratedStickerAsset sticker) {
     _openDiary();
 
@@ -504,6 +536,7 @@ class _MainNavigationState extends State<MainNavigation> {
         accountDataLoaded:
             _profileLoaded && _collectionLoaded && _stickersLoaded,
         onCreateSticker: _openStickerCreation,
+        onAddStickerPackToWhatsApp: _addFlowerStickersToWhatsApp,
         onShareSticker: _handleShareSticker,
         onAddStickerToDiary: _handleAddStickerToDiary,
         onDeleteSticker: _deleteSavedSticker,
@@ -537,6 +570,7 @@ class _ProfileTab extends StatelessWidget {
     required this.collectionSettings,
     required this.accountDataLoaded,
     required this.onCreateSticker,
+    required this.onAddStickerPackToWhatsApp,
     required this.onShareSticker,
     required this.onAddStickerToDiary,
     required this.onDeleteSticker,
@@ -555,6 +589,7 @@ class _ProfileTab extends StatelessWidget {
   final ProfileCollectionSettings collectionSettings;
   final bool accountDataLoaded;
   final VoidCallback onCreateSticker;
+  final VoidCallback onAddStickerPackToWhatsApp;
   final ValueChanged<GeneratedStickerAsset> onShareSticker;
   final ValueChanged<GeneratedStickerAsset> onAddStickerToDiary;
   final ValueChanged<SavedFlowerPhoto> onDeleteSticker;
@@ -588,6 +623,11 @@ class _ProfileTab extends StatelessWidget {
           icon: const Icon(Icons.logout),
         ),
         actions: [
+          IconButton(
+            onPressed: accountDataLoaded ? onAddStickerPackToWhatsApp : null,
+            tooltip: 'Add sticker pack to WhatsApp',
+            icon: const Icon(Icons.chat_outlined),
+          ),
           IconButton(
             onPressed: accountDataLoaded ? onCreateSticker : null,
             tooltip: 'Create sticker',

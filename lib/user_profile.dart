@@ -1244,8 +1244,9 @@ class _SmallStickerGrid extends StatelessWidget {
           }
           final item = entry as _StickerCollectionItem;
           final itemIndex = items.indexOf(item);
+
           return _VariableCollectionTile(
-            key: ValueKey(_collectionItemKey(item, itemIndex)),
+            key: ValueKey('collection-item-$itemIndex'),
             item: item,
             selected:
                 item.sticker != null &&
@@ -1403,9 +1404,7 @@ class _LargeStickerSquare extends StatelessWidget {
                     ),
                   for (var index = 0; index < stickers.length; index += 1)
                     _MovableStickerBoardItem(
-                      key: ValueKey(
-                        'large-sticker-${stickers[index].stickerId ?? index.toString()}',
-                      ),
+                      key: ValueKey('large-sticker-$index'),
                       sticker: stickers[index],
                       index: index,
                       placement: placementForSticker(stickers[index], index),
